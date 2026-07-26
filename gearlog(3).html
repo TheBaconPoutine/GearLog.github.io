@@ -1,0 +1,949 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GearLog — Vehicle Service Tracker</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg: #16181B;
+    --panel: #1F2226;
+    --panel-raised: #262A2F;
+    --hairline: #34383E;
+    --text: #EDEAE3;
+    --text-dim: #9A9FA6;
+    --text-dim2: #9096A0;
+    --amber: #F2A93B;
+    --amber-dim: #7A5B24;
+    --orange: #E0763A;
+    --blue: #5C8CAE;
+    --green: #6FAE7A;
+    --red: #D4574B;
+    --red-dim: #4A2622;
+    --radius: 10px;
+    --font-display: 'Oswald', sans-serif;
+    --font-body: 'Inter', sans-serif;
+    --font-mono: 'IBM Plex Mono', monospace;
+  }
+
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-body);
+    min-height: 100vh;
+    background-image:
+      radial-gradient(circle at 15% 0%, rgba(242,169,59,0.05), transparent 40%),
+      radial-gradient(circle at 85% 100%, rgba(92,140,174,0.05), transparent 40%);
+  }
+
+  .wrap{max-width: 980px; margin: 0 auto; padding: 28px 20px 80px;}
+
+  /* ---------- Header ---------- */
+  header.top{
+    display:flex; align-items:baseline; justify-content:space-between;
+    border-bottom: 1px solid var(--hairline);
+    padding-bottom: 18px; margin-bottom: 24px;
+    flex-wrap: wrap; gap: 10px;
+  }
+  .brand{display:flex; align-items:baseline; gap:10px;}
+  .brand .mark{
+    font-family: var(--font-display); font-weight:700; font-size: 26px;
+    letter-spacing: 0.5px; color: var(--text);
+  }
+  .brand .mark span{color: var(--amber);}
+  .brand .tagline{font-size: 12.5px; color: var(--text-dim2); letter-spacing:0.3px;}
+  .odo-clock{
+    font-family: var(--font-mono); font-size: 12.5px; color: var(--text-dim2);
+    text-align:right;
+  }
+  .odo-clock b{color: var(--text); font-weight:600;}
+
+  /* ---------- Setup card ---------- */
+  .card{
+    background: var(--panel);
+    border: 1px solid var(--hairline);
+    border-radius: var(--radius);
+    padding: 20px 22px;
+    margin-bottom: 20px;
+  }
+  .card h2{
+    font-family: var(--font-display); font-weight:600; font-size: 15px;
+    text-transform: uppercase; letter-spacing: 1.2px; color: var(--amber);
+    margin: 0 0 16px 0;
+  }
+  .grid-3{display:grid; grid-template-columns: repeat(3, 1fr); gap: 14px;}
+  .grid-2{display:grid; grid-template-columns: repeat(2, 1fr); gap: 14px;}
+  @media (max-width: 720px){ .grid-3{grid-template-columns: 1fr 1fr;} }
+  @media (max-width: 480px){ .grid-3, .grid-2{grid-template-columns: 1fr;} }
+
+  label.field{display:flex; flex-direction:column; gap:6px; font-size: 12.5px; color: var(--text-dim2);}
+  label.field span.hint{font-size:11px; color:#6b7178; font-weight:400;}
+  select, input[type=number], input[type=date], input[type=text]{
+    background: var(--panel-raised);
+    border: 1px solid var(--hairline);
+    color: var(--text);
+    font-family: var(--font-mono);
+    font-size: 14px;
+    padding: 9px 10px;
+    border-radius: 6px;
+    outline: none;
+  }
+  select:focus, input:focus{border-color: var(--amber);}
+  select{font-family: var(--font-body); font-size:13.5px;}
+
+  .btn{
+    font-family: var(--font-display); font-weight:600; letter-spacing:0.4px;
+    text-transform: uppercase; font-size: 12.5px;
+    background: var(--amber); color: #1A1300; border:none;
+    padding: 11px 18px; border-radius: 6px; cursor:pointer;
+  }
+  .btn:hover{background:#ffb94a;}
+  .btn.secondary{
+    background: transparent; color: var(--text-dim2); border: 1px solid var(--hairline);
+  }
+  .btn.secondary:hover{border-color:#565c64; color:var(--text);}
+  .btn:focus-visible, select:focus-visible, input:focus-visible{outline: 2px solid var(--blue); outline-offset:2px;}
+
+  .actions-row{display:flex; gap:10px; margin-top:16px; flex-wrap:wrap;}
+
+  /* ---------- Service item cards ---------- */
+  #itemsHeader{
+    display:flex; justify-content:space-between; align-items:center; margin-bottom: 10px;
+  }
+  #itemsHeader h2{margin:0;}
+
+  .item{
+    background: var(--panel);
+    border: 1px solid var(--hairline);
+    border-left: 4px solid var(--hairline);
+    border-radius: var(--radius);
+    padding: 16px 18px;
+    margin-bottom: 12px;
+  }
+  .item.status-ok{border-left-color: var(--green);}
+  .item.status-soon{border-left-color: var(--amber);}
+  .item.status-due{border-left-color: var(--orange);}
+  .item.status-over{border-left-color: var(--red);}
+
+  .item-top{display:flex; justify-content:space-between; align-items:flex-start; gap: 12px; flex-wrap:wrap;}
+  .item-name{font-family: var(--font-display); font-weight:600; font-size: 16.5px;}
+  .status-pill{
+    font-family: var(--font-mono); font-size:11px; text-transform:uppercase; letter-spacing:0.5px;
+    padding: 3px 9px; border-radius: 20px; white-space:nowrap;
+  }
+  .status-pill.status-ok{background: rgba(111,174,122,0.15); color: var(--green);}
+  .status-pill.status-soon{background: rgba(242,169,59,0.15); color: var(--amber);}
+  .status-pill.status-due{background: rgba(224,118,58,0.18); color: var(--orange);}
+  .status-pill.status-over{background: rgba(212,87,75,0.15); color: var(--red);}
+
+  .odo-readout{display:flex; gap: 22px; margin: 14px 0 10px; flex-wrap:wrap;}
+  .odo-block{display:flex; flex-direction:column; gap:4px;}
+  .odo-label{font-size:10.5px; text-transform:uppercase; letter-spacing:0.8px; color:var(--text-dim2);}
+  .odo-digits{
+    font-family: var(--font-mono); font-weight:600; font-size: 24px;
+    display:flex; gap: 2px;
+  }
+  .odo-digits .d{
+    background: #0F1113; border: 1px solid #303439; border-radius:3px;
+    padding: 2px 5px; min-width: 16px; text-align:center;
+  }
+  .odo-digits.tone-ok .d{color: var(--green);}
+  .odo-digits.tone-soon .d{color: var(--amber);}
+  .odo-digits.tone-due .d{color: var(--orange);}
+  .odo-digits.tone-over .d{color: var(--red);}
+  .odo-suffix{font-family: var(--font-body); font-size:11px; color:var(--text-dim2); align-self:flex-end; margin-left:2px;}
+
+  details.edit{margin-top:12px;}
+  details.edit summary{
+    cursor:pointer; list-style:none;
+    display:inline-flex; align-items:center; gap:8px;
+    font-family: var(--font-display); font-weight:600; font-size:12.5px;
+    text-transform:uppercase; letter-spacing:0.4px;
+    color: var(--amber);
+    border: 1px solid var(--amber-dim);
+    background: rgba(242,169,59,0.08);
+    padding: 10px 16px; border-radius:6px;
+  }
+  details.edit summary:hover{background: rgba(242,169,59,0.16); border-color: var(--amber);}
+  details.edit summary::-webkit-details-marker{display:none;}
+  details.edit summary:before{content:"▸"; font-size:10px;}
+  details.edit[open] summary:before{content:"▾";}
+  details.edit[open] summary{margin-bottom:4px;}
+  .edit-grid{display:grid; grid-template-columns: repeat(4,1fr); gap:10px; margin-top:10px;}
+  @media (max-width: 640px){.edit-grid{grid-template-columns: 1fr 1fr;}}
+  .edit-grid label{display:flex; flex-direction:column; gap:4px; font-size:11px; color:var(--text-dim2);}
+  .edit-grid input{padding:7px 8px; font-size:13px;}
+
+  .item-footer{display:flex; gap:10px; margin-top:12px; flex-wrap:wrap;}
+  .link-btn{
+    background:none; border:none; color: var(--blue); font-size:12.5px; cursor:pointer;
+    font-family: var(--font-body); padding:0; text-decoration: underline; text-underline-offset:2px;
+  }
+  .link-btn:hover{color:#7fb0d1;}
+
+  .empty-state{
+    text-align:center; padding: 40px 20px; color: var(--text-dim2); font-size: 14px;
+  }
+
+  /* ---------- History ---------- */
+  .history-form{display:grid; grid-template-columns: 2fr 1fr 1fr 2fr auto; gap: 10px; align-items:end;}
+  @media (max-width: 780px){ .history-form{grid-template-columns: 1fr 1fr;} }
+  .history-form label{display:flex; flex-direction:column; gap:6px; font-size:12px; color:var(--text-dim2);}
+
+  .history-table{width:100%; border-collapse:collapse; margin-top:18px; font-size:13px;}
+  .history-table th{
+    text-align:left; font-family: var(--font-display); font-weight:500; font-size:11px;
+    text-transform:uppercase; letter-spacing:0.6px; color:var(--text-dim2);
+    padding: 8px 10px; border-bottom: 1px solid var(--hairline);
+  }
+  .history-table td{
+    padding: 9px 10px; border-bottom: 1px solid #26292d; font-family: var(--font-mono);
+    vertical-align: top;
+  }
+  .history-table td.notes-cell{font-family: var(--font-body); color: var(--text-dim2);}
+  .source-tag{
+    font-family: var(--font-body); font-size:10.5px; text-transform:uppercase;
+    padding:2px 7px; border-radius:20px; letter-spacing:0.4px;
+  }
+  .source-tag.auto{background: rgba(92,140,174,0.15); color: var(--blue);}
+  .source-tag.manual{background: rgba(154,159,166,0.15); color: var(--text-dim2);}
+  .history-empty{color:var(--text-dim2); font-size:13px; padding: 16px 0;}
+  .row-delete{background:none; border:none; color:#6b7178; cursor:pointer; font-size:14px; padding:0;}
+  .row-delete:hover{color: var(--red);}
+
+  footer.foot{
+    text-align:center; color:#5b6067; font-size:11.5px; margin-top: 36px;
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="top">
+    <div class="brand">
+      <div class="mark">GEAR<span>LOG</span></div>
+      <div class="tagline">know what's next, before it's overdue</div>
+    </div>
+    <div class="odo-clock" id="clockBox"></div>
+  </header>
+
+  <section class="card">
+    <h2>Vehicle Setup</h2>
+    <div class="grid-3">
+      <label class="field">Drivetrain
+        <select id="drivetrain">
+          <option value="FWD">Front-Wheel Drive</option>
+          <option value="RWD">Rear-Wheel Drive</option>
+          <option value="AWD">All-Wheel Drive</option>
+        </select>
+      </label>
+      <label class="field">Transmission
+        <select id="transmission">
+          <option value="AUTO">Automatic</option>
+          <option value="MANUAL">Manual</option>
+          <option value="AUTO_HYBRID">Automatic Hybrid</option>
+        </select>
+      </label>
+      <label class="field">&nbsp;
+        <button class="btn" id="applyPreset" type="button">Build Service List</button>
+      </label>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>Current Status</h2>
+    <div class="grid-3">
+      <label class="field">Current Mileage (KM)
+        <input type="number" id="currentMileage" placeholder="e.g. 144500" min="0">
+      </label>
+      <label class="field">Current Date
+        <input type="date" id="currentDate">
+      </label>
+      <label class="field">Average KM / Month
+        <input type="number" id="avgMonthlyKm" placeholder="e.g. 1500" min="0">
+        <span class="hint">used to convert remaining KM into an estimated day count</span>
+      </label>
+    </div>
+    <div class="actions-row">
+      <button class="btn" id="recalcBtn" type="button">Recalculate</button>
+      <button class="btn secondary" id="exportAllBtn" type="button">Export All Reminders (.ics)</button>
+      <button class="btn secondary" id="resetBtn" type="button">Reset Everything</button>
+    </div>
+  </section>
+
+  <div id="itemsHeader">
+    <h2 style="font-family:var(--font-display); font-weight:600; font-size:15px; text-transform:uppercase; letter-spacing:1.2px; color:var(--amber);">Service Items</h2>
+  </div>
+  <div id="itemsList"></div>
+
+  <section class="card">
+    <h2>Add Custom Service Item</h2>
+    <div class="history-form" style="grid-template-columns: 2fr 1fr 1fr auto;">
+      <label>Item Name
+        <input type="text" id="customItemName" placeholder="e.g. Timing Belt">
+      </label>
+      <label>Interval (KM)
+        <input type="number" id="customItemKm" placeholder="60000" min="0">
+      </label>
+      <label>Interval (Months)
+        <input type="number" id="customItemMonths" placeholder="72" min="0">
+      </label>
+      <label>&nbsp;
+        <button class="btn secondary" id="addCustomItemBtn" type="button">+ Add Item</button>
+      </label>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>Service History</h2>
+    <div class="history-form">
+      <label>Service / Repair
+        <input type="text" id="histName" placeholder="e.g. Rear shocks">
+      </label>
+      <label>KM
+        <input type="number" id="histKm" placeholder="125000" min="0">
+      </label>
+      <label>Date
+        <input type="date" id="histDate">
+      </label>
+      <label>Notes (optional)
+        <input type="text" id="histNotes" placeholder="Shop name, parts used, cost...">
+      </label>
+      <label>&nbsp;
+        <button class="btn" id="addHistoryBtn" type="button">Add Entry</button>
+      </label>
+    </div>
+
+    <div style="display:flex; gap:16px; align-items:flex-end; margin-top:18px; flex-wrap:wrap;">
+      <label class="field" style="width:auto;">Sort by
+        <select id="historySortField">
+          <option value="date">Date</option>
+          <option value="km">Mileage</option>
+        </select>
+      </label>
+      <label class="field" style="width:auto;">Order
+        <select id="historySortDir">
+          <option value="desc">Descending</option>
+          <option value="asc">Ascending</option>
+        </select>
+      </label>
+    </div>
+
+    <div id="historyTableWrap"></div>
+
+    <div class="actions-row">
+      <button class="btn secondary" id="exportHistoryBtn" type="button">Export History (.csv)</button>
+    </div>
+  </section>
+
+  <footer class="foot">GearLog stores everything locally in this browser. Nothing is uploaded anywhere.</footer>
+</div>
+
+<script>
+/* ---------------- Preset service intervals (from source spreadsheet) ---------------- */
+const BASE_ITEMS = [
+  {key:"engine_oil", name:"Engine Oil", km:8000, months:6},
+  {key:"engine_coolant", name:"Engine Coolant", km:80000, months:60},
+  {key:"engine_air_filter", name:"Engine Air Filter", km:32000, months:24},
+  {key:"cabin_air_filter", name:"Cabin Air Filter", km:16000, months:12},
+  {key:"spark_plugs", name:"Spark Plugs", km:100000, months:72},
+  {key:"brake_service", name:"Brake Service", km:16000, months:12},
+];
+
+function buildItemSet(drivetrain, transmission){
+  let items = [...BASE_ITEMS];
+
+  if(transmission === "MANUAL"){
+    items.splice(1, 0, {key:"trans_oil", name:"Transmission Oil", km:48000, months:36});
+    items.splice(2, 0, {key:"brake_clutch_fluid", name:"Brake & Clutch Fluid", km:32000, months:24});
+  } else {
+    items.splice(1, 0, {key:"trans_flush", name:"Transmission Oil Flush", km:80000, months:60, note:"Pick this OR Drain+Fill, not both"});
+    items.splice(2, 0, {key:"trans_df", name:"Transmission Oil Drain + Fill", km:48000, months:36, note:"Pick this OR Flush, not both"});
+    items.splice(3, 0, {key:"brake_fluid", name:"Brake Fluid", km:32000, months:24});
+  }
+
+  if(drivetrain === "RWD"){
+    items.push({key:"rear_diff", name:"Rear Differential Oil", km:48000, months:36});
+  }
+  if(drivetrain === "AWD"){
+    items.push({key:"rear_diff", name:"Rear Differential Oil", km:48000, months:36});
+    items.push({key:"front_diff", name:"Front Differential Oil", km:48000, months:36, note:"Some AWD vehicles route this through the transmission instead"});
+    items.push({key:"transfer_case", name:"Transfer Case Fluid", km:64000, months:48});
+  }
+
+  if(transmission === "AUTO_HYBRID"){
+    items.push({key:"inverter_coolant", name:"Inverter Coolant", km:80000, months:60});
+    items.push({key:"hybrid_battery_filter", name:"Hybrid Battery Air Filter Inspect", km:24000, months:18});
+  }
+
+  return items;
+}
+
+/* ---------------- State ---------------- */
+const STORE_KEY = "gearlog_state_v1";
+
+function defaultState(){
+  return {
+    drivetrain: "FWD",
+    transmission: "AUTO",
+    currentMileage: null,
+    currentDate: todayISO(),
+    avgMonthlyKm: null,
+    items: {}, // key -> {name, km, months, lastKm, lastDate, note}
+    history: [] // {id, name, km, date, notes, source: "auto"|"manual"}
+  };
+}
+
+function todayISO(){
+  const d = new Date();
+  return d.toISOString().slice(0,10);
+}
+
+function loadState(){
+  try{
+    const raw = localStorage.getItem(STORE_KEY);
+    if(!raw) return null;
+    return JSON.parse(raw);
+  }catch(e){ return null; }
+}
+
+function saveState(){
+  localStorage.setItem(STORE_KEY, JSON.stringify(state));
+}
+
+let state = loadState() || defaultState();
+if(!Array.isArray(state.history)) state.history = [];
+
+/* ---------------- Date helpers ---------------- */
+function parseISO(s){
+  if(!s) return null;
+  const [y,m,d] = s.split("-").map(Number);
+  return new Date(y, m-1, d);
+}
+function toISO(date){
+  const y = date.getFullYear();
+  const m = String(date.getMonth()+1).padStart(2,"0");
+  const d = String(date.getDate()).padStart(2,"0");
+  return `${y}-${m}-${d}`;
+}
+function addMonths(date, months){
+  const d = new Date(date);
+  d.setMonth(d.getMonth() + months);
+  return d;
+}
+function addDays(date, days){
+  const d = new Date(date);
+  d.setDate(d.getDate() + Math.round(days));
+  return d;
+}
+function daysBetween(a, b){
+  const MS = 1000*60*60*24;
+  return Math.round((b - a) / MS);
+}
+
+/* ---------------- Rendering ---------------- */
+const drivetrainSel = document.getElementById("drivetrain");
+const transmissionSel = document.getElementById("transmission");
+const currentMileageInput = document.getElementById("currentMileage");
+const currentDateInput = document.getElementById("currentDate");
+const avgMonthlyKmInput = document.getElementById("avgMonthlyKm");
+const itemsList = document.getElementById("itemsList");
+const clockBox = document.getElementById("clockBox");
+const historyTableWrap = document.getElementById("historyTableWrap");
+const histNameInput = document.getElementById("histName");
+const histKmInput = document.getElementById("histKm");
+const histDateInput = document.getElementById("histDate");
+const histNotesInput = document.getElementById("histNotes");
+const historySortFieldSel = document.getElementById("historySortField");
+const historySortDirSel = document.getElementById("historySortDir");
+const customItemNameInput = document.getElementById("customItemName");
+const customItemKmInput = document.getElementById("customItemKm");
+const customItemMonthsInput = document.getElementById("customItemMonths");
+
+let historySort = {field: "date", dir: "desc"};
+
+function hydrateSetupInputs(){
+  drivetrainSel.value = state.drivetrain;
+  transmissionSel.value = state.transmission;
+  currentMileageInput.value = state.currentMileage ?? "";
+  currentDateInput.value = state.currentDate || todayISO();
+  avgMonthlyKmInput.value = state.avgMonthlyKm ?? "";
+}
+
+function ensureItemsForCurrentPreset(){
+  const preset = buildItemSet(state.drivetrain, state.transmission);
+  const presetKeys = new Set(preset.map(p => p.key));
+  const newItems = {};
+  preset.forEach(p => {
+    const existing = state.items[p.key];
+    newItems[p.key] = {
+      name: p.name,
+      km: existing?.km ?? p.km,
+      months: existing?.months ?? p.months,
+      lastKm: existing?.lastKm ?? null,
+      lastDate: existing?.lastDate ?? null,
+      note: p.note || null,
+      custom: false,
+    };
+  });
+  // Keep any custom items the user added — a preset rebuild shouldn't wipe those out.
+  Object.keys(state.items).forEach(key => {
+    if(!presetKeys.has(key) && state.items[key].custom){
+      newItems[key] = state.items[key];
+    }
+  });
+  state.items = newItems;
+}
+
+function digitsHTML(value, toneClass){
+  const isNeg = value < 0;
+  const abs = Math.abs(Math.round(value));
+  const str = String(abs);
+  const digits = str.split("").map(ch => `<span class="d">${ch}</span>`).join("");
+  return `<div class="odo-digits ${toneClass}">${isNeg ? '<span class="d">–</span>' : ''}${digits}</div>`;
+}
+
+/* ---------------- Status thresholds ---------------- */
+const THRESH = {
+  soonKm: 1500, soonDays: 45,   // "Due Soon": within 1500 km or ~1.5 months
+  dueKm: 500,   dueDays: 14,    // "Due": within 500 km or 2 weeks
+  graceKm: 200, graceDays: 7,   // grace window past the due point before it's "Overdue"
+};
+
+function computeItem(item){
+  const currentMileage = Number(state.currentMileage) || 0;
+  const currentDate = parseISO(state.currentDate) || new Date();
+  const avgMonthlyKm = Number(state.avgMonthlyKm) || 0;
+
+  if(item.lastKm == null || !item.lastDate){
+    return null; // not enough info yet
+  }
+
+  const lastKm = Number(item.lastKm);
+  const lastDate = parseISO(item.lastDate);
+
+  const nextDueKm = lastKm + Number(item.km);
+  const nextDueDate = addMonths(lastDate, Number(item.months));
+
+  const kmRemaining = nextDueKm - currentMileage;
+  const daysRemainingByDate = daysBetween(currentDate, nextDueDate);
+
+  let daysRemainingByKm = Infinity;
+  if(avgMonthlyKm > 0){
+    daysRemainingByKm = kmRemaining / (avgMonthlyKm / 30.44);
+  }
+
+  const usingKm = daysRemainingByKm < daysRemainingByDate;
+  const daysRemaining = Math.round(Math.min(daysRemainingByDate, daysRemainingByKm));
+  const projectedDate = addDays(currentDate, daysRemaining);
+
+  const isOverdue = kmRemaining < -THRESH.graceKm || daysRemaining < -THRESH.graceDays;
+  const isDue = !isOverdue && (kmRemaining <= THRESH.dueKm || daysRemaining <= THRESH.dueDays);
+  const isSoon = !isOverdue && !isDue && (kmRemaining <= THRESH.soonKm || daysRemaining <= THRESH.soonDays);
+
+  let status = "ok";
+  if(isOverdue) status = "over";
+  else if(isDue) status = "due";
+  else if(isSoon) status = "soon";
+
+  return {
+    nextDueKm, nextDueDate, kmRemaining, daysRemaining, projectedDate, status, usingKm, hasAvg: avgMonthlyKm > 0
+  };
+}
+
+function fmtDate(d){
+  return d.toLocaleDateString(undefined, {year:"numeric", month:"short", day:"numeric"});
+}
+
+const STATUS_META = {
+  ok:   {cls: "status-ok",   label: "OK"},
+  soon: {cls: "status-soon", label: "Due Soon"},
+  due:  {cls: "status-due",  label: "Due"},
+  over: {cls: "status-over", label: "Overdue"},
+};
+
+function renderItems(){
+  itemsList.innerHTML = "";
+  const keys = Object.keys(state.items);
+
+  if(keys.length === 0){
+    itemsList.innerHTML = `<div class="empty-state">No service list yet — choose your drivetrain and transmission above, then hit "Build Service List".</div>`;
+    return;
+  }
+
+  keys.forEach(key => {
+    const item = state.items[key];
+    const result = computeItem(item);
+    const status = result ? result.status : "unknown";
+    const meta = STATUS_META[status] || {cls: "", label: ""};
+    const statusClass = meta.cls;
+
+    const card = document.createElement("div");
+    card.className = `item ${statusClass}`;
+
+    let readoutHTML = "";
+    if(result){
+      readoutHTML = `
+        <div class="odo-readout">
+          <div class="odo-block">
+            <div class="odo-label">Due In (Days)${result.usingKm ? ' · via KM pace' : ''}</div>
+            ${digitsHTML(result.daysRemaining, "tone-"+status)}
+          </div>
+          <div class="odo-block">
+            <div class="odo-label">Due In (KM)</div>
+            ${digitsHTML(result.kmRemaining, "tone-"+status)}
+          </div>
+          <div class="odo-block">
+            <div class="odo-label">Est. Due Date</div>
+            <div style="font-family:var(--font-mono); font-size:15px; margin-top:6px;">${fmtDate(result.projectedDate)}</div>
+          </div>
+        </div>
+      `;
+    } else {
+      readoutHTML = `<div style="color:var(--text-dim2); font-size:13px; margin:12px 0 4px;">Enter last service KM &amp; date below to calculate.</div>`;
+    }
+
+    card.innerHTML = `
+      <div class="item-top">
+        <div class="item-name">${item.name}</div>
+        ${result ? `<div class="status-pill ${statusClass}">${meta.label}</div>` : ""}
+      </div>
+      ${item.note ? `<div style="font-size:11.5px; color:var(--text-dim2); margin-top:4px;">${item.note}</div>` : ""}
+      ${readoutHTML}
+      <details class="edit" ${(item.lastKm == null || !item.lastDate) ? "open" : ""}>
+        <summary>${(item.lastKm == null || !item.lastDate) ? "Enter Last Service Info" : "Edit Last Service Info"}</summary>
+        <div class="edit-grid">
+          <label>Interval (KM)
+            <input type="number" data-key="${key}" data-field="km" value="${item.km}">
+          </label>
+          <label>Interval (Months)
+            <input type="number" data-key="${key}" data-field="months" value="${item.months}">
+          </label>
+          <label>Last Service KM
+            <input type="number" data-key="${key}" data-field="lastKm" value="${item.lastKm ?? ""}">
+          </label>
+          <label>Last Service Date
+            <input type="date" data-key="${key}" data-field="lastDate" value="${item.lastDate ?? ""}">
+          </label>
+        </div>
+      </details>
+      <div class="item-footer">
+        <button class="link-btn" data-action="done-today" data-key="${key}">Mark done today</button>
+        ${result ? `<button class="link-btn" data-action="export-one" data-key="${key}">Add to calendar (.ics)</button>` : ""}
+        <button class="link-btn" data-action="remove-item" data-key="${key}" style="color:var(--red);">Remove item</button>
+      </div>
+    `;
+    itemsList.appendChild(card);
+  });
+}
+
+function addHistoryEntry({name, km, date, notes, source}){
+  state.history.push({
+    id: Date.now().toString(36) + Math.random().toString(36).slice(2, 7),
+    name, km: km == null ? null : Number(km), date, notes: notes || "", source
+  });
+  saveState();
+}
+
+function renderHistory(){
+  const field = historySort.field;
+  const dir = historySort.dir;
+  const entries = [...state.history].sort((a, b) => {
+    let av, bv;
+    if(field === "km"){
+      av = a.km == null ? -Infinity : Number(a.km);
+      bv = b.km == null ? -Infinity : Number(b.km);
+    } else {
+      av = a.date || "";
+      bv = b.date || "";
+    }
+    if(av < bv) return dir === "asc" ? -1 : 1;
+    if(av > bv) return dir === "asc" ? 1 : -1;
+    return 0;
+  });
+
+  if(entries.length === 0){
+    historyTableWrap.innerHTML = `<div class="history-empty">No history yet — services you mark "done today" above will land here automatically, or add a repair manually.</div>`;
+    return;
+  }
+
+  const rows = entries.map(e => `
+    <tr>
+      <td>${e.date ? fmtDate(parseISO(e.date)) : "—"}</td>
+      <td>${e.km != null ? Number(e.km).toLocaleString() : "—"}</td>
+      <td style="font-family:var(--font-body);">${e.name}</td>
+      <td class="notes-cell">${e.notes || ""}</td>
+      <td><span class="source-tag ${e.source}">${e.source}</span></td>
+      <td><button class="row-delete" data-action="delete-history" data-id="${e.id}" title="Delete entry">✕</button></td>
+    </tr>
+  `).join("");
+
+  historyTableWrap.innerHTML = `
+    <table class="history-table">
+      <thead>
+        <tr><th>Date</th><th>KM</th><th>Service / Repair</th><th>Notes</th><th>Source</th><th></th></tr>
+      </thead>
+      <tbody>${rows}</tbody>
+    </table>
+  `;
+}
+
+function downloadCSV(){
+  const entries = [...state.history].sort((a,b) => (b.date || "").localeCompare(a.date || ""));
+  const header = ["Date", "KM", "Service / Repair", "Notes", "Source"];
+  const escape = (v) => `"${String(v ?? "").replace(/"/g, '""')}"`;
+  const lines = [header.map(escape).join(",")];
+  entries.forEach(e => {
+    lines.push([e.date || "", e.km ?? "", e.name, e.notes || "", e.source].map(escape).join(","));
+  });
+  const csv = lines.join("\r\n");
+
+  const blob = new Blob([csv], {type: "text/csv"});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "gearlog-service-history.csv";
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+/* ---------------- Event wiring ---------------- */
+document.getElementById("applyPreset").addEventListener("click", () => {
+  state.drivetrain = drivetrainSel.value;
+  state.transmission = transmissionSel.value;
+  ensureItemsForCurrentPreset();
+  saveState();
+  renderItems();
+});
+
+document.getElementById("recalcBtn").addEventListener("click", () => {
+  state.currentMileage = currentMileageInput.value || null;
+  state.currentDate = currentDateInput.value || todayISO();
+  state.avgMonthlyKm = avgMonthlyKmInput.value || null;
+  saveState();
+  renderItems();
+});
+
+document.getElementById("resetBtn").addEventListener("click", () => {
+  if(confirm("This clears all vehicle data stored in this browser. Continue?")){
+    localStorage.removeItem(STORE_KEY);
+    state = defaultState();
+    hydrateSetupInputs();
+    renderItems();
+  }
+});
+
+itemsList.addEventListener("change", (e) => {
+  const key = e.target.getAttribute("data-key");
+  const field = e.target.getAttribute("data-field");
+  if(!key || !field) return;
+  const val = e.target.value;
+  state.items[key][field] = (field === "km" || field === "months" || field === "lastKm") ? (val === "" ? null : Number(val)) : val;
+
+  if(field === "lastKm" || field === "lastDate"){
+    const item = state.items[key];
+    if(item.lastKm != null && item.lastDate){
+      const alreadyLogged = state.history.some(h =>
+        h.name === item.name && h.date === item.lastDate && Number(h.km) === Number(item.lastKm)
+      );
+      if(!alreadyLogged){
+        addHistoryEntry({name: item.name, km: item.lastKm, date: item.lastDate, notes: "", source: "auto"});
+      }
+    }
+  }
+
+  saveState();
+  renderItems();
+  renderHistory();
+});
+
+itemsList.addEventListener("click", (e) => {
+  const action = e.target.getAttribute("data-action");
+  const key = e.target.getAttribute("data-key");
+  if(!action || !key) return;
+
+  if(action === "done-today"){
+    const mileage = Number(state.currentMileage);
+    if(!mileage){
+      alert("Enter your current mileage above first, so 'done today' has a KM value to record.");
+      return;
+    }
+    state.items[key].lastKm = mileage;
+    state.items[key].lastDate = state.currentDate || todayISO();
+    addHistoryEntry({
+      name: state.items[key].name,
+      km: mileage,
+      date: state.currentDate || todayISO(),
+      notes: "",
+      source: "auto"
+    });
+    saveState();
+    renderItems();
+    renderHistory();
+  }
+
+  if(action === "export-one"){
+    const item = state.items[key];
+    const result = computeItem(item);
+    if(result) downloadICS([{name: item.name, date: result.projectedDate}]);
+  }
+
+  if(action === "remove-item"){
+    const item = state.items[key];
+    if(confirm(`Remove "${item.name}" from your service list? (Its history entries are kept.)`)){
+      delete state.items[key];
+      saveState();
+      renderItems();
+    }
+  }
+});
+
+document.getElementById("exportAllBtn").addEventListener("click", () => {
+  const events = [];
+  Object.values(state.items).forEach(item => {
+    const result = computeItem(item);
+    if(result) events.push({name: item.name, date: result.projectedDate});
+  });
+  if(events.length === 0){
+    alert("No calculated services yet — fill in last service info first.");
+    return;
+  }
+  downloadICS(events);
+});
+
+document.getElementById("addCustomItemBtn").addEventListener("click", () => {
+  const name = customItemNameInput.value.trim();
+  const km = customItemKmInput.value;
+  const months = customItemMonthsInput.value;
+
+  if(!name || !km || !months){
+    alert("Give the item a name, an interval in KM, and an interval in months.");
+    return;
+  }
+
+  const key = "custom_" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+  state.items[key] = {
+    name, km: Number(km), months: Number(months),
+    lastKm: null, lastDate: null, note: null, custom: true
+  };
+  saveState();
+  renderItems();
+
+  customItemNameInput.value = "";
+  customItemKmInput.value = "";
+  customItemMonthsInput.value = "";
+});
+
+historySortFieldSel.addEventListener("change", (e) => {
+  historySort.field = e.target.value;
+  renderHistory();
+});
+historySortDirSel.addEventListener("change", (e) => {
+  historySort.dir = e.target.value;
+  renderHistory();
+});
+
+document.getElementById("addHistoryBtn").addEventListener("click", () => {
+  const name = histNameInput.value.trim();
+  const km = histKmInput.value;
+  const date = histDateInput.value;
+  const notes = histNotesInput.value.trim();
+
+  if(!name || !date){
+    alert("Enter at least a name and a date for this entry.");
+    return;
+  }
+
+  addHistoryEntry({name, km: km || null, date, notes, source: "manual"});
+  renderHistory();
+
+  histNameInput.value = "";
+  histKmInput.value = "";
+  histDateInput.value = "";
+  histNotesInput.value = "";
+});
+
+historyTableWrap.addEventListener("click", (e) => {
+  const action = e.target.getAttribute("data-action");
+  const id = e.target.getAttribute("data-id");
+  if(action === "delete-history" && id){
+    state.history = state.history.filter(h => h.id !== id);
+    saveState();
+    renderHistory();
+  }
+});
+
+document.getElementById("exportHistoryBtn").addEventListener("click", () => {
+  if(state.history.length === 0){
+    alert("No history entries yet.");
+    return;
+  }
+  downloadCSV();
+});
+
+/* ---------------- .ics export ---------------- */
+function icsDate(d){
+  const y = d.getFullYear();
+  const m = String(d.getMonth()+1).padStart(2,"0");
+  const day = String(d.getDate()).padStart(2,"0");
+  return `${y}${m}${day}`;
+}
+
+function downloadICS(events){
+  let ics = "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//GearLog//Service Reminders//EN\r\n";
+  events.forEach((ev, i) => {
+    const dateStr = icsDate(ev.date);
+    ics += "BEGIN:VEVENT\r\n";
+    ics += `UID:gearlog-${dateStr}-${i}-${Math.random().toString(36).slice(2)}@gearlog\r\n`;
+    ics += `DTSTAMP:${icsDate(new Date())}T000000Z\r\n`;
+    ics += `DTSTART;VALUE=DATE:${dateStr}\r\n`;
+    ics += `SUMMARY:${ev.name} — Service Due\r\n`;
+    ics += `DESCRIPTION:Estimated due date from GearLog based on your mileage and driving pace.\r\n`;
+    ics += "BEGIN:VALARM\r\nTRIGGER:-P1D\r\nACTION:DISPLAY\r\nDESCRIPTION:Reminder\r\nEND:VALARM\r\n";
+    ics += "END:VEVENT\r\n";
+  });
+  ics += "END:VCALENDAR\r\n";
+
+  const blob = new Blob([ics], {type: "text/calendar"});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "gearlog-service-reminders.ics";
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+/* ---------------- Clock / odo strip ---------------- */
+function renderClock(){
+  const mileage = state.currentMileage ? Number(state.currentMileage).toLocaleString() : "—";
+  clockBox.innerHTML = `Current Odometer <b>${mileage}</b> km &nbsp;·&nbsp; ${new Date(state.currentDate || todayISO()).toLocaleDateString(undefined,{year:"numeric",month:"short",day:"numeric"})}`;
+}
+
+/* ---------------- Init ---------------- */
+function init(){
+  hydrateSetupInputs();
+  if(Object.keys(state.items).length === 0){
+    ensureItemsForCurrentPreset();
+  }
+  histDateInput.value = todayISO();
+  renderClock();
+  renderItems();
+  renderHistory();
+}
+
+[currentMileageInput, currentDateInput, avgMonthlyKmInput].forEach(el => {
+  el.addEventListener("change", () => { renderClock(); });
+});
+
+init();
+</script>
+</body>
+</html>

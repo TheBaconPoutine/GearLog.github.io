@@ -4,6 +4,10 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>GearLog — Vehicle Service Tracker</title>
+<link rel="icon" type="image/png" href="favicon.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#F2A93B">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
@@ -22,10 +26,47 @@
     --green: #6FAE7A;
     --red: #D4574B;
     --red-dim: #4A2622;
+    --turquoise: #3FB8A6;
     --radius: 10px;
     --font-display: 'Oswald', sans-serif;
     --font-body: 'Inter', sans-serif;
     --font-mono: 'IBM Plex Mono', monospace;
+
+    /* Ghost-button color pairs: "-text" is the resting (unfilled) color, tuned per theme
+       for contrast against the panel. "-fill"/"-fill-text" are the hover/active filled
+       state and stay the same across themes since they form their own self-contained
+       contrast pair regardless of overall theme. */
+    --green-text: #7FCB8B; --green-fill: #2F6B3A; --green-fill-text: #F1FBF2;
+    --orange-text: #F0784A; --orange-fill: #8A3B12; --orange-fill-text: #FFF3EA;
+    --red-text: #E9756A; --red-fill: #7A2A21; --red-fill-text: #FFF0EE;
+    --turquoise-text: #5FD9C4; --turquoise-fill: #175A50; --turquoise-fill-text: #EAFBF8;
+    --blue-text: #8FC4E8; --blue-fill: #2C4A5E; --blue-fill-text: #EAF4FA;
+  }
+  @media (prefers-color-scheme: light){
+    :root{
+      --bg: #F3F1EC;
+      --panel: #FFFFFF;
+      --panel-raised: #EDEBE4;
+      --hairline: #DBD7CC;
+      --text: #22262B;
+      --text-dim: #5C6067;
+      --text-dim2: #6B7178;
+      --amber: #C97F1E;
+      --amber-dim: #D9A15C;
+      --orange: #C9622E;
+      --blue: #3E6C8E;
+      --green: #3F8250;
+      --red: #B23B30;
+      --red-dim: #E7B7B0;
+      --turquoise: #1E8A79;
+
+      /* On light backgrounds the resting text needs to be dark, not bright */
+      --green-text: #2A5C33;
+      --orange-text: #8A3B12;
+      --red-text: #7A2A21;
+      --turquoise-text: #175A50;
+      --blue-text: #2C4A5E;
+    }
   }
   *{box-sizing:border-box;}
   html,body{margin:0;padding:0; width:100%; overflow-x:hidden;}
@@ -55,6 +96,10 @@
     padding: 7px 12px; border-radius:20px; cursor:pointer;
   }
   .lang-btn:hover{border-color: var(--blue); color: var(--text);}
+  .lang-btn.theme-fr{border-color:#3B6EA5; background: linear-gradient(90deg, rgba(59,110,165,0.18), rgba(239,65,53,0.18)); color: var(--text);}
+  .lang-btn.theme-fr:hover{border-color:#EF4135;}
+  .lang-btn.theme-uk{border-color:#3B4E82; background: linear-gradient(90deg, rgba(0,36,125,0.20), rgba(207,20,43,0.16)); color: var(--text);}
+  .lang-btn.theme-uk:hover{border-color:#CF142B;}
 
   nav.main-nav{display:flex; gap:8px; margin-bottom:18px;}
   .nav-tab{
@@ -110,6 +155,37 @@
   .btn:hover{background:#ffb94a;}
   .btn.secondary{background: transparent; color: var(--text-dim2); border: 1px solid var(--hairline);}
   .btn.secondary:hover{border-color:#565c64; color:var(--text);}
+
+  /* Color utility classes — solid variants (for primary .btn) */
+  .btn.c-green{background: var(--green); color:#0C1F12;}
+  .btn.c-green:hover{filter:brightness(1.1);}
+  .btn.c-orange{background: var(--orange); color:#2A1200;}
+  .btn.c-orange:hover{filter:brightness(1.1);}
+  .btn.c-red{background: var(--red); color:#2A0C09;}
+  .btn.c-red:hover{filter:brightness(1.1);}
+  .btn.c-turquoise{background: var(--turquoise); color:#04231F;}
+  .btn.c-turquoise:hover{filter:brightness(1.1);}
+  .btn.c-blue{background: var(--blue); color:#081820;}
+  .btn.c-blue:hover{filter:brightness(1.1);}
+
+  /* Color utility classes — ghost/outline variants (for .btn.secondary):
+     resting text is a darker, distinguishable tone; hover/active fills the
+     background with a deep shade and switches text to the bright pairing. */
+  .btn.secondary.c-green{border-color: var(--green-fill); color: var(--green-text); background:transparent;}
+  .btn.secondary.c-green:hover, .btn.secondary.c-green:active, .btn.secondary.c-green:focus-visible{background: var(--green-fill); color: var(--green-fill-text); border-color: var(--green-fill);}
+
+  .btn.secondary.c-orange{border-color: var(--orange-fill); color: var(--orange-text); background:transparent;}
+  .btn.secondary.c-orange:hover, .btn.secondary.c-orange:active, .btn.secondary.c-orange:focus-visible{background: var(--orange-fill); color: var(--orange-fill-text); border-color: var(--orange-fill);}
+
+  .btn.secondary.c-red{border-color: var(--red-fill); color: var(--red-text); background:transparent;}
+  .btn.secondary.c-red:hover, .btn.secondary.c-red:active, .btn.secondary.c-red:focus-visible{background: var(--red-fill); color: var(--red-fill-text); border-color: var(--red-fill);}
+
+  .btn.secondary.c-turquoise{border-color: var(--turquoise-fill); color: var(--turquoise-text); background:transparent;}
+  .btn.secondary.c-turquoise:hover, .btn.secondary.c-turquoise:active, .btn.secondary.c-turquoise:focus-visible{background: var(--turquoise-fill); color: var(--turquoise-fill-text); border-color: var(--turquoise-fill);}
+
+  .btn.secondary.c-blue{border-color: var(--blue-fill); color: var(--blue-text); background:transparent;}
+  .btn.secondary.c-blue:hover, .btn.secondary.c-blue:active, .btn.secondary.c-blue:focus-visible{background: var(--blue-fill); color: var(--blue-fill-text); border-color: var(--blue-fill);}
+
   .btn:focus-visible, select:focus-visible, input:focus-visible{outline: 2px solid var(--blue); outline-offset:2px;}
   .actions-row{display:flex; gap:10px; margin-top:16px; flex-wrap:wrap;}
 
@@ -204,6 +280,17 @@
   .resource-embed-placeholder code{background:#0F1113; padding:2px 6px; border-radius:4px; font-family:var(--font-mono); color:var(--amber); font-size:12px; overflow-wrap:anywhere;}
 
   footer.foot{text-align:center; color:#5b6067; font-size:11.5px; margin-top: 36px;}
+
+  .modal-overlay{
+    position:fixed; inset:0; background:rgba(0,0,0,0.62); display:flex; align-items:center; justify-content:center;
+    z-index:1000; padding:20px;
+  }
+  .modal-box{
+    background: var(--panel); border:1px solid var(--hairline); border-radius: var(--radius);
+    max-width:460px; width:100%; padding:26px 26px 22px; box-shadow:0 24px 60px rgba(0,0,0,0.45);
+  }
+  .modal-box h3{font-family:var(--font-display); font-weight:600; font-size:17px; color:var(--text); margin:0 0 12px; display:flex; align-items:center; gap:8px;}
+  .modal-box p{font-size:13.5px; color:var(--text-dim); line-height:1.6; margin:0 0 20px;}
 </style>
 </head>
 <body>
@@ -220,6 +307,7 @@ const CATALOG = {
   brake_clutch_fluid:    {km:32000,  months:24},
   trans_flush:           {km:80000,  months:60},
   trans_df:              {km:48000,  months:36},
+  trans_fluid_hybrid:    {km:80000,  months:60},
   brake_fluid:           {km:32000,  months:24},
   engine_coolant:        {km:80000,  months:60},
   engine_air_filter:     {km:32000,  months:24},
@@ -245,6 +333,8 @@ function buildItemIds(drivetrain, transmission){
   let ids = ["engine_oil"];
   if(transmission === "MANUAL"){
     ids.push("trans_oil", "brake_clutch_fluid");
+  } else if(transmission === "AUTO_HYBRID"){
+    ids.push("trans_fluid_hybrid", "brake_fluid");
   } else {
     ids.push("trans_flush", "trans_df", "brake_fluid");
   }
@@ -282,8 +372,9 @@ const RESOURCES_CONFIG = {
 const I18N = {
   en: {
     brandTagline: "know what's next, before it's overdue",
-    nav: {tracker: "Service Tracker", resources: "Resources"},
-    langButton: "Français",
+    nav: {tracker: "Service Tracker", resources: "Resources", changelog: "Changelog"},
+    trackerTabs: {setup: "Vehicle Info", status: "Status & Services", history: "History"},
+    langButton: "🇫🇷 Français",
     banner: {
       html: "All service intervals shown here are an average across manufacturers, based on the <b>severe-condition</b> maintenance schedule — not the standard/light-duty one. Severe conditions cover what most Canadian drivers deal with regularly: cold winters, stop-and-go city traffic, increasingly hot summers, dusty or gravel roads, frequent short trips, and towing. If your driving is lighter than that, treat these intervals as a safe upper bound and adjust as you see fit."
     },
@@ -300,7 +391,8 @@ const I18N = {
       fwd: "Front-Wheel Drive", rwd: "Rear-Wheel Drive", awd: "All-Wheel Drive",
       transmission: "Transmission",
       auto: "Automatic", manual: "Manual", autoHybrid: "Automatic Hybrid",
-      buildList: "Build Service List",
+      buildList: "Create Maintenance List",
+      updateList: "Update Maintenance List",
     },
     status: {
       title: "Current Status",
@@ -310,8 +402,12 @@ const I18N = {
       avgHint: "used to convert remaining KM into an estimated day count",
       recalc: "Recalculate",
       exportAllIcs: "Export All Reminders (.ics)",
+      monthlyReminderIcs: "Add Monthly Mileage Reminder (.ics)",
       resetAll: "Reset This Vehicle",
       resetConfirm: "This clears all data for this vehicle. Continue?",
+      staleBanner: "You haven't updated this vehicle's mileage or date in over a month — update them above for more accurate due dates.",
+      monthlyReminderSummary: "Update your mileage in GearLog",
+      monthlyReminderDescription: "A monthly nudge to log your current mileage and date so your service reminders stay accurate.",
     },
     backup: {
       title: "Backup & Transfer",
@@ -321,10 +417,26 @@ const I18N = {
       importConfirm: "Importing will replace everything currently in GearLog on this device. Continue?",
       importSuccess: "Data imported successfully.",
       importError: "That file couldn't be read — make sure it's a GearLog export.",
+      clearDataWarning: "Everything above is stored only in this browser. If you clear your browser's cookies/site data (or use \"Clear History and Website Data\" on iPhone), it will be erased. Export a backup first if you're about to do that — you can re-import it afterward.",
+      clearDataWarningTitle: "Don't lose your data",
+    },
+    dataWarning: {
+      title: "Before you start",
+      body: "GearLog saves everything only in this browser — there's no account and no server. If you clear your browser's cookies/site data, uninstall the app, or switch devices, your vehicles and history will be gone unless you've exported a backup first. You can do that anytime from Backup & Transfer.",
+      dismiss: "Got it",
     },
     itemsSection: {title: "Service Items"},
+    vehicleInfo: {
+      title: "Vehicle Information",
+      year: "Year", make: "Make", model: "Model", vin: "VIN",
+      assumeBtn: "Assume No Prior Service History",
+      assumeConfirm: "This sets every current service item to 0 KM on January 1 of the vehicle's model year, as if none were ever done. Continue?",
+      needYearAlert: "Enter the vehicle's Year above first — GearLog will assume all services 'started' on January 1 of that year.",
+      needItemsAlert: "Build your service list above first, then come back to this.",
+      assumeSuccess: (count, date) => `Done — set ${count} service item(s) to 0 KM on ${date}.`,
+    },
     addons: {
-      title: "Optional Add-On Services",
+      title: "Add a Service Item",
       timingBelt: "+ Timing Belt",
       powerSteering: "+ Power Steering Fluid",
       added: "Added",
@@ -343,11 +455,12 @@ const I18N = {
       intervalKm: "Interval (KM)",
       intervalMonths: "Interval (Months)",
       hintLast: "When was this actually done, and at what mileage?",
+      updateBtn: "Update",
       hintIntervals: "How often this service should be done — not the last time it happened.",
       enterPrompt: "Enter last service KM & date below to calculate.",
       dueInDays: "Due In (Days)", dueInKm: "Due In (KM)", estDueDate: "Est. Due Date", viaKmPace: "via KM pace",
       markDoneToday: "Mark done today",
-      addToCalendar: "Add to calendar (.ics)",
+      addToCalendar: "Create Reminder",
       removeItem: "Remove item",
       removeConfirm: (name) => `Remove "${name}" from your service list? (Its history entries are kept.)`,
       needMileageAlert: "Enter your current mileage above first, so 'done today' has a KM value to record.",
@@ -356,14 +469,16 @@ const I18N = {
     statusMeta: {ok: "OK", soon: "Due Soon", due: "Due", over: "Overdue"},
     history: {
       title: "Service History",
-      name: "Service / Repair", km: "KM", date: "Date", notes: "Notes (optional)",
+      name: "Service / Repair", km: "KM", date: "Date", notes: "Notes (optional)", type: "Type",
+      typeService: "Service", typeRepair: "Repair",
       add: "Add Entry", sortBy: "Sort by", order: "Order",
       byDate: "Date", byKm: "Mileage", desc: "Descending", asc: "Ascending",
+      show: "Show", showAll: "All", showServices: "Services", showRepairs: "Repairs",
       exportCsv: "Export History (.csv)",
       emptyState: 'No history yet — services you mark "done today" above will land here automatically, or add a repair manually.',
       alertNeedNameDate: "Enter at least a name and a date for this entry.",
       alertNoEntries: "No history entries yet.",
-      col: {date: "Date", km: "KM", item: "Service / Repair", notes: "Notes", source: "Source"},
+      col: {date: "Date", km: "KM", item: "Service / Repair", type: "Type", notes: "Notes", source: "Source"},
       sourceAuto: "auto", sourceManual: "manual",
     },
     resources: {
@@ -375,9 +490,52 @@ const I18N = {
       placeholderBody2: "constant near the top of this file's code.",
     },
     footer: "GearLog stores everything locally in this browser. Nothing is uploaded anywhere.",
+    changelogTitle: "What's new",
+    changelogDismiss: "Got it, dismiss",
+    changelog: [
+      {version: 6, items: [
+        "\u201CVehicle & Setup\u201D tab renamed to \u201CVehicle Info\u201D.",
+        "The maintenance-list button moved to the bottom of the Vehicle Info tab and is now called \u201CCreate Maintenance List\u201D \u2014 it switches to \u201CUpdate Maintenance List\u201D once a list already exists.",
+        "Added this Changelog page, plus mobile app icons (favicon, home-screen icon, manifest) for GitHub Pages installs.",
+        "The \u201Cdon't lose your data\u201D warning now shows every time the app opens, not just once.",
+        "The What's New notice is now a popup that only appears when there's something new since you last saw it.",
+      ]},
+      {version: 5, items: [
+        "Reworked button colours so each one is clearly distinguishable at rest, with a filled, brighter state on hover/tap instead of all looking similarly washed out.",
+        "\u201CMark done today\u201D is now a brighter blue button.",
+        "Added a first-use popup explaining that all data is local-only, plus a much more visible warning in Backup & Transfer.",
+        "Added fault-tolerance to rendering, so a corrupted item shows a recovery option instead of silently freezing the page.",
+      ]},
+      {version: 4, items: [
+        "Action buttons are now colour-coded (build, reset, assume, reminders, export/import) for quicker scanning.",
+        "\u201COptional Add-On Services\u201D and \u201CAdd Custom Service Item\u201D are now one combined section.",
+        "\u201CAdd to calendar\u201D is now called \u201CCreate Reminder\u201D.",
+        "Service History entries can be tagged Service or Repair, with a Show filter (All / Services / Repairs).",
+        "The language switch is now flag-themed (France for French, UK for English).",
+        "Fixed \u201CAssume No Prior Service History\u201D so it reliably applies and confirms what changed.",
+      ]},
+      {version: 3, items: [
+        "\u201CAssume No Prior Service History\u201D now uses the vehicle's model year instead of a separate purchase date.",
+        "Vehicle Setup now comes before Vehicle Information, so the service list exists before you use Assume.",
+        "Last Service KM/Date now require pressing \u201CUpdate\u201D to save, preventing accidental typo saves.",
+        "\u201CMark done today\u201D is now a proper button.",
+      ]},
+      {version: 2, items: [
+        "Added support for multiple vehicles, each with its own service list and history.",
+        "Full French Canadian translation with a language switch.",
+        "Added JSON backup/import to transfer all data between devices.",
+        "Added a Resources page for an embeddable list of trusted shops and parts.",
+        "Added Timing Belt and Power Steering Fluid as optional services.",
+        "Added a banner explaining the severe-condition maintenance schedule.",
+      ]},
+      {version: 1, items: [
+        "Fixed mobile layout issues (scrollable history table, responsive forms).",
+        "Added a \u201CDue\u201D status tier between Due Soon and Overdue, with a grace window before something counts as overdue.",
+      ]},
+    ],
     itemNames: {
       engine_oil: "Engine Oil", trans_oil: "Transmission Oil", brake_clutch_fluid: "Brake & Clutch Fluid",
-      trans_flush: "Transmission Oil Flush", trans_df: "Transmission Oil Drain + Fill", brake_fluid: "Brake Fluid",
+      trans_flush: "Transmission Oil Flush", trans_df: "Transmission Oil Drain + Fill", trans_fluid_hybrid: "Transmission Fluid", brake_fluid: "Brake Fluid",
       engine_coolant: "Engine Coolant", engine_air_filter: "Engine Air Filter", cabin_air_filter: "Cabin Air Filter",
       spark_plugs: "Spark Plugs", brake_service: "Brake Service", rear_diff: "Rear Differential Oil",
       front_diff: "Front Differential Oil", transfer_case: "Transfer Case Fluid", inverter_coolant: "Inverter Coolant",
@@ -392,8 +550,9 @@ const I18N = {
   },
   fr: {
     brandTagline: "sachez ce qui s'en vient, avant que ce soit en retard",
-    nav: {tracker: "Suivi d'entretien", resources: "Ressources"},
-    langButton: "English",
+    nav: {tracker: "Suivi d'entretien", resources: "Ressources", changelog: "Historique des mises à jour"},
+    trackerTabs: {setup: "Info du véhicule", status: "État et entretien", history: "Historique"},
+    langButton: "🇬🇧 English",
     banner: {
       html: "Tous les intervalles d'entretien affichés ici représentent une moyenne entre les fabricants, selon l'horaire d'entretien en <b>conditions sévères</b> — et non l'horaire normal. Les conditions sévères incluent ce que vivent la plupart des conducteurs canadiens : hivers froids, circulation arrêt-départ en ville, étés de plus en plus chauds, routes poussiéreuses ou de gravier, trajets courts fréquents, et remorquage. Si votre conduite est plus légère, considérez ces intervalles comme une limite prudente et ajustez-les à votre guise."
     },
@@ -411,6 +570,7 @@ const I18N = {
       transmission: "Boîte de vitesses",
       auto: "Automatique", manual: "Manuelle", autoHybrid: "Automatique hybride",
       buildList: "Créer la liste d'entretien",
+      updateList: "Mettre à jour la liste d'entretien",
     },
     status: {
       title: "État actuel",
@@ -420,8 +580,12 @@ const I18N = {
       avgHint: "utilisé pour convertir les KM restants en un nombre de jours estimé",
       recalc: "Recalculer",
       exportAllIcs: "Exporter tous les rappels (.ics)",
+      monthlyReminderIcs: "Ajouter un rappel mensuel de kilométrage (.ics)",
       resetAll: "Réinitialiser ce véhicule",
       resetConfirm: "Ceci efface toutes les données de ce véhicule. Continuer?",
+      staleBanner: "Vous n'avez pas mis à jour le kilométrage ou la date de ce véhicule depuis plus d'un mois — mettez-les à jour ci-dessus pour des échéances plus précises.",
+      monthlyReminderSummary: "Mettez à jour votre kilométrage dans GearLog",
+      monthlyReminderDescription: "Un rappel mensuel pour noter votre kilométrage et la date actuelle afin que vos rappels d'entretien restent précis.",
     },
     backup: {
       title: "Sauvegarde et transfert",
@@ -431,10 +595,26 @@ const I18N = {
       importConfirm: "L'importation remplacera tout ce qui se trouve actuellement dans GearLog sur cet appareil. Continuer?",
       importSuccess: "Données importées avec succès.",
       importError: "Ce fichier n'a pas pu être lu — assurez-vous qu'il s'agit d'une exportation GearLog.",
+      clearDataWarning: "Tout ce qui précède est stocké uniquement dans ce navigateur. Si vous effacez les témoins/données de site de votre navigateur (ou utilisez « Effacer historique et données de sites » sur iPhone), tout sera perdu. Exportez d'abord une sauvegarde si vous prévoyez le faire — vous pourrez la réimporter par la suite.",
+      clearDataWarningTitle: "Ne perdez pas vos données",
+    },
+    dataWarning: {
+      title: "Avant de commencer",
+      body: "GearLog enregistre tout uniquement dans ce navigateur — il n'y a ni compte ni serveur. Si vous effacez les témoins/données de site de votre navigateur, désinstallez l'application, ou changez d'appareil, vos véhicules et votre historique disparaîtront à moins d'avoir exporté une sauvegarde au préalable. Vous pouvez le faire en tout temps depuis Sauvegarde et transfert.",
+      dismiss: "Compris",
     },
     itemsSection: {title: "Éléments d'entretien"},
+    vehicleInfo: {
+      title: "Renseignements sur le véhicule",
+      year: "Année", make: "Marque", model: "Modèle", vin: "NIV",
+      assumeBtn: "Aucun historique d'entretien connu",
+      assumeConfirm: "Ceci fixe chaque élément d'entretien actuel à 0 KM au 1er janvier de l'année du véhicule, comme si aucun n'avait jamais été fait. Continuer?",
+      needYearAlert: "Entrez d'abord l'année du véhicule ci-dessus — GearLog présumera que tous les entretiens ont « commencé » le 1er janvier de cette année-là.",
+      needItemsAlert: "Créez d'abord votre liste d'entretien ci-dessus, puis revenez ici.",
+      assumeSuccess: (count, date) => `Fait — ${count} élément(s) d'entretien fixé(s) à 0 KM au ${date}.`,
+    },
     addons: {
-      title: "Services facultatifs",
+      title: "Ajouter un élément d'entretien",
       timingBelt: "+ Courroie de distribution",
       powerSteering: "+ Liquide de direction assistée",
       added: "Ajouté",
@@ -453,11 +633,12 @@ const I18N = {
       intervalKm: "Intervalle (KM)",
       intervalMonths: "Intervalle (mois)",
       hintLast: "Quand ce service a-t-il été fait, et à quel kilométrage?",
+      updateBtn: "Mettre à jour",
       hintIntervals: "À quelle fréquence ce service devrait être fait — pas la dernière fois qu'il a été fait.",
       enterPrompt: "Entrez le kilométrage et la date du dernier entretien ci-dessous pour calculer.",
       dueInDays: "Échéance (jours)", dueInKm: "Échéance (KM)", estDueDate: "Date d'échéance estimée", viaKmPace: "selon le rythme de KM",
       markDoneToday: "Marquer comme fait aujourd'hui",
-      addToCalendar: "Ajouter au calendrier (.ics)",
+      addToCalendar: "Créer un rappel",
       removeItem: "Retirer cet élément",
       removeConfirm: (name) => `Retirer « ${name} » de votre liste d'entretien? (Son historique sera conservé.)`,
       needMileageAlert: "Entrez d'abord votre kilométrage actuel ci-dessus, afin que « fait aujourd'hui » ait une valeur en KM à enregistrer.",
@@ -466,14 +647,16 @@ const I18N = {
     statusMeta: {ok: "À jour", soon: "Bientôt dû", due: "Dû", over: "En retard"},
     history: {
       title: "Historique d'entretien",
-      name: "Service / réparation", km: "KM", date: "Date", notes: "Notes (facultatif)",
+      name: "Service / réparation", km: "KM", date: "Date", notes: "Notes (facultatif)", type: "Type",
+      typeService: "Entretien", typeRepair: "Réparation",
       add: "Ajouter", sortBy: "Trier par", order: "Ordre",
       byDate: "Date", byKm: "Kilométrage", desc: "Décroissant", asc: "Croissant",
+      show: "Afficher", showAll: "Tout", showServices: "Entretiens", showRepairs: "Réparations",
       exportCsv: "Exporter l'historique (.csv)",
       emptyState: 'Aucun historique pour l\'instant — les services marqués « fait aujourd\'hui » apparaîtront ici automatiquement, ou ajoutez une réparation manuellement.',
       alertNeedNameDate: "Entrez au moins un nom et une date pour cette entrée.",
       alertNoEntries: "Aucune entrée d'historique pour l'instant.",
-      col: {date: "Date", km: "KM", item: "Service / réparation", notes: "Notes", source: "Source"},
+      col: {date: "Date", km: "KM", item: "Service / réparation", type: "Type", notes: "Notes", source: "Source"},
       sourceAuto: "auto", sourceManual: "manuel",
     },
     resources: {
@@ -485,9 +668,52 @@ const I18N = {
       placeholderBody2: "près du haut du code de ce fichier.",
     },
     footer: "GearLog conserve tout localement dans ce navigateur. Rien n'est téléversé où que ce soit.",
+    changelogTitle: "Quoi de neuf",
+    changelogDismiss: "Compris, fermer",
+    changelog: [
+      {version: 6, items: [
+        "L'onglet « Véhicule et configuration » est renommé « Info du véhicule ».",
+        "Le bouton de liste d'entretien a été déplacé au bas de l'onglet Info du véhicule et s'appelle maintenant « Créer la liste d'entretien » — il devient « Mettre à jour la liste d'entretien » une fois qu'une liste existe déjà.",
+        "Ajout de cette page Historique des mises à jour, ainsi que des icônes d'application mobile (favicon, icône d'écran d'accueil, manifeste) pour l'installation via GitHub Pages.",
+        "L'avertissement « ne perdez pas vos données » s'affiche maintenant à chaque ouverture de l'application, pas seulement une fois.",
+        "L'avis Quoi de neuf est maintenant une fenêtre contextuelle qui n'apparaît que lorsqu'il y a du nouveau depuis votre dernière visite.",
+      ]},
+      {version: 5, items: [
+        "Refonte des couleurs des boutons pour que chacune soit clairement distincte au repos, avec un état rempli et plus lumineux au survol/toucher.",
+        "« Marquer comme fait aujourd'hui » est maintenant un bouton bleu plus lumineux.",
+        "Ajout d'une fenêtre contextuelle à la première utilisation expliquant que toutes les données sont locales, ainsi qu'un avertissement beaucoup plus visible dans Sauvegarde et transfert.",
+        "Ajout d'une tolérance aux pannes à l'affichage, pour qu'un élément corrompu montre une option de récupération plutôt que de figer la page silencieusement.",
+      ]},
+      {version: 4, items: [
+        "Les boutons d'action sont maintenant à code de couleur (créer, réinitialiser, présumer, rappels, exporter/importer).",
+        "« Services facultatifs » et « Ajouter un élément personnalisé » sont maintenant une seule section combinée.",
+        "« Ajouter au calendrier » s'appelle maintenant « Créer un rappel ».",
+        "Les entrées de l'historique peuvent être étiquetées Entretien ou Réparation, avec un filtre Afficher (Tout / Entretiens / Réparations).",
+        "Le bouton de langue est maintenant thématique (France pour le français, Royaume-Uni pour l'anglais).",
+        "Correction de « Aucun historique d'entretien connu » pour qu'il s'applique de façon fiable et confirme les changements.",
+      ]},
+      {version: 3, items: [
+        "« Aucun historique d'entretien connu » utilise maintenant l'année du véhicule plutôt qu'une date d'achat distincte.",
+        "La configuration du véhicule apparaît maintenant avant les renseignements du véhicule.",
+        "Le kilométrage et la date du dernier entretien nécessitent maintenant de cliquer sur « Mettre à jour » pour être enregistrés.",
+        "« Marquer comme fait aujourd'hui » est maintenant un vrai bouton.",
+      ]},
+      {version: 2, items: [
+        "Ajout de la prise en charge de plusieurs véhicules, chacun avec sa propre liste d'entretien et son historique.",
+        "Traduction complète en français canadien avec un bouton de changement de langue.",
+        "Ajout de l'exportation/importation JSON pour transférer toutes les données entre appareils.",
+        "Ajout d'une page Ressources pour une liste intégrable d'ateliers et de pièces fiables.",
+        "Ajout de la courroie de distribution et du liquide de direction assistée comme services facultatifs.",
+        "Ajout d'une bannière expliquant l'horaire d'entretien en conditions sévères.",
+      ]},
+      {version: 1, items: [
+        "Correction de problèmes d'affichage mobile (tableau d'historique déroulant, formulaires adaptatifs).",
+        "Ajout d'un niveau « Dû » entre Bientôt dû et En retard, avec une marge de tolérance avant d'être considéré en retard.",
+      ]},
+    ],
     itemNames: {
       engine_oil: "Huile moteur", trans_oil: "Huile de transmission", brake_clutch_fluid: "Liquide de freins et d'embrayage",
-      trans_flush: "Rinçage de l'huile de transmission", trans_df: "Vidange et remplissage de la transmission", brake_fluid: "Liquide de freins",
+      trans_flush: "Rinçage de l'huile de transmission", trans_df: "Vidange et remplissage de la transmission", trans_fluid_hybrid: "Liquide de transmission", brake_fluid: "Liquide de freins",
       engine_coolant: "Liquide de refroidissement du moteur", engine_air_filter: "Filtre à air moteur", cabin_air_filter: "Filtre à air d'habitacle",
       spark_plugs: "Bougies d'allumage", brake_service: "Entretien des freins", rear_diff: "Huile du différentiel arrière",
       front_diff: "Huile du différentiel avant", transfer_case: "Liquide de la boîte de transfert", inverter_coolant: "Liquide de refroidissement de l'onduleur",
@@ -540,6 +766,7 @@ function defaultVehicle(name){
   return {
     name, drivetrain: "FWD", transmission: "AUTO",
     currentMileage: null, currentDate: todayISO(), avgMonthlyKm: null,
+    year: "", make: "", model: "", vin: "",
     items: {}, history: [],
   };
 }
@@ -548,8 +775,10 @@ function defaultState(){
   return {
     language: "en",
     currentPage: "tracker",
+    trackerTab: "setup",
     activeVehicleId: "v1",
     vehicles: {v1: defaultVehicle("Vehicle 1")},
+    lastSeenChangelogVersion: 0,
   };
 }
 
@@ -603,9 +832,15 @@ if(!state.activeVehicleId || !state.vehicles[state.activeVehicleId]){
 }
 if(!state.language) state.language = "en";
 if(!state.currentPage) state.currentPage = "tracker";
+if(!state.trackerTab) state.trackerTab = "setup";
+if(state.lastSeenChangelogVersion == null) state.lastSeenChangelogVersion = 0;
 Object.values(state.vehicles).forEach(v => {
   if(!Array.isArray(v.history)) v.history = [];
   if(!v.items) v.items = {};
+  if(v.year == null) v.year = "";
+  if(v.make == null) v.make = "";
+  if(v.model == null) v.model = "";
+  if(v.vin == null) v.vin = "";
 });
 
 function av(){ return state.vehicles[state.activeVehicleId]; }
@@ -614,6 +849,8 @@ function av(){ return state.vehicles[state.activeVehicleId]; }
 let activeTab = {};     // itemKey -> "last" | "intervals"
 let detailsOpen = {};   // itemKey -> true/false
 let historySort = {field: "date", dir: "desc"};
+let historyFilter = "all"; // "all" | "service" | "repair"
+let dataWarningDismissedThisSession = false; // not persisted — resets every page load, by design
 
 /* =====================================================================
    DATE HELPERS
@@ -717,15 +954,99 @@ function digitsHTML(value, toneClass){
 const appEl = document.getElementById("app");
 
 function render(){
-  document.documentElement.lang = state.language;
-  let html = headerHTML() + navHTML();
-  if(state.currentPage === "resources"){
-    html += resourcesPageHTML();
-  } else {
-    html += bannerHTML() + vehicleTabsHTML() + setupCardHTML() + statusCardHTML() + backupCardHTML() + itemsSectionHTML() + historyCardHTML();
+  try{
+    document.documentElement.lang = state.language;
+    let html = headerHTML() + navHTML();
+    if(state.currentPage === "resources"){
+      html += resourcesPageHTML();
+    } else if(state.currentPage === "changelog"){
+      html += changelogPageHTML();
+    } else {
+      html += backupCardHTML() + vehicleTabsHTML() + trackerSubNavHTML() + trackerTabContentHTML();
+    }
+    html += footerHTML() + changelogModalHTML() + dataWarningModalHTML();
+    appEl.innerHTML = html;
+  }catch(err){
+    console.error("GearLog render error:", err);
+    appEl.innerHTML = `
+      <div style="padding:60px 20px; text-align:center; font-family:sans-serif; color:#EDEAE3;">
+        <p style="color:#D4574B; font-size:15px;">Something went wrong displaying GearLog.</p>
+        <p style="color:#9096A0; font-size:13px; max-width:420px; margin:8px auto 20px;">This is usually caused by leftover data from an older version. Clearing saved data will fix it — export a backup first if you can.</p>
+        <button type="button" onclick="localStorage.removeItem('gearlog_state_v2'); localStorage.removeItem('gearlog_state_v1'); location.reload();" style="padding:12px 20px; background:#D4574B; color:#2A0C09; border:none; border-radius:6px; cursor:pointer; font-weight:600;">Clear saved data & reload</button>
+      </div>
+    `;
   }
-  html += footerHTML();
-  appEl.innerHTML = html;
+}
+
+function changelogModalHTML(){
+  const entries = t("changelog");
+  const latest = entries[0].version;
+  if(state.lastSeenChangelogVersion >= latest) return "";
+  const unseen = entries.filter(v => v.version > state.lastSeenChangelogVersion);
+  const entriesHTML = unseen.map(v => `
+    <div style="margin-bottom:12px;">
+      <div style="font-family:var(--font-mono); font-size:11px; color:var(--text-dim2); margin-bottom:4px;">v${v.version}</div>
+      <ul style="margin:0; padding-left:18px;">${v.items.map(i => `<li style="margin-bottom:3px;">${i}</li>`).join("")}</ul>
+    </div>
+  `).join("");
+  return `
+    <div class="modal-overlay">
+      <div class="modal-box">
+        <h3>${t("changelogTitle")}</h3>
+        <div style="font-size:13.5px; color:var(--text-dim); line-height:1.6; margin-bottom:16px;">${entriesHTML}</div>
+        <button class="btn secondary c-blue" type="button" data-action="dismiss-changelog">${t("changelogDismiss")}</button>
+      </div>
+    </div>
+  `;
+}
+
+function changelogPageHTML(){
+  const entries = t("changelog");
+  const entriesHTML = entries.map(v => `
+    <div style="margin-bottom:20px;">
+      <div style="font-family:var(--font-display); font-weight:600; color:var(--amber); font-size:13px; text-transform:uppercase; letter-spacing:0.6px; margin-bottom:6px;">v${v.version}</div>
+      <ul style="margin:0; padding-left:18px; color:var(--text-dim); font-size:13.5px; line-height:1.6;">${v.items.map(i => `<li style="margin-bottom:4px;">${i}</li>`).join("")}</ul>
+    </div>
+  `).join("");
+  return `
+    <section class="card">
+      <h2>${t("nav.changelog")}</h2>
+      ${entriesHTML}
+    </section>
+  `;
+}
+
+function trackerSubNavHTML(){
+  const tab = state.trackerTab;
+  return `
+    <nav class="main-nav" style="margin-top:4px;">
+      <button class="nav-tab ${tab === "setup" ? "active" : ""}" type="button" data-action="tracker-tab" data-key="setup">${t("trackerTabs.setup")}</button>
+      <button class="nav-tab ${tab === "status" ? "active" : ""}" type="button" data-action="tracker-tab" data-key="status">${t("trackerTabs.status")}</button>
+      <button class="nav-tab ${tab === "history" ? "active" : ""}" type="button" data-action="tracker-tab" data-key="history">${t("trackerTabs.history")}</button>
+    </nav>
+  `;
+}
+
+function buildListActionHTML(){
+  const v = av();
+  const hasItems = Object.keys(v.items).length > 0;
+  return `
+    <div class="actions-row" style="margin-top:4px;">
+      <button class="btn c-green" type="button" data-action="build-list">${hasItems ? t("setup.updateList") : t("setup.buildList")}</button>
+    </div>
+  `;
+}
+
+function trackerTabContentHTML(){
+  switch(state.trackerTab){
+    case "status":
+      return bannerHTML() + statusCardHTML() + staleBannerHTML() + itemsSectionHTML();
+    case "history":
+      return historyCardHTML();
+    case "setup":
+    default:
+      return setupCardHTML() + vehicleInfoCardHTML() + buildListActionHTML();
+  }
 }
 
 function headerHTML(){
@@ -739,18 +1060,19 @@ function headerHTML(){
       </div>
       <div class="header-right">
         <div class="odo-clock">${vehicle.name} · <b>${mileage}</b> km &nbsp;·&nbsp; ${fmtDate(parseISO(vehicle.currentDate) || new Date())}</div>
-        <button class="lang-btn" type="button" data-action="toggle-language">${t("langButton")}</button>
+        <button class="lang-btn ${state.language === "en" ? "theme-fr" : "theme-uk"}" type="button" data-action="toggle-language">${t("langButton")}</button>
       </div>
     </header>
   `;
 }
 
 function navHTML(){
-  const isTracker = state.currentPage !== "resources";
+  const page = state.currentPage;
   return `
     <nav class="main-nav">
-      <button class="nav-tab ${isTracker ? "active" : ""}" type="button" data-action="nav-tracker">${t("nav.tracker")}</button>
-      <button class="nav-tab ${!isTracker ? "active" : ""}" type="button" data-action="nav-resources">${t("nav.resources")}</button>
+      <button class="nav-tab ${page === "tracker" ? "active" : ""}" type="button" data-action="nav-tracker">${t("nav.tracker")}</button>
+      <button class="nav-tab ${page === "resources" ? "active" : ""}" type="button" data-action="nav-resources">${t("nav.resources")}</button>
+      <button class="nav-tab ${page === "changelog" ? "active" : ""}" type="button" data-action="nav-changelog">${t("nav.changelog")}</button>
     </nav>
   `;
 }
@@ -775,12 +1097,42 @@ function vehicleTabsHTML(){
   return `<div class="vehicle-tabs">${chips}<button class="add-vehicle-btn" type="button" data-action="add-vehicle">${t("vehicles.addVehicle")}</button></div>`;
 }
 
+function vehicleInfoCardHTML(){
+  const v = av();
+  const hasItems = Object.keys(v.items).length > 0;
+  return `
+    <section class="card">
+      <h2>${t("vehicleInfo.title")}</h2>
+      <div class="grid-3">
+        <label class="field">${t("vehicleInfo.year")}
+          <input type="text" data-field="year" value="${v.year || ""}" placeholder="2016">
+        </label>
+        <label class="field">${t("vehicleInfo.make")}
+          <input type="text" data-field="make" value="${v.make || ""}" placeholder="Mazda">
+        </label>
+        <label class="field">${t("vehicleInfo.model")}
+          <input type="text" data-field="model" value="${v.model || ""}" placeholder="Mazda3">
+        </label>
+      </div>
+      <div class="grid-3" style="margin-top:14px;">
+        <label class="field">${t("vehicleInfo.vin")}
+          <input type="text" data-field="vin" value="${v.vin || ""}">
+        </label>
+      </div>
+      <div class="actions-row">
+        <button class="btn secondary c-orange" type="button" data-action="assume-new-vehicle" ${hasItems ? "" : "disabled"}>${t("vehicleInfo.assumeBtn")}</button>
+        ${!hasItems ? `<span class="hint" style="align-self:center;">${t("vehicleInfo.needItemsAlert")}</span>` : ""}
+      </div>
+    </section>
+  `;
+}
+
 function setupCardHTML(){
   const v = av();
   return `
     <section class="card">
       <h2>${t("setup.title")}</h2>
-      <div class="grid-3">
+      <div class="grid-2">
         <label class="field">${t("setup.drivetrain")}
           <select data-field="drivetrain">
             <option value="FWD" ${v.drivetrain === "FWD" ? "selected" : ""}>${t("setup.fwd")}</option>
@@ -794,9 +1146,6 @@ function setupCardHTML(){
             <option value="MANUAL" ${v.transmission === "MANUAL" ? "selected" : ""}>${t("setup.manual")}</option>
             <option value="AUTO_HYBRID" ${v.transmission === "AUTO_HYBRID" ? "selected" : ""}>${t("setup.autoHybrid")}</option>
           </select>
-        </label>
-        <label class="field">&nbsp;
-          <button class="btn" type="button" data-action="build-list">${t("setup.buildList")}</button>
         </label>
       </div>
     </section>
@@ -822,11 +1171,21 @@ function statusCardHTML(){
       </div>
       <div class="actions-row">
         <button class="btn" type="button" data-action="recalc">${t("status.recalc")}</button>
-        <button class="btn secondary" type="button" data-action="export-all-ics">${t("status.exportAllIcs")}</button>
-        <button class="btn secondary" type="button" data-action="reset-vehicle">${t("status.resetAll")}</button>
+        <button class="btn secondary c-green" type="button" data-action="export-all-ics">${t("status.exportAllIcs")}</button>
+        <button class="btn secondary c-green" type="button" data-action="monthly-reminder-ics">${t("status.monthlyReminderIcs")}</button>
+        <button class="btn secondary c-red" type="button" data-action="reset-vehicle">${t("status.resetAll")}</button>
       </div>
     </section>
   `;
+}
+
+function staleBannerHTML(){
+  const v = av();
+  const lastUpdated = parseISO(v.currentDate);
+  if(!lastUpdated) return "";
+  const daysSince = daysBetween(lastUpdated, new Date());
+  if(daysSince <= 30) return "";
+  return `<div class="banner" style="border-left-color:var(--orange);">${t("status.staleBanner")}</div>`;
 }
 
 function backupCardHTML(){
@@ -835,11 +1194,28 @@ function backupCardHTML(){
       <h2>${t("backup.title")}</h2>
       <p style="font-size:13px; color:var(--text-dim2); margin:0 0 4px;">${t("backup.hint")}</p>
       <div class="actions-row">
-        <button class="btn secondary" type="button" data-action="export-backup">${t("backup.exportBtn")}</button>
-        <button class="btn secondary" type="button" data-action="trigger-import">${t("backup.importBtn")}</button>
+        <button class="btn secondary c-turquoise" type="button" data-action="export-backup">${t("backup.exportBtn")}</button>
+        <button class="btn secondary c-blue" type="button" data-action="trigger-import">${t("backup.importBtn")}</button>
         <input type="file" id="importFileInput" accept="application/json" style="display:none;">
       </div>
+      <div class="banner" style="border-left-color:var(--red); margin-top:16px; margin-bottom:0;">
+        <b style="display:block; margin-bottom:4px; color:var(--red-text);">⚠ ${t("backup.clearDataWarningTitle")}</b>
+        ${t("backup.clearDataWarning")}
+      </div>
     </section>
+  `;
+}
+
+function dataWarningModalHTML(){
+  if(dataWarningDismissedThisSession) return "";
+  return `
+    <div class="modal-overlay">
+      <div class="modal-box">
+        <h3>⚠ ${t("dataWarning.title")}</h3>
+        <p>${t("dataWarning.body")}</p>
+        <button class="btn c-orange" type="button" data-action="dismiss-data-warning">${t("dataWarning.dismiss")}</button>
+      </div>
+    </div>
   `;
 }
 
@@ -851,7 +1227,14 @@ function itemsSectionHTML(){
   if(keys.length === 0){
     itemsHTML = `<div class="empty-state">${t("item.emptyState")}</div>`;
   } else {
-    itemsHTML = keys.map(key => itemCardHTML(v, key)).join("");
+    itemsHTML = keys.map(key => {
+      try{
+        return itemCardHTML(v, key);
+      }catch(err){
+        console.error("GearLog: failed to render item", key, err);
+        return `<div class="item status-over"><div class="item-name">${key}</div><div style="color:var(--red); font-size:12px; margin-top:8px;">This item couldn't be displayed. Try "Remove item" below and re-adding it.</div><div class="item-footer"><button class="btn secondary c-red" type="button" data-action="remove-item" data-key="${key}">${t("item.removeItem")}</button></div></div>`;
+      }
+    }).join("");
   }
 
   const addonButtons = OPTIONAL_ADDON_IDS.map(id => {
@@ -873,11 +1256,7 @@ function itemsSectionHTML(){
     <section class="card">
       <h2>${t("addons.title")}</h2>
       <div class="addon-row">${addonButtons}</div>
-    </section>
-
-    <section class="card">
-      <h2>${t("customItem.title")}</h2>
-      <div class="history-form cols-4">
+      <div class="history-form cols-4" style="margin-top:18px;">
         <label>${t("customItem.name")}<input type="text" id="customItemName" placeholder="e.g. Timing chain, walnut blasting..."></label>
         <label>${t("customItem.km")}<input type="number" id="customItemKm" min="0"></label>
         <label>${t("customItem.months")}<input type="number" id="customItemMonths" min="0"></label>
@@ -943,8 +1322,11 @@ function itemCardHTML(vehicle, key){
         </div>
         ${lastActive ? `
           <div class="edit-grid cols-2">
-            <label>${t("item.lastKm")}<input type="number" data-key="${key}" data-field="lastKm" value="${item.lastKm ?? ""}"></label>
-            <label>${t("item.lastDate")}<input type="date" data-key="${key}" data-field="lastDate" value="${item.lastDate ?? ""}"></label>
+            <label>${t("item.lastKm")}<input type="number" data-key="${key}" data-field="lastKmDraft" value="${item.lastKm ?? ""}"></label>
+            <label>${t("item.lastDate")}<input type="date" data-key="${key}" data-field="lastDateDraft" value="${item.lastDate ?? ""}"></label>
+          </div>
+          <div class="actions-row" style="margin-top:10px;">
+            <button class="btn secondary c-green" type="button" data-action="update-last-service" data-key="${key}">${t("item.updateBtn")}</button>
           </div>
           <p class="tab-panel-hint">${t("item.hintLast")}</p>
         ` : `
@@ -956,9 +1338,9 @@ function itemCardHTML(vehicle, key){
         `}
       </details>
       <div class="item-footer">
-        <button class="link-btn" data-action="done-today" data-key="${key}">${t("item.markDoneToday")}</button>
-        ${result ? `<button class="link-btn" data-action="export-one-ics" data-key="${key}">${t("item.addToCalendar")}</button>` : ""}
-        <button class="link-btn" data-action="remove-item" data-key="${key}" style="color:var(--red);">${t("item.removeItem")}</button>
+        <button class="btn secondary c-blue" type="button" data-action="done-today" data-key="${key}">${t("item.markDoneToday")}</button>
+        ${result ? `<button class="btn secondary c-green" type="button" data-action="export-one-ics" data-key="${key}">${t("item.addToCalendar")}</button>` : ""}
+        <button class="btn secondary c-red" type="button" data-action="remove-item" data-key="${key}">${t("item.removeItem")}</button>
       </div>
     </div>
   `;
@@ -967,7 +1349,8 @@ function itemCardHTML(vehicle, key){
 function historyCardHTML(){
   const v = av();
   const field = historySort.field, dir = historySort.dir;
-  const entries = [...v.history].sort((a,b) => {
+  const filtered = v.history.filter(e => historyFilter === "all" ? true : (e.type || "service") === historyFilter);
+  const entries = [...filtered].sort((a,b) => {
     let av_, bv_;
     if(field === "km"){ av_ = a.km == null ? -Infinity : Number(a.km); bv_ = b.km == null ? -Infinity : Number(b.km); }
     else { av_ = a.date || ""; bv_ = b.date || ""; }
@@ -983,11 +1366,13 @@ function historyCardHTML(){
     const rows = entries.map(e => {
       const name = e.itemKey ? itemDisplayName(e.itemKey, {custom:false}) : e.name;
       const sourceLabel = e.source === "auto" ? t("history.sourceAuto") : t("history.sourceManual");
+      const typeLabel = (e.type || "service") === "repair" ? t("history.typeRepair") : t("history.typeService");
       return `
         <tr>
           <td>${e.date ? fmtDate(parseISO(e.date)) : "—"}</td>
           <td>${e.km != null ? Number(e.km).toLocaleString() : "—"}</td>
           <td style="font-family:var(--font-body);">${name}</td>
+          <td style="font-family:var(--font-body);">${typeLabel}</td>
           <td class="notes-cell">${e.notes || ""}</td>
           <td><span class="source-tag ${e.source}">${sourceLabel}</span></td>
           <td><button class="row-delete" type="button" data-action="delete-history" data-key="${e.id}">✕</button></td>
@@ -997,7 +1382,7 @@ function historyCardHTML(){
     tableHTML = `
       <div class="table-scroll">
         <table class="history-table">
-          <thead><tr><th>${t("history.col.date")}</th><th>${t("history.col.km")}</th><th>${t("history.col.item")}</th><th>${t("history.col.notes")}</th><th>${t("history.col.source")}</th><th></th></tr></thead>
+          <thead><tr><th>${t("history.col.date")}</th><th>${t("history.col.km")}</th><th>${t("history.col.item")}</th><th>${t("history.col.type")}</th><th>${t("history.col.notes")}</th><th>${t("history.col.source")}</th><th></th></tr></thead>
           <tbody>${rows}</tbody>
         </table>
       </div>
@@ -1011,6 +1396,12 @@ function historyCardHTML(){
         <label>${t("history.name")}<input type="text" id="histName"></label>
         <label>${t("history.km")}<input type="number" id="histKm" min="0"></label>
         <label>${t("history.date")}<input type="date" id="histDate" value="${todayISO()}"></label>
+        <label>${t("history.type")}
+          <select id="histType">
+            <option value="service">${t("history.typeService")}</option>
+            <option value="repair">${t("history.typeRepair")}</option>
+          </select>
+        </label>
         <label>${t("history.notes")}<input type="text" id="histNotes"></label>
         <label>&nbsp;<button class="btn" type="button" data-action="add-history">${t("history.add")}</button></label>
       </div>
@@ -1028,12 +1419,20 @@ function historyCardHTML(){
             <option value="asc" ${historySort.dir==="asc"?"selected":""}>${t("history.asc")}</option>
           </select>
         </label>
+        <div>
+          <div class="odo-label" style="margin-bottom:6px;">${t("history.show")}</div>
+          <div class="tab-bar" style="border-bottom:none;">
+            <button type="button" class="tab-btn ${historyFilter === "all" ? "active" : ""}" data-action="filter-history" data-key="all">${t("history.showAll")}</button>
+            <button type="button" class="tab-btn ${historyFilter === "service" ? "active" : ""}" data-action="filter-history" data-key="service">${t("history.showServices")}</button>
+            <button type="button" class="tab-btn ${historyFilter === "repair" ? "active" : ""}" data-action="filter-history" data-key="repair">${t("history.showRepairs")}</button>
+          </div>
+        </div>
       </div>
 
       <div id="historyTableWrap">${tableHTML}</div>
 
       <div class="actions-row">
-        <button class="btn secondary" type="button" data-action="export-history-csv">${t("history.exportCsv")}</button>
+        <button class="btn secondary c-turquoise" type="button" data-action="export-history-csv">${t("history.exportCsv")}</button>
       </div>
     </section>
   `;
@@ -1067,11 +1466,12 @@ function footerHTML(){
 /* =====================================================================
    HISTORY HELPERS
 ===================================================================== */
-function addHistoryEntry(vehicle, {itemKey, name, km, date, notes, source}){
+function addHistoryEntry(vehicle, {itemKey, name, km, date, notes, source, type}){
   vehicle.history.push({
     id: Date.now().toString(36) + Math.random().toString(36).slice(2, 7),
     itemKey: itemKey || null, name: name || null,
     km: km == null ? null : Number(km), date, notes: notes || "", source,
+    type: type || "service",
   });
   saveState();
 }
@@ -1106,15 +1506,42 @@ function downloadICS(events){
   downloadFile(ics, "gearlog-service-reminders.ics", "text/calendar");
 }
 
+function downloadMonthlyReminderICS(){
+  const start = addDays(new Date(), 1); // starts tomorrow, repeats monthly after that
+  const dateStr = icsDate(start);
+  let ics = "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//GearLog//Monthly Reminder//EN\r\n";
+  ics += "BEGIN:VEVENT\r\n";
+  ics += `UID:gearlog-monthly-${dateStr}-${Math.random().toString(36).slice(2)}@gearlog\r\n`;
+  ics += `DTSTAMP:${icsDate(new Date())}T000000Z\r\n`;
+  ics += `DTSTART;VALUE=DATE:${dateStr}\r\n`;
+  ics += "RRULE:FREQ=MONTHLY\r\n";
+  ics += `SUMMARY:${t("status.monthlyReminderSummary")}\r\n`;
+  ics += `DESCRIPTION:${t("status.monthlyReminderDescription")}\r\n`;
+  ics += "END:VEVENT\r\n";
+  ics += "END:VCALENDAR\r\n";
+  downloadFile(ics, "gearlog-monthly-mileage-reminder.ics", "text/calendar");
+}
+
 function downloadHistoryCSV(vehicle){
-  const entries = [...vehicle.history].sort((a,b) => (b.date || "").localeCompare(a.date || ""));
-  const header = [t("history.col.date"), t("history.col.km"), t("history.col.item"), t("history.col.notes"), t("history.col.source")];
   const escape = (v) => `"${String(v ?? "").replace(/"/g, '""')}"`;
-  const lines = [header.map(escape).join(",")];
+  const infoLines = [
+    [t("vehicleInfo.title") + ":", vehicle.name].map(escape).join(","),
+    [t("vehicleInfo.year") + ":", vehicle.year || ""].map(escape).join(","),
+    [t("vehicleInfo.make") + ":", vehicle.make || ""].map(escape).join(","),
+    [t("vehicleInfo.model") + ":", vehicle.model || ""].map(escape).join(","),
+    [t("vehicleInfo.vin") + ":", vehicle.vin || ""].map(escape).join(","),
+    "",
+  ];
+
+  const filtered = vehicle.history.filter(e => historyFilter === "all" ? true : (e.type || "service") === historyFilter);
+  const entries = [...filtered].sort((a,b) => (b.date || "").localeCompare(a.date || ""));
+  const header = [t("history.col.date"), t("history.col.km"), t("history.col.item"), t("history.col.type"), t("history.col.notes"), t("history.col.source")];
+  const lines = [...infoLines, header.map(escape).join(",")];
   entries.forEach(e => {
     const name = e.itemKey ? itemDisplayName(e.itemKey, {custom:false}) : e.name;
     const sourceLabel = e.source === "auto" ? t("history.sourceAuto") : t("history.sourceManual");
-    lines.push([e.date || "", e.km ?? "", name, e.notes || "", sourceLabel].map(escape).join(","));
+    const typeLabel = (e.type || "service") === "repair" ? t("history.typeRepair") : t("history.typeService");
+    lines.push([e.date || "", e.km ?? "", name, typeLabel, e.notes || "", sourceLabel].map(escape).join(","));
   });
   downloadFile(lines.join("\r\n"), "gearlog-service-history.csv", "text/csv");
 }
@@ -1135,6 +1562,16 @@ appEl.addEventListener("click", (e) => {
   const vehicle = av();
 
   switch(action){
+    case "dismiss-data-warning":
+      dataWarningDismissedThisSession = true;
+      render();
+      break;
+
+    case "dismiss-changelog":
+      state.lastSeenChangelogVersion = t("changelog")[0].version;
+      saveState(); render();
+      break;
+
     case "toggle-language":
       state.language = state.language === "en" ? "fr" : "en";
       saveState(); render();
@@ -1145,6 +1582,13 @@ appEl.addEventListener("click", (e) => {
       break;
     case "nav-resources":
       state.currentPage = "resources"; saveState(); render();
+      break;
+    case "nav-changelog":
+      state.currentPage = "changelog"; saveState(); render();
+      break;
+
+    case "tracker-tab":
+      state.trackerTab = key; saveState(); render();
       break;
 
     case "switch-vehicle":
@@ -1217,11 +1661,60 @@ appEl.addEventListener("click", (e) => {
       break;
     }
 
+    case "monthly-reminder-ics":
+      downloadMonthlyReminderICS();
+      break;
+
+    case "assume-new-vehicle": {
+      const yearInputEl = appEl.querySelector('input[data-field="year"]');
+      if(yearInputEl) vehicle.year = yearInputEl.value;
+      const year = parseInt(vehicle.year, 10);
+      if(!year || year < 1900 || year > 2100){ alert(t("vehicleInfo.needYearAlert")); break; }
+      if(Object.keys(vehicle.items).length === 0){ alert(t("vehicleInfo.needItemsAlert")); break; }
+      if(!confirm(t("vehicleInfo.assumeConfirm"))) break;
+      const assumedDate = `${year}-01-01`;
+      const count = Object.keys(vehicle.items).length;
+      Object.keys(vehicle.items).forEach(k => {
+        vehicle.items[k].lastKm = 0;
+        vehicle.items[k].lastDate = assumedDate;
+      });
+      saveState(); render();
+      alert(t("vehicleInfo.assumeSuccess")(count, assumedDate));
+      break;
+    }
+
     case "switch-tab":
       activeTab[key] = el.getAttribute("data-tab") || "last";
       detailsOpen[key] = true;
       render();
       break;
+
+    case "update-last-service": {
+      const detailsEl = el.closest("details.edit");
+      const kmInput = detailsEl.querySelector('input[data-field="lastKmDraft"]');
+      const dateInput = detailsEl.querySelector('input[data-field="lastDateDraft"]');
+      const item = vehicle.items[key];
+      item.lastKm = kmInput.value === "" ? null : Number(kmInput.value);
+      item.lastDate = dateInput.value || null;
+      detailsOpen[key] = true;
+
+      if(item.lastKm != null && item.lastDate){
+        const alreadyLogged = vehicle.history.some(h =>
+          h.date === item.lastDate && Number(h.km) === Number(item.lastKm) &&
+          (h.itemKey === (item.custom ? null : key)) &&
+          (item.custom ? h.name === item.customName : true)
+        );
+        if(!alreadyLogged){
+          addHistoryEntry(vehicle, {
+            itemKey: item.custom ? null : key,
+            name: item.custom ? item.customName : null,
+            km: item.lastKm, date: item.lastDate, notes: "", source: "auto",
+          });
+        }
+      }
+      saveState(); render();
+      break;
+    }
 
     case "done-today": {
       const mileage = Number(vehicle.currentMileage);
@@ -1280,11 +1773,17 @@ appEl.addEventListener("click", (e) => {
       const km = document.getElementById("histKm").value;
       const date = document.getElementById("histDate").value;
       const notes = document.getElementById("histNotes").value.trim();
+      const type = document.getElementById("histType").value;
       if(!name || !date){ alert(t("history.alertNeedNameDate")); break; }
-      addHistoryEntry(vehicle, {name, km: km || null, date, notes, source: "manual"});
+      addHistoryEntry(vehicle, {name, km: km || null, date, notes, source: "manual", type});
       render();
       break;
     }
+    case "filter-history":
+      historyFilter = key;
+      render();
+      break;
+
     case "delete-history":
       vehicle.history = vehicle.history.filter(h => h.id !== key);
       saveState(); render();
@@ -1315,9 +1814,15 @@ appEl.addEventListener("change", (e) => {
         }
         if(!state.language) state.language = "en";
         if(!state.currentPage) state.currentPage = "tracker";
+        if(!state.trackerTab) state.trackerTab = "setup";
+        if(state.lastSeenChangelogVersion == null) state.lastSeenChangelogVersion = 0;
         Object.values(state.vehicles).forEach(v => {
           if(!Array.isArray(v.history)) v.history = [];
           if(!v.items) v.items = {};
+          if(v.year == null) v.year = "";
+          if(v.make == null) v.make = "";
+          if(v.model == null) v.model = "";
+          if(v.vin == null) v.vin = "";
         });
         saveState();
         alert(t("backup.importSuccess"));
@@ -1345,29 +1850,17 @@ appEl.addEventListener("change", (e) => {
     return; // avoid full re-render interrupting typing; values already reflect on next render
   }
 
+  if(itemKey && (setupField === "lastKmDraft" || setupField === "lastDateDraft")){
+    // Last-service fields are drafts — only committed when "Update" is clicked.
+    detailsOpen[itemKey] = true;
+    return;
+  }
+
   if(itemKey && setupField){
     const item = vehicle.items[itemKey];
     const val = el.value;
-    item[setupField] = (setupField === "km" || setupField === "months" || setupField === "lastKm") ? (val === "" ? null : Number(val)) : val;
+    item[setupField] = (setupField === "km" || setupField === "months") ? (val === "" ? null : Number(val)) : val;
     detailsOpen[itemKey] = true;
-
-    if(setupField === "lastKm" || setupField === "lastDate"){
-      if(item.lastKm != null && item.lastDate){
-        const displayName = itemDisplayName(itemKey, item);
-        const alreadyLogged = vehicle.history.some(h =>
-          h.date === item.lastDate && Number(h.km) === Number(item.lastKm) &&
-          (h.itemKey === (item.custom ? null : itemKey)) &&
-          (item.custom ? h.name === item.customName : true)
-        );
-        if(!alreadyLogged){
-          addHistoryEntry(vehicle, {
-            itemKey: item.custom ? null : itemKey,
-            name: item.custom ? item.customName : null,
-            km: item.lastKm, date: item.lastDate, notes: "", source: "auto",
-          });
-        }
-      }
-    }
     saveState();
     render();
     return;

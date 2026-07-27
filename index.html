@@ -287,10 +287,20 @@
   }
   .modal-box{
     background: var(--panel); border:1px solid var(--hairline); border-radius: var(--radius);
-    max-width:460px; width:100%; padding:26px 26px 22px; box-shadow:0 24px 60px rgba(0,0,0,0.45);
+    max-width:460px; width:100%; max-height:85vh; box-shadow:0 24px 60px rgba(0,0,0,0.45);
+    display:flex; flex-direction:column; overflow:hidden;
   }
-  .modal-box h3{font-family:var(--font-display); font-weight:600; font-size:17px; color:var(--text); margin:0 0 12px; display:flex; align-items:center; gap:8px;}
+  .modal-box-header{
+    padding:20px 24px 4px; flex-shrink:0; display:flex; align-items:flex-start; justify-content:space-between; gap:12px;
+  }
+  .modal-box h3{font-family:var(--font-display); font-weight:600; font-size:17px; color:var(--text); margin:0; display:flex; align-items:center; gap:8px;}
+  .modal-close-x{
+    background:none; border:none; color:var(--text-dim2); font-size:20px; line-height:1; cursor:pointer; padding:2px 4px; flex-shrink:0;
+  }
+  .modal-close-x:hover{color:var(--text);}
+  .modal-box-scroll{padding:12px 24px; overflow-y:auto; flex:1; min-height:0;}
   .modal-box p{font-size:13.5px; color:var(--text-dim); line-height:1.6; margin:0 0 20px;}
+  .modal-box-footer{padding:14px 24px 22px; flex-shrink:0; border-top:1px solid var(--hairline); margin-top:4px;}
 </style>
 </head>
 <body>
@@ -990,11 +1000,16 @@ function changelogModalHTML(){
     </div>
   `).join("");
   return `
-    <div class="modal-overlay">
+    <div class="modal-overlay" data-dismiss-action="dismiss-changelog">
       <div class="modal-box">
-        <h3>${t("changelogTitle")}</h3>
-        <div style="font-size:13.5px; color:var(--text-dim); line-height:1.6; margin-bottom:16px;">${entriesHTML}</div>
-        <button class="btn secondary c-blue" type="button" data-action="dismiss-changelog">${t("changelogDismiss")}</button>
+        <div class="modal-box-header">
+          <h3>${t("changelogTitle")}</h3>
+          <button class="modal-close-x" type="button" data-action="dismiss-changelog" aria-label="Close">✕</button>
+        </div>
+        <div class="modal-box-scroll" style="font-size:13.5px; color:var(--text-dim); line-height:1.6;">${entriesHTML}</div>
+        <div class="modal-box-footer">
+          <button class="btn secondary c-blue" type="button" data-action="dismiss-changelog">${t("changelogDismiss")}</button>
+        </div>
       </div>
     </div>
   `;
@@ -1209,11 +1224,18 @@ function backupCardHTML(){
 function dataWarningModalHTML(){
   if(dataWarningDismissedThisSession) return "";
   return `
-    <div class="modal-overlay">
+    <div class="modal-overlay" data-dismiss-action="dismiss-data-warning">
       <div class="modal-box">
-        <h3>⚠ ${t("dataWarning.title")}</h3>
-        <p>${t("dataWarning.body")}</p>
-        <button class="btn c-orange" type="button" data-action="dismiss-data-warning">${t("dataWarning.dismiss")}</button>
+        <div class="modal-box-header">
+          <h3>⚠ ${t("dataWarning.title")}</h3>
+          <button class="modal-close-x" type="button" data-action="dismiss-data-warning" aria-label="Close">✕</button>
+        </div>
+        <div class="modal-box-scroll">
+          <p>${t("dataWarning.body")}</p>
+        </div>
+        <div class="modal-box-footer">
+          <button class="btn c-orange" type="button" data-action="dismiss-data-warning">${t("dataWarning.dismiss")}</button>
+        </div>
       </div>
     </div>
   `;
@@ -1555,6 +1577,18 @@ appEl.addEventListener("toggle", (e) => {
 }, true);
 
 appEl.addEventListener("click", (e) => {
+  if(e.target.classList && e.target.classList.contains("modal-overlay")){
+    const overlayAction = e.target.getAttribute("data-dismiss-action");
+    if(overlayAction === "dismiss-data-warning"){
+      dataWarningDismissedThisSession = true;
+      render();
+    } else if(overlayAction === "dismiss-changelog"){
+      state.lastSeenChangelogVersion = t("changelog")[0].version;
+      saveState(); render();
+    }
+    return;
+  }
+
   const el = e.target.closest("[data-action]");
   if(!el) return;
   const action = el.getAttribute("data-action");

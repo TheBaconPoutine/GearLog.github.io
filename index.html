@@ -1,0 +1,1167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GearLog — Vehicle Service Tracker</title>
+<link rel="icon" type="image/png" href="favicon.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#F2A93B">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="shared.css">
+</head>
+<body>
+<div class="wrap"><div id="app"></div></div>
+
+<script src="shared.js"></script>
+<script>
+window.CURRENT_PAGE = "tracker";
+
+const CATALOG = {
+  engine_oil:            {km:8000,   months:6},
+  trans_oil:             {km:48000,  months:36},
+  brake_clutch_fluid:    {km:32000,  months:24},
+  trans_flush:           {km:80000,  months:60},
+  trans_df:              {km:48000,  months:36},
+  trans_fluid_hybrid:    {km:80000,  months:60},
+  brake_fluid:           {km:32000,  months:24},
+  engine_coolant:        {km:80000,  months:60},
+  engine_air_filter:     {km:32000,  months:24},
+  cabin_air_filter:      {km:16000,  months:12},
+  spark_plugs:           {km:100000, months:72},
+  brake_service:         {km:16000,  months:12},
+  rear_diff:             {km:48000,  months:36},
+  front_diff:            {km:48000,  months:36},
+  transfer_case:         {km:64000,  months:48},
+  inverter_coolant:      {km:80000,  months:60},
+  hybrid_battery_filter: {km:24000,  months:18},
+  timing_belt:           {km:112000, months:72},
+  power_steering_fluid:  {km:64000,  months:48},
+};
+const NOTE_KEYS = {
+  trans_flush: "pickOneTransmission",
+  trans_df: "pickOneTransmission",
+  front_diff: "frontDiffNote",
+};
+const OPTIONAL_ADDON_IDS = ["timing_belt", "power_steering_fluid"];
+
+function buildItemIds(drivetrain, transmission){
+  let ids = ["engine_oil"];
+  if(transmission === "MANUAL"){
+    ids.push("trans_oil", "brake_clutch_fluid");
+  } else if(transmission === "AUTO_HYBRID"){
+    ids.push("trans_fluid_hybrid", "brake_fluid");
+  } else {
+    ids.push("trans_flush", "trans_df", "brake_fluid");
+  }
+  ids.push("engine_coolant", "engine_air_filter", "cabin_air_filter", "spark_plugs", "brake_service");
+  if(drivetrain === "RWD"){
+    ids.push("rear_diff");
+  }
+  if(drivetrain === "AWD"){
+    ids.push("rear_diff", "front_diff", "transfer_case");
+  }
+  if(transmission === "AUTO_HYBRID"){
+    ids.push("inverter_coolant", "hybrid_battery_filter");
+  }
+  return ids;
+}
+
+
+/* =====================================================================
+   I18N
+===================================================================== */
+
+function itemDisplayName(key, item){
+  if(item.custom) return item.customName || key;
+  return t(`itemNames.${key}`);
+}
+function noteFor(key){
+  const nk = NOTE_KEYS[key];
+  return nk ? t(`notes.${nk}`) : null;
+}
+
+/* =====================================================================
+   STATE
+===================================================================== */
+
+/* Transient UI state (not persisted) */
+let activeTab = {};     // itemKey -> "last" | "intervals"
+let detailsOpen = {};   // itemKey -> true/false
+let historySort = {field: "date", dir: "desc"};
+let historyFilter = "all"; // "all" | "service" | "repair"
+let dataWarningDismissedThisSession = false; // not persisted — resets every page load, by design
+let pendingCondition = {}; // vehicleId -> "severe" | "normal", transient selection awaiting confirmation
+
+function ensureItemsForCurrentPreset(vehicle){
+  const ids = buildItemIds(vehicle.drivetrain, vehicle.transmission);
+  const idSet = new Set(ids);
+  const newItems = {};
+  ids.forEach(id => {
+    const existing = vehicle.items[id];
+    const cat = CATALOG[id];
+    newItems[id] = {
+      km: existing?.km ?? cat.km,
+      months: existing?.months ?? cat.months,
+      lastKm: existing?.lastKm ?? null,
+      lastDate: existing?.lastDate ?? null,
+    };
+  });
+  // Preserve custom items and optional add-ons the user added themselves.
+  Object.keys(vehicle.items).forEach(key => {
+    const it = vehicle.items[key];
+    if(!idSet.has(key) && (it.custom || it.optional)){
+      newItems[key] = it;
+    }
+  });
+  vehicle.items = newItems;
+}
+
+/* =====================================================================
+   STATUS THRESHOLDS + COMPUTATION
+===================================================================== */
+const THRESH = {
+  soonKm: 1500, soonDays: 45,
+  dueKm: 500,   dueDays: 14,
+  graceKm: 200, graceDays: 7,
+};
+
+function computeItem(vehicle, item){
+  const currentMileage = Number(vehicle.currentMileage) || 0;
+  const currentDate = parseISO(vehicle.currentDate) || new Date();
+  const avgMonthlyKm = Number(vehicle.avgMonthlyKm) || 0;
+
+  if(item.lastKm == null || !item.lastDate) return null;
+
+  const lastKm = Number(item.lastKm);
+  const lastDate = parseISO(item.lastDate);
+
+  const nextDueKm = lastKm + Number(item.km);
+  const nextDueDate = addMonths(lastDate, Number(item.months));
+
+  const kmRemaining = nextDueKm - currentMileage;
+  const daysRemainingByDate = daysBetween(currentDate, nextDueDate);
+
+  let daysRemainingByKm = Infinity;
+  if(avgMonthlyKm > 0){
+    daysRemainingByKm = kmRemaining / (avgMonthlyKm / 30.44);
+  }
+
+  const usingKm = daysRemainingByKm < daysRemainingByDate;
+  const daysRemaining = Math.round(Math.min(daysRemainingByDate, daysRemainingByKm));
+  const projectedDate = addDays(currentDate, daysRemaining);
+
+  const isOverdue = kmRemaining < -THRESH.graceKm || daysRemaining < -THRESH.graceDays;
+  const isDue = !isOverdue && (kmRemaining <= THRESH.dueKm || daysRemaining <= THRESH.dueDays);
+  const isSoon = !isOverdue && !isDue && (kmRemaining <= THRESH.soonKm || daysRemaining <= THRESH.soonDays);
+
+  let status = "ok";
+  if(isOverdue) status = "over";
+  else if(isDue) status = "due";
+  else if(isSoon) status = "soon";
+
+  return {nextDueKm, nextDueDate, kmRemaining, daysRemaining, projectedDate, status, usingKm, hasAvg: avgMonthlyKm > 0};
+}
+
+function digitsHTML(value, toneClass){
+  const isNeg = value < 0;
+  const abs = Math.abs(Math.round(value));
+  const digits = String(abs).split("").map(ch => `<span class="d">${ch}</span>`).join("");
+  return `<div class="odo-digits ${toneClass}">${isNeg ? '<span class="d">–</span>' : ''}${digits}</div>`;
+}
+
+/* =====================================================================
+   RENDER: shell
+===================================================================== */
+
+function trackerSubNavHTML(){
+  const tab = state.trackerTab;
+  const hasItems = Object.keys(av().items).length > 0;
+  return `
+    <nav class="sub-nav">
+      <button class="sub-tab ${tab === "setup" ? "active" : ""}" type="button" data-action="tracker-tab" data-key="setup">${t("trackerTabs.setup")}</button>
+      ${hasItems ? `
+        <button class="sub-tab ${tab === "status" ? "active" : ""}" type="button" data-action="tracker-tab" data-key="status">${t("trackerTabs.status")}</button>
+        <button class="sub-tab ${tab === "history" ? "active" : ""}" type="button" data-action="tracker-tab" data-key="history">${t("trackerTabs.history")}</button>
+      ` : ""}
+    </nav>
+  `;
+}
+
+function trackerTabContentHTML(){
+  switch(state.trackerTab){
+    case "status":
+      return backupCardHTML() + bannerHTML() + statusCardHTML() + staleBannerHTML() + itemsSectionHTML();
+    case "history":
+      return backupCardHTML() + historyCardHTML();
+    case "setup":
+    default: {
+      const v = av();
+      const sc = v.setupConfirmed;
+      const hasItems = Object.keys(v.items).length > 0;
+      let html = setupCardHTML();
+      if(sc.basics) html += vehicleInfoCardHTML();
+      if(sc.info) html += drivingConditionCardHTML();
+      if(sc.conditions || hasItems) html += buildListCardHTML();
+      return html;
+    }
+  }
+}
+
+function bannerHTML(){
+  const isNormal = av().drivingCondition === "normal";
+  return `<div class="banner">${isNormal ? t("banner.htmlNormal") : t("banner.html")}</div>`;
+}
+
+function vehicleTabsHTML(){
+  const ids = Object.keys(state.vehicles);
+  const chips = ids.map(id => {
+    const v = state.vehicles[id];
+    const isActive = id === state.activeVehicleId;
+    return `
+      <div class="vehicle-chip ${isActive ? "active" : ""}" data-action="switch-vehicle" data-key="${id}">
+        <span data-action="switch-vehicle" data-key="${id}">${v.name}</span>
+        ${isActive ? `<span class="del-x" data-action="rename-vehicle" data-key="${id}" title="Rename">✎</span>` : ""}
+        ${ids.length > 1 ? `<span class="del-x" data-action="delete-vehicle" data-key="${id}" title="Remove">✕</span>` : ""}
+      </div>
+    `;
+  }).join("");
+  return `<div class="vehicle-tabs">${chips}<button class="add-vehicle-btn" type="button" data-action="add-vehicle">${t("vehicles.addVehicle")}</button></div>`;
+}
+
+function vehicleInfoCardHTML(){
+  const v = av();
+  return `
+    <section class="card">
+      <h2>${t("vehicleInfo.title")}</h2>
+      <p style="font-size:12.5px; color:var(--text-dim2); margin:-6px 0 16px; line-height:1.5;">${t("vehicleInfo.description")}</p>
+
+      <div class="year-highlight">
+        <label class="field"><span style="display:flex; align-items:center;">${t("vehicleInfo.year")}<span class="status-pill">${t("vehicleInfo.yearBadge")}</span></span>
+          <input type="text" data-field="year" value="${v.year || ""}" placeholder="2016">
+          <span class="hint">${t("vehicleInfo.yearHint")}</span>
+        </label>
+      </div>
+
+      <div class="grid-3" style="margin-top:16px;">
+        <label class="field">${t("vehicleInfo.make")}
+          <input type="text" data-field="make" value="${v.make || ""}" placeholder="Mazda">
+        </label>
+        <label class="field">${t("vehicleInfo.model")}
+          <input type="text" data-field="model" value="${v.model || ""}" placeholder="Mazda3">
+        </label>
+        <label class="field">${t("vehicleInfo.vin")}
+          <input type="text" data-field="vin" value="${v.vin || ""}">
+        </label>
+      </div>
+
+      <div class="actions-row" style="margin-top:18px;">
+        <button class="btn c-blue" type="button" data-action="save-info-step">${t("setup.saveContinueBtn")}</button>
+      </div>
+    </section>
+  `;
+}
+
+function setupCardHTML(){
+  const v = av();
+  const assumeOn = !!v.assumeNoPriorHistory;
+  return `
+    <section class="card">
+      <h2>${t("setup.title")}</h2>
+      <p style="font-size:12.5px; color:var(--text-dim2); margin:-6px 0 16px; line-height:1.5;">${t("setup.description")}</p>
+      <div class="grid-2">
+        <label class="field">${t("setup.drivetrain")}
+          <select data-field="drivetrain">
+            <option value="FWD" ${v.drivetrain === "FWD" ? "selected" : ""}>${t("setup.fwd")}</option>
+            <option value="RWD" ${v.drivetrain === "RWD" ? "selected" : ""}>${t("setup.rwd")}</option>
+            <option value="AWD" ${v.drivetrain === "AWD" ? "selected" : ""}>${t("setup.awd")}</option>
+          </select>
+        </label>
+        <label class="field">${t("setup.transmission")}
+          <select data-field="transmission">
+            <option value="AUTO" ${v.transmission === "AUTO" ? "selected" : ""}>${t("setup.auto")}</option>
+            <option value="MANUAL" ${v.transmission === "MANUAL" ? "selected" : ""}>${t("setup.manual")}</option>
+            <option value="AUTO_HYBRID" ${v.transmission === "AUTO_HYBRID" ? "selected" : ""}>${t("setup.autoHybrid")}</option>
+          </select>
+        </label>
+      </div>
+
+      <div class="assume-toggle ${assumeOn ? "on" : ""}" data-action="toggle-assume-no-history" role="button" tabindex="0" style="margin-top:18px;">
+        <div class="assume-toggle-check">${assumeOn ? "✓" : ""}</div>
+        <div>
+          <div class="assume-toggle-label">${t("setup.assumeToggleLabel")}</div>
+          <div class="assume-toggle-hint">${assumeOn ? t("setup.assumeToggleHintOn") : t("setup.assumeToggleHintOff")}</div>
+        </div>
+      </div>
+
+      <div class="actions-row" style="margin-top:18px;">
+        <button class="btn c-blue" type="button" data-action="save-basics-step">${t("setup.saveContinueBtn")}</button>
+      </div>
+    </section>
+  `;
+}
+
+function drivingConditionCardHTML(){
+  const v = av();
+  const pending = pendingCondition[state.activeVehicleId] || v.drivingCondition;
+  const hasPendingChange = pending !== v.drivingCondition;
+  const stillOnboarding = !v.setupConfirmed.conditions && Object.keys(v.items).length === 0;
+  const showButton = hasPendingChange || stillOnboarding;
+  const btnLabel = hasPendingChange ? t("setup.confirmChangesBtn") : t("setup.continueBtn");
+  return `
+    <section class="card">
+      <h2>${t("setup.conditionTitle")}</h2>
+      <p style="font-size:12.5px; color:var(--text-dim2); margin:-6px 0 16px; line-height:1.5;">${t("setup.conditionDescription")}</p>
+      <div class="condition-choice">
+        <div class="condition-option ${pending === "severe" ? "selected" : ""}" data-action="select-condition" data-key="severe" role="button" tabindex="0">
+          <div class="condition-option-label"><span class="condition-option-check"></span>${t("setup.conditionSevereLabel")}</div>
+          <div class="condition-option-hint">${t("setup.conditionSevereHint")}</div>
+        </div>
+        <div class="condition-option ${pending === "normal" ? "selected" : ""}" data-action="select-condition" data-key="normal" role="button" tabindex="0">
+          <div class="condition-option-label"><span class="condition-option-check"></span>${t("setup.conditionNormalLabel")}</div>
+          <div class="condition-option-hint">${t("setup.conditionNormalHint")}</div>
+        </div>
+      </div>
+      ${showButton ? `
+        <div class="actions-row" style="margin-top:16px;">
+          <button class="btn ${hasPendingChange ? "c-orange" : "c-blue"}" type="button" data-action="confirm-conditions-step">${btnLabel}</button>
+        </div>
+      ` : ""}
+    </section>
+  `;
+}
+
+function buildListCardHTML(){
+  const v = av();
+  const hasItems = Object.keys(v.items).length > 0;
+  return `
+    <section class="card">
+      <h2>${t("setup.buildListTitle")}</h2>
+      <p style="font-size:12.5px; color:var(--text-dim2); margin:-6px 0 16px; line-height:1.5;">${t("setup.buildListDescription")}</p>
+      <div class="actions-row">
+        <button class="btn c-green" type="button" data-action="build-list">${hasItems ? t("setup.updateList") : t("setup.buildList")}</button>
+      </div>
+    </section>
+  `;
+}
+
+function statusCardHTML(){
+  const v = av();
+  return `
+    <section class="card">
+      <h2>${t("status.title")}</h2>
+      <div class="grid-3">
+        <label class="field">${t("status.currentMileage")}
+          <input type="number" data-field="currentMileage" min="0" value="${v.currentMileage ?? ""}">
+        </label>
+        <label class="field">${t("status.currentDate")}
+          <input type="date" data-field="currentDate" value="${v.currentDate || todayISO()}">
+        </label>
+        <label class="field">${t("status.avgMonthlyKm")}
+          <input type="number" data-field="avgMonthlyKm" min="0" value="${v.avgMonthlyKm ?? ""}">
+          <span class="hint">${t("status.avgHint")}</span>
+        </label>
+      </div>
+      <div class="actions-row">
+        <button class="btn" type="button" data-action="recalc">${t("status.recalc")}</button>
+        <button class="btn secondary c-green" type="button" data-action="export-all-ics">${t("status.exportAllIcs")}</button>
+        <button class="btn secondary c-green" type="button" data-action="monthly-reminder-ics">${t("status.monthlyReminderIcs")}</button>
+        <button class="btn secondary c-red" type="button" data-action="reset-vehicle">${t("status.resetAll")}</button>
+      </div>
+    </section>
+  `;
+}
+
+function staleBannerHTML(){
+  const v = av();
+  const lastUpdated = parseISO(v.currentDate);
+  if(!lastUpdated) return "";
+  const daysSince = daysBetween(lastUpdated, new Date());
+  if(daysSince <= 30) return "";
+  return `<div class="banner" style="border-left-color:var(--orange);">${t("status.staleBanner")}</div>`;
+}
+
+function backupCardHTML(){
+  const isOpen = detailsOpen["__backup__"] === true;
+  return `
+    <details class="card-collapsible" data-key="__backup__" ${isOpen ? "open" : ""}>
+      <summary>${t("backup.title")}</summary>
+      <div class="card-collapsible-body">
+        <p style="font-size:13px; color:var(--text-dim2); margin:0 0 4px;">${t("backup.hint")}</p>
+        <div class="actions-row">
+          <button class="btn secondary c-turquoise" type="button" data-action="export-backup">${t("backup.exportBtn")}</button>
+          <button class="btn secondary c-blue" type="button" data-action="trigger-import">${t("backup.importBtn")}</button>
+          <input type="file" id="importFileInput" accept="application/json" style="display:none;">
+        </div>
+        <div class="banner" style="border-left-color:var(--red); margin-top:16px; margin-bottom:0;">
+          <b style="display:block; margin-bottom:4px; color:var(--red-text);">⚠ ${t("backup.clearDataWarningTitle")}</b>
+          ${t("backup.clearDataWarning")}
+        </div>
+      </div>
+    </details>
+  `;
+}
+
+
+function dataWarningModalHTML(){
+  if(dataWarningDismissedThisSession) return "";
+  return `
+    <div class="modal-overlay" data-dismiss-action="dismiss-data-warning">
+      <div class="modal-box">
+        <div class="modal-box-header">
+          <h3>⚠ ${t("dataWarning.title")}</h3>
+          <button class="modal-close-x" type="button" data-action="dismiss-data-warning" aria-label="Close">✕</button>
+        </div>
+        <div class="modal-box-scroll">
+          <p>${t("dataWarning.body")}</p>
+        </div>
+        <div class="modal-box-footer">
+          <button class="btn c-orange" type="button" data-action="dismiss-data-warning">${t("dataWarning.dismiss")}</button>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function itemsSectionHTML(){
+  const v = av();
+  const keys = Object.keys(v.items);
+
+  let itemsHTML;
+  if(keys.length === 0){
+    itemsHTML = `<div class="empty-state">${t("item.emptyState")}</div>`;
+  } else {
+    itemsHTML = keys.map(key => {
+      try{
+        return itemCardHTML(v, key);
+      }catch(err){
+        console.error("GearLog: failed to render item", key, err);
+        return `<div class="item status-over"><div class="item-name">${key}</div><div style="color:var(--red); font-size:12px; margin-top:8px;">This item couldn't be displayed. Try "Remove item" below and re-adding it.</div><div class="item-footer"><button class="btn secondary c-red" type="button" data-action="remove-item" data-key="${key}">${t("item.removeItem")}</button></div></div>`;
+      }
+    }).join("");
+  }
+
+  const addonButtons = OPTIONAL_ADDON_IDS.map(id => {
+    const already = !!v.items[id];
+    const cat = CATALOG[id];
+    const label = id === "timing_belt" ? t("addons.timingBelt") : t("addons.powerSteering");
+    return `
+      <button class="addon-btn ${already ? "added" : ""}" type="button" ${already ? "disabled" : ""} data-action="add-addon" data-key="${id}">
+        ${already ? `${t("addons.added")}: ` : ""}${label}
+        <small>${cat.km.toLocaleString()} km / ${cat.months} mo</small>
+      </button>
+    `;
+  }).join("");
+
+  return `
+    <div id="itemsHeader"><h2>${t("itemsSection.title")}</h2></div>
+    <div id="itemsList">${itemsHTML}</div>
+
+    <section class="card">
+      <h2>${t("addons.title")}</h2>
+      <div class="addon-row">${addonButtons}</div>
+      <div class="history-form cols-4" style="margin-top:18px;">
+        <label>${t("customItem.name")}<input type="text" id="customItemName" placeholder="e.g. Timing chain, walnut blasting..."></label>
+        <label>${t("customItem.km")}<input type="number" id="customItemKm" min="0"></label>
+        <label>${t("customItem.months")}<input type="number" id="customItemMonths" min="0"></label>
+        <label>&nbsp;<button class="btn secondary" type="button" data-action="add-custom-item">${t("customItem.add")}</button></label>
+      </div>
+    </section>
+  `;
+}
+
+function itemCardHTML(vehicle, key){
+  const item = vehicle.items[key];
+  const result = computeItem(vehicle, item);
+  const status = result ? result.status : "unknown";
+  const meta = {
+    ok: {cls: "status-ok", label: t("statusMeta.ok")},
+    soon: {cls: "status-soon", label: t("statusMeta.soon")},
+    due: {cls: "status-due", label: t("statusMeta.due")},
+    over: {cls: "status-over", label: t("statusMeta.over")},
+  }[status] || {cls: "", label: ""};
+
+  const name = itemDisplayName(key, item);
+  const note = noteFor(key);
+
+  let readoutHTML;
+  if(result){
+    readoutHTML = `
+      <div class="odo-readout">
+        <div class="odo-block">
+          <div class="odo-label">${t("item.dueInDays")}${result.usingKm ? " · " + t("item.viaKmPace") : ""}</div>
+          ${digitsHTML(result.daysRemaining, "tone-"+status)}
+        </div>
+        <div class="odo-block">
+          <div class="odo-label">${t("item.dueInKm")}</div>
+          ${digitsHTML(result.kmRemaining, "tone-"+status)}
+        </div>
+        <div class="odo-block">
+          <div class="odo-label">${t("item.estDueDate")}</div>
+          <div style="font-family:var(--font-mono); font-size:15px; margin-top:6px;">${fmtDate(result.projectedDate)}</div>
+        </div>
+      </div>
+    `;
+  } else {
+    readoutHTML = `<div style="color:var(--text-dim2); font-size:13px; margin:12px 0 4px;">${t("item.enterPrompt")}</div>`;
+  }
+
+  const tab = activeTab[key] || "last";
+  const lastActive = tab === "last";
+  const isOpen = detailsOpen[key] !== undefined ? detailsOpen[key] : (item.lastKm == null || !item.lastDate);
+
+  return `
+    <div class="item ${meta.cls}">
+      <div class="item-top">
+        <div class="item-name">${name}</div>
+        ${result ? `<div class="status-pill ${meta.cls}">${meta.label}</div>` : ""}
+      </div>
+      ${note ? `<div style="font-size:11.5px; color:var(--text-dim2); margin-top:4px;">${note}</div>` : ""}
+      ${readoutHTML}
+      <details class="edit" data-key="${key}" ${isOpen ? "open" : ""}>
+        <summary>${t("item.serviceInfoBtn")}</summary>
+        <div class="tab-bar">
+          <button type="button" class="tab-btn ${lastActive ? "active" : ""}" data-action="switch-tab" data-key="${key}" data-tab="last">${t("item.tabLast")}</button>
+          <button type="button" class="tab-btn ${!lastActive ? "active" : ""}" data-action="switch-tab" data-key="${key}" data-tab="intervals">${t("item.tabIntervals")}</button>
+        </div>
+        ${lastActive ? `
+          <div class="edit-grid cols-2">
+            <label>${t("item.lastKm")}<input type="number" data-key="${key}" data-field="lastKmDraft" value="${item.lastKm ?? ""}"></label>
+            <label>${t("item.lastDate")}<input type="date" data-key="${key}" data-field="lastDateDraft" value="${item.lastDate ?? ""}"></label>
+          </div>
+          <div class="actions-row" style="margin-top:10px;">
+            <button class="btn secondary c-green" type="button" data-action="update-last-service" data-key="${key}">${t("item.updateBtn")}</button>
+          </div>
+          <p class="tab-panel-hint">${t("item.hintLast")}</p>
+        ` : `
+          <div class="edit-grid cols-2">
+            <label>${t("item.intervalKm")}<input type="number" data-key="${key}" data-field="km" value="${item.km}"></label>
+            <label>${t("item.intervalMonths")}<input type="number" data-key="${key}" data-field="months" value="${item.months}"></label>
+          </div>
+          <p class="tab-panel-hint">${t("item.hintIntervals")}</p>
+        `}
+      </details>
+      <div class="item-footer">
+        <button class="btn secondary c-blue" type="button" data-action="done-today" data-key="${key}">${t("item.markDoneToday")}</button>
+        ${result ? `<button class="btn secondary c-green" type="button" data-action="export-one-ics" data-key="${key}">${t("item.addToCalendar")}</button>` : ""}
+        <button class="btn secondary c-red" type="button" data-action="remove-item" data-key="${key}">${t("item.removeItem")}</button>
+      </div>
+    </div>
+  `;
+}
+
+function historyCardHTML(){
+  const v = av();
+  const field = historySort.field, dir = historySort.dir;
+  const filtered = v.history.filter(e => historyFilter === "all" ? true : (e.type || "service") === historyFilter);
+  const entries = [...filtered].sort((a,b) => {
+    let av_, bv_;
+    if(field === "km"){ av_ = a.km == null ? -Infinity : Number(a.km); bv_ = b.km == null ? -Infinity : Number(b.km); }
+    else { av_ = a.date || ""; bv_ = b.date || ""; }
+    if(av_ < bv_) return dir === "asc" ? -1 : 1;
+    if(av_ > bv_) return dir === "asc" ? 1 : -1;
+    return 0;
+  });
+
+  let tableHTML;
+  if(entries.length === 0){
+    tableHTML = `<div class="history-empty">${t("history.emptyState")}</div>`;
+  } else {
+    const rows = entries.map(e => {
+      const name = e.itemKey ? itemDisplayName(e.itemKey, {custom:false}) : e.name;
+      const sourceLabel = e.source === "auto" ? t("history.sourceAuto") : t("history.sourceManual");
+      const typeLabel = (e.type || "service") === "repair" ? t("history.typeRepair") : t("history.typeService");
+      return `
+        <tr>
+          <td>${e.date ? fmtDate(parseISO(e.date)) : "—"}</td>
+          <td>${e.km != null ? Number(e.km).toLocaleString() : "—"}</td>
+          <td style="font-family:var(--font-body);">${name}</td>
+          <td style="font-family:var(--font-body);">${typeLabel}</td>
+          <td class="notes-cell">${e.notes || ""}</td>
+          <td><span class="source-tag ${e.source}">${sourceLabel}</span></td>
+          <td><button class="row-delete" type="button" data-action="delete-history" data-key="${e.id}">✕</button></td>
+        </tr>
+      `;
+    }).join("");
+    tableHTML = `
+      <div class="table-scroll">
+        <table class="history-table">
+          <thead><tr><th>${t("history.col.date")}</th><th>${t("history.col.km")}</th><th>${t("history.col.item")}</th><th>${t("history.col.type")}</th><th>${t("history.col.notes")}</th><th>${t("history.col.source")}</th><th></th></tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>
+    `;
+  }
+
+  return `
+    <section class="card">
+      <h2>${t("history.title")}</h2>
+      <div class="history-form">
+        <label>${t("history.name")}<input type="text" id="histName"></label>
+        <label>${t("history.km")}<input type="number" id="histKm" min="0"></label>
+        <label>${t("history.date")}<input type="date" id="histDate" value="${todayISO()}"></label>
+        <label>${t("history.type")}
+          <select id="histType">
+            <option value="service">${t("history.typeService")}</option>
+            <option value="repair">${t("history.typeRepair")}</option>
+          </select>
+        </label>
+        <label>${t("history.notes")}<input type="text" id="histNotes"></label>
+        <label>&nbsp;<button class="btn" type="button" data-action="add-history">${t("history.add")}</button></label>
+      </div>
+
+      <div style="display:flex; gap:16px; align-items:flex-end; margin-top:18px; flex-wrap:wrap;">
+        <label class="field" style="width:auto;">${t("history.sortBy")}
+          <select id="historySortField">
+            <option value="date" ${historySort.field==="date"?"selected":""}>${t("history.byDate")}</option>
+            <option value="km" ${historySort.field==="km"?"selected":""}>${t("history.byKm")}</option>
+          </select>
+        </label>
+        <label class="field" style="width:auto;">${t("history.order")}
+          <select id="historySortDir">
+            <option value="desc" ${historySort.dir==="desc"?"selected":""}>${t("history.desc")}</option>
+            <option value="asc" ${historySort.dir==="asc"?"selected":""}>${t("history.asc")}</option>
+          </select>
+        </label>
+        <div>
+          <div class="odo-label" style="margin-bottom:6px;">${t("history.show")}</div>
+          <div class="tab-bar" style="border-bottom:none;">
+            <button type="button" class="tab-btn ${historyFilter === "all" ? "active" : ""}" data-action="filter-history" data-key="all">${t("history.showAll")}</button>
+            <button type="button" class="tab-btn ${historyFilter === "service" ? "active" : ""}" data-action="filter-history" data-key="service">${t("history.showServices")}</button>
+            <button type="button" class="tab-btn ${historyFilter === "repair" ? "active" : ""}" data-action="filter-history" data-key="repair">${t("history.showRepairs")}</button>
+          </div>
+        </div>
+      </div>
+
+      <div id="historyTableWrap">${tableHTML}</div>
+
+      <div class="actions-row">
+        <button class="btn secondary c-turquoise" type="button" data-action="export-history-csv">${t("history.exportCsv")}</button>
+      </div>
+    </section>
+  `;
+}
+
+
+function addHistoryEntry(vehicle, {itemKey, name, km, date, notes, source, type}){
+  vehicle.history.push({
+    id: Date.now().toString(36) + Math.random().toString(36).slice(2, 7),
+    itemKey: itemKey || null, name: name || null,
+    km: km == null ? null : Number(km), date, notes: notes || "", source,
+    type: type || "service",
+  });
+  saveState();
+}
+
+function performImport(file){
+  const reader = new FileReader();
+  reader.onload = () => {
+    try{
+      const parsed = JSON.parse(reader.result);
+      if(!parsed.vehicles || Object.keys(parsed.vehicles).length === 0) throw new Error("bad format");
+      state = parsed;
+      if(!state.activeVehicleId || !state.vehicles[state.activeVehicleId]){
+        state.activeVehicleId = Object.keys(state.vehicles)[0];
+      }
+      if(!state.language) state.language = "en";
+      if(!state.currentPage) state.currentPage = "tracker";
+      if(!state.trackerTab) state.trackerTab = "setup";
+      if(state.lastSeenChangelogVersion == null) state.lastSeenChangelogVersion = 0;
+      Object.values(state.vehicles).forEach(v => {
+        if(!Array.isArray(v.history)) v.history = [];
+        if(!v.items) v.items = {};
+        if(v.year == null) v.year = "";
+        if(v.make == null) v.make = "";
+        if(v.model == null) v.model = "";
+        if(v.vin == null) v.vin = "";
+        if(v.assumeNoPriorHistory == null) v.assumeNoPriorHistory = false;
+        if(!v.drivingCondition) v.drivingCondition = "severe";
+        if(!v.setupConfirmed){
+          const alreadySetUp = Object.keys(v.items).length > 0;
+          v.setupConfirmed = { basics: alreadySetUp, info: alreadySetUp, conditions: alreadySetUp };
+        }
+      });
+      saveState();
+      render();
+      showToast(t("backup.importSuccess"));
+    }catch(err){
+      alert(t("backup.importError"));
+    }
+  };
+  reader.readAsText(file);
+}
+
+function downloadFile(content, filename, mime){
+  const blob = new Blob([content], {type: mime});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url; a.download = filename;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+function icsDate(d){
+  const y = d.getFullYear(), m = String(d.getMonth()+1).padStart(2,"0"), day = String(d.getDate()).padStart(2,"0");
+  return `${y}${m}${day}`;
+}
+function downloadICS(events){
+  let ics = "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//GearLog//Service Reminders//EN\r\n";
+  events.forEach((ev, i) => {
+    const dateStr = icsDate(ev.date);
+    ics += "BEGIN:VEVENT\r\n";
+    ics += `UID:gearlog-${dateStr}-${i}-${Math.random().toString(36).slice(2)}@gearlog\r\n`;
+    ics += `DTSTAMP:${icsDate(new Date())}T000000Z\r\n`;
+    ics += `DTSTART;VALUE=DATE:${dateStr}\r\n`;
+    ics += `SUMMARY:${t("icsSummary")(ev.name)}\r\n`;
+    ics += `DESCRIPTION:${t("icsDescription")}\r\n`;
+    ics += "BEGIN:VALARM\r\nTRIGGER:-P1D\r\nACTION:DISPLAY\r\nDESCRIPTION:Reminder\r\nEND:VALARM\r\n";
+    ics += "END:VEVENT\r\n";
+  });
+  ics += "END:VCALENDAR\r\n";
+  downloadFile(ics, "gearlog-service-reminders.ics", "text/calendar");
+}
+
+function downloadMonthlyReminderICS(){
+  const start = addDays(new Date(), 1); // starts tomorrow, repeats monthly after that
+  const dateStr = icsDate(start);
+  let ics = "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//GearLog//Monthly Reminder//EN\r\n";
+  ics += "BEGIN:VEVENT\r\n";
+  ics += `UID:gearlog-monthly-${dateStr}-${Math.random().toString(36).slice(2)}@gearlog\r\n`;
+  ics += `DTSTAMP:${icsDate(new Date())}T000000Z\r\n`;
+  ics += `DTSTART;VALUE=DATE:${dateStr}\r\n`;
+  ics += "RRULE:FREQ=MONTHLY\r\n";
+  ics += `SUMMARY:${t("status.monthlyReminderSummary")}\r\n`;
+  ics += `DESCRIPTION:${t("status.monthlyReminderDescription")}\r\n`;
+  ics += "END:VEVENT\r\n";
+  ics += "END:VCALENDAR\r\n";
+  downloadFile(ics, "gearlog-monthly-mileage-reminder.ics", "text/calendar");
+}
+
+function downloadHistoryCSV(vehicle){
+  const escape = (v) => `"${String(v ?? "").replace(/"/g, '""')}"`;
+  const infoLines = [
+    [t("vehicleInfo.title") + ":", vehicle.name].map(escape).join(","),
+    [t("vehicleInfo.year") + ":", vehicle.year || ""].map(escape).join(","),
+    [t("vehicleInfo.make") + ":", vehicle.make || ""].map(escape).join(","),
+    [t("vehicleInfo.model") + ":", vehicle.model || ""].map(escape).join(","),
+    [t("vehicleInfo.vin") + ":", vehicle.vin || ""].map(escape).join(","),
+    "",
+  ];
+
+  const filtered = vehicle.history.filter(e => historyFilter === "all" ? true : (e.type || "service") === historyFilter);
+  const entries = [...filtered].sort((a,b) => (b.date || "").localeCompare(a.date || ""));
+  const header = [t("history.col.date"), t("history.col.km"), t("history.col.item"), t("history.col.type"), t("history.col.notes"), t("history.col.source")];
+  const lines = [...infoLines, header.map(escape).join(",")];
+  entries.forEach(e => {
+    const name = e.itemKey ? itemDisplayName(e.itemKey, {custom:false}) : e.name;
+    const sourceLabel = e.source === "auto" ? t("history.sourceAuto") : t("history.sourceManual");
+    const typeLabel = (e.type || "service") === "repair" ? t("history.typeRepair") : t("history.typeService");
+    lines.push([e.date || "", e.km ?? "", name, typeLabel, e.notes || "", sourceLabel].map(escape).join(","));
+  });
+  downloadFile(lines.join("\r\n"), "gearlog-service-history.csv", "text/csv");
+}
+
+/* =====================================================================
+   EVENT WIRING (delegated on #app)
+===================================================================== */
+function render(){
+  try{
+    document.documentElement.lang = state.language;
+    if(Object.keys(av().items).length === 0 && state.trackerTab !== "setup"){
+      state.trackerTab = "setup";
+    }
+    let html = headerHTML() + navHTML();
+    html += vehicleTabsHTML() + trackerSubNavHTML() + trackerTabContentHTML();
+    html += footerHTML() + changelogModalHTML() + dataWarningModalHTML() + confirmModalHTML() + toastHTML();
+    appEl.innerHTML = html;
+  }catch(err){
+    console.error("GearLog render error:", err);
+    appEl.innerHTML = `
+      <div style="padding:60px 20px; text-align:center; font-family:sans-serif; color:#EDEAE3;">
+        <p style="color:#D4574B; font-size:15px;">Something went wrong displaying GearLog.</p>
+        <p style="color:#9096A0; font-size:13px; max-width:420px; margin:8px auto 20px;">This is usually caused by leftover data from an older version. Clearing saved data will fix it — export a backup first if you can.</p>
+        <button type="button" onclick="localStorage.removeItem('gearlog_state_v2'); localStorage.removeItem('gearlog_state_v1'); location.reload();" style="padding:12px 20px; background:#D4574B; color:#2A0C09; border:none; border-radius:6px; cursor:pointer; font-weight:600;">Clear saved data & reload</button>
+      </div>
+    `;
+  }
+}
+
+appEl.addEventListener("toggle", (e) => {
+  const key = e.target.getAttribute && e.target.getAttribute("data-key");
+  if(key) detailsOpen[key] = e.target.open;
+}, true);
+
+appEl.addEventListener("click", (e) => {
+  if(e.target.classList && e.target.classList.contains("modal-overlay")){
+    const overlayAction = e.target.getAttribute("data-dismiss-action");
+    if(overlayAction === "dismiss-data-warning"){
+      dataWarningDismissedThisSession = true;
+      render();
+    } else if(overlayAction === "dismiss-changelog"){
+      state.lastSeenChangelogVersion = t("changelog")[0].version;
+      saveState(); render();
+    } else if(overlayAction === "cancel-confirm"){
+      pendingConfirm = null;
+      render();
+    }
+    return;
+  }
+
+  const el = e.target.closest("[data-action]");
+  if(!el) return;
+  const action = el.getAttribute("data-action");
+  const key = el.getAttribute("data-key");
+  const vehicle = av();
+
+  switch(action){
+    case "dismiss-data-warning":
+      dataWarningDismissedThisSession = true;
+      render();
+      break;
+
+    case "dismiss-changelog":
+      state.lastSeenChangelogVersion = t("changelog")[0].version;
+      saveState(); render();
+      break;
+
+    case "cancel-confirm":
+      pendingConfirm = null;
+      render();
+      break;
+
+    case "proceed-confirm": {
+      if(!pendingConfirm) break;
+      const deferredAction = pendingConfirm.action;
+      const deferredKey = pendingConfirm.key;
+      const deferredExtra = pendingConfirm.extra;
+      pendingConfirm = null;
+
+      if(deferredAction === "delete-vehicle"){
+        delete state.vehicles[deferredKey];
+        if(state.activeVehicleId === deferredKey){
+          state.activeVehicleId = Object.keys(state.vehicles)[0];
+        }
+        saveState(); render();
+      } else if(deferredAction === "reset-vehicle"){
+        const name = state.vehicles[deferredKey].name;
+        state.vehicles[deferredKey] = defaultVehicle(name);
+        saveState(); render();
+      } else if(deferredAction === "remove-item"){
+        delete vehicle.items[deferredKey];
+        saveState(); render();
+      } else if(deferredAction === "import-backup"){
+        performImport(deferredExtra);
+      }
+      break;
+    }
+
+    case "toggle-language":
+      state.language = state.language === "en" ? "fr" : "en";
+      saveState(); render();
+      break;
+
+    case "tracker-tab":
+      state.trackerTab = key; saveState(); render();
+      break;
+
+    case "switch-vehicle":
+      state.activeVehicleId = key; saveState(); render();
+      break;
+    case "add-vehicle": {
+      const n = Object.keys(state.vehicles).length + 1;
+      const id = "v_" + Date.now().toString(36);
+      state.vehicles[id] = defaultVehicle(t("vehicles.defaultName")(n));
+      state.activeVehicleId = id;
+      saveState(); render();
+      break;
+    }
+    case "rename-vehicle": {
+      const newName = prompt(t("vehicles.renamePrompt"), state.vehicles[key].name);
+      if(newName && newName.trim()){
+        state.vehicles[key].name = newName.trim();
+        saveState(); render();
+      }
+      break;
+    }
+    case "delete-vehicle": {
+      if(Object.keys(state.vehicles).length <= 1){
+        alert(t("vehicles.deleteLastBlocked"));
+        break;
+      }
+      requestConfirm(t("vehicles.deleteConfirm")(state.vehicles[key].name), "delete-vehicle", key);
+      break;
+    }
+
+    case "build-list": {
+      const hadItemsBefore = Object.keys(vehicle.items).length > 0;
+
+      if(vehicle.assumeNoPriorHistory){
+        const yearInputEl = appEl.querySelector('input[data-field="year"]');
+        if(yearInputEl) vehicle.year = yearInputEl.value;
+        const year = parseInt(vehicle.year, 10);
+        if(!year || year < 1900 || year > 2100){ alert(t("setup.needYearAlert")); break; }
+      }
+
+      ensureItemsForCurrentPreset(vehicle);
+      const count = Object.keys(vehicle.items).length;
+
+      let assumedDate = null;
+      if(vehicle.assumeNoPriorHistory){
+        const year = parseInt(vehicle.year, 10);
+        assumedDate = `${year}-01-01`;
+        Object.keys(vehicle.items).forEach(k => {
+          vehicle.items[k].lastKm = 0;
+          vehicle.items[k].lastDate = assumedDate;
+        });
+        vehicle.assumeNoPriorHistory = false;
+      }
+
+      vehicle.setupConfirmed.basics = true;
+      vehicle.setupConfirmed.info = true;
+      vehicle.setupConfirmed.conditions = true;
+
+      saveState(); render();
+
+      if(assumedDate){
+        showToast(hadItemsBefore ? t("setup.updateSuccessWithAssume")(count, assumedDate) : t("setup.createSuccessWithAssume")(count, assumedDate));
+      } else {
+        showToast(hadItemsBefore ? t("setup.updateSuccess")(count) : t("setup.createSuccess")(count));
+      }
+      break;
+    }
+
+    case "save-basics-step":
+      vehicle.setupConfirmed.basics = true;
+      saveState(); render();
+      showToast(t("setup.basicsSavedToast"));
+      break;
+
+    case "save-info-step":
+      vehicle.setupConfirmed.info = true;
+      saveState(); render();
+      showToast(t("setup.infoSavedToast"));
+      break;
+
+    case "toggle-assume-no-history":
+      vehicle.assumeNoPriorHistory = !vehicle.assumeNoPriorHistory;
+      saveState(); render();
+      break;
+
+    case "select-condition":
+      pendingCondition[state.activeVehicleId] = key;
+      render();
+      break;
+
+    case "confirm-conditions-step": {
+      const pending = pendingCondition[state.activeVehicleId];
+      let toastMsg = t("setup.conditionsSavedToast");
+      if(pending && pending !== vehicle.drivingCondition){
+        const toNormal = pending === "normal";
+        const multiplier = toNormal ? 2 : 0.5;
+        const count = Object.keys(vehicle.items).length;
+        Object.keys(vehicle.items).forEach(k => {
+          const it = vehicle.items[k];
+          it.km = Math.max(1, Math.round(it.km * multiplier));
+          it.months = Math.max(1, Math.round(it.months * multiplier));
+        });
+        vehicle.drivingCondition = pending;
+        delete pendingCondition[state.activeVehicleId];
+        toastMsg = t("setup.conditionConfirmSuccess")(count, toNormal);
+      }
+      vehicle.setupConfirmed.conditions = true;
+      saveState(); render();
+      showToast(toastMsg);
+      break;
+    }
+
+    case "recalc":
+      saveState(); render();
+      break;
+
+    case "reset-vehicle":
+      requestConfirm(t("status.resetConfirm"), "reset-vehicle", state.activeVehicleId);
+      break;
+
+    case "export-backup":
+      downloadFile(JSON.stringify(state, null, 2), "gearlog-backup.json", "application/json");
+      break;
+    case "trigger-import":
+      document.getElementById("importFileInput").click();
+      break;
+
+    case "export-all-ics": {
+      const events = [];
+      Object.keys(vehicle.items).forEach(k => {
+        const item = vehicle.items[k];
+        const result = computeItem(vehicle, item);
+        if(result) events.push({name: itemDisplayName(k, item), date: result.projectedDate});
+      });
+      if(events.length === 0){ alert(t("item.enterPrompt")); break; }
+      downloadICS(events);
+      break;
+    }
+
+    case "monthly-reminder-ics":
+      downloadMonthlyReminderICS();
+      break;
+
+    case "switch-tab":
+      activeTab[key] = el.getAttribute("data-tab") || "last";
+      detailsOpen[key] = true;
+      render();
+      break;
+
+    case "update-last-service": {
+      const detailsEl = el.closest("details.edit");
+      const kmInput = detailsEl.querySelector('input[data-field="lastKmDraft"]');
+      const dateInput = detailsEl.querySelector('input[data-field="lastDateDraft"]');
+      const item = vehicle.items[key];
+      item.lastKm = kmInput.value === "" ? null : Number(kmInput.value);
+      item.lastDate = dateInput.value || null;
+      detailsOpen[key] = true;
+
+      if(item.lastKm != null && item.lastDate){
+        const alreadyLogged = vehicle.history.some(h =>
+          h.date === item.lastDate && Number(h.km) === Number(item.lastKm) &&
+          (h.itemKey === (item.custom ? null : key)) &&
+          (item.custom ? h.name === item.customName : true)
+        );
+        if(!alreadyLogged){
+          addHistoryEntry(vehicle, {
+            itemKey: item.custom ? null : key,
+            name: item.custom ? item.customName : null,
+            km: item.lastKm, date: item.lastDate, notes: "", source: "auto",
+          });
+        }
+      }
+      saveState(); render();
+      break;
+    }
+
+    case "done-today": {
+      const mileage = Number(vehicle.currentMileage);
+      if(!mileage){ alert(t("item.needMileageAlert")); break; }
+      const item = vehicle.items[key];
+      item.lastKm = mileage;
+      item.lastDate = vehicle.currentDate || todayISO();
+      addHistoryEntry(vehicle, {
+        itemKey: item.custom ? null : key,
+        name: item.custom ? item.customName : null,
+        km: mileage, date: vehicle.currentDate || todayISO(), notes: "", source: "auto",
+      });
+      saveState(); render();
+      break;
+    }
+
+    case "export-one-ics": {
+      const item = vehicle.items[key];
+      const result = computeItem(vehicle, item);
+      if(result) downloadICS([{name: itemDisplayName(key, item), date: result.projectedDate}]);
+      break;
+    }
+
+    case "remove-item": {
+      const item = vehicle.items[key];
+      requestConfirm(t("item.removeConfirm")(itemDisplayName(key, item)), "remove-item", key);
+      break;
+    }
+
+    case "add-addon": {
+      if(!vehicle.items[key]){
+        const cat = CATALOG[key];
+        vehicle.items[key] = {km: cat.km, months: cat.months, lastKm: null, lastDate: null, optional: true};
+        saveState(); render();
+      }
+      break;
+    }
+
+    case "add-custom-item": {
+      const nameInput = document.getElementById("customItemName");
+      const kmInput = document.getElementById("customItemKm");
+      const monthsInput = document.getElementById("customItemMonths");
+      const name = nameInput.value.trim(), km = kmInput.value, months = monthsInput.value;
+      if(!name || !km || !months){ alert(t("customItem.alert")); break; }
+      const newKey = "custom_" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+      vehicle.items[newKey] = {km: Number(km), months: Number(months), lastKm: null, lastDate: null, custom: true, customName: name};
+      saveState(); render();
+      break;
+    }
+
+    case "add-history": {
+      const name = document.getElementById("histName").value.trim();
+      const km = document.getElementById("histKm").value;
+      const date = document.getElementById("histDate").value;
+      const notes = document.getElementById("histNotes").value.trim();
+      const type = document.getElementById("histType").value;
+      if(!name || !date){ alert(t("history.alertNeedNameDate")); break; }
+      addHistoryEntry(vehicle, {name, km: km || null, date, notes, source: "manual", type});
+      render();
+      break;
+    }
+    case "filter-history":
+      historyFilter = key;
+      render();
+      break;
+
+    case "delete-history":
+      vehicle.history = vehicle.history.filter(h => h.id !== key);
+      saveState(); render();
+      break;
+    case "export-history-csv":
+      if(vehicle.history.length === 0){ alert(t("history.alertNoEntries")); break; }
+      downloadHistoryCSV(vehicle);
+      break;
+  }
+});
+appEl.addEventListener("change", (e) => {
+  const el = e.target;
+  const vehicle = av();
+
+  if(el.id === "importFileInput"){
+    const file = el.files[0];
+    if(!file) return;
+    requestConfirm(t("backup.importConfirm"), "import-backup", null, file);
+    el.value = "";
+    return;
+  }
+
+  // Vehicle setup selects (no data-key, apply to current vehicle)
+  const setupField = el.getAttribute("data-field");
+  const itemKey = el.getAttribute("data-key");
+
+  if(setupField && !itemKey){
+    const val = el.value;
+    if(setupField === "currentMileage" || setupField === "avgMonthlyKm"){
+      vehicle[setupField] = val === "" ? null : Number(val);
+    } else {
+      vehicle[setupField] = val;
+    }
+    saveState();
+    return; // avoid full re-render interrupting typing; values already reflect on next render
+  }
+
+  if(itemKey && (setupField === "lastKmDraft" || setupField === "lastDateDraft")){
+    // Last-service fields are drafts — only committed when "Update" is clicked.
+    detailsOpen[itemKey] = true;
+    return;
+  }
+
+  if(itemKey && setupField){
+    const item = vehicle.items[itemKey];
+    const val = el.value;
+    item[setupField] = (setupField === "km" || setupField === "months") ? (val === "" ? null : Number(val)) : val;
+    detailsOpen[itemKey] = true;
+    saveState();
+    render();
+    return;
+  }
+
+  if(el.id === "historySortField"){ historySort.field = el.value; render(); return; }
+  if(el.id === "historySortDir"){ historySort.dir = el.value; render(); return; }
+});
+render();
+</script>
+</body>
+</html>

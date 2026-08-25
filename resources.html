@@ -1,0 +1,1342 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GearLog — Resources</title>
+<link rel="icon" type="image/png" href="favicon.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#F2A93B">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="shared.css">
+</head>
+<body>
+<div class="wrap"><div id="app"></div></div>
+
+<script src="shared.js"></script>
+<script>
+window.CURRENT_PAGE = "resources";
+
+let finderState = { step: 0, answers: {} }; // transient tire-finder quiz state, not persisted
+
+const FINDER_QUESTIONS = [
+  { id: "vehicleType", options: ["car", "suv", "truck"] },
+  { id: "offroad", visibleIf: a => a.vehicleType === "suv" || a.vehicleType === "truck", options: ["never", "occasional", "regular"] },
+  { id: "towing", visibleIf: a => a.vehicleType === "truck", options: ["no", "occasional", "heavy"] },
+  { id: "winter", options: ["mild", "moderate", "severe"] },
+  { id: "mileage", options: ["low", "medium", "high"] },
+  { id: "performance", options: ["max", "some", "none"] },
+  { id: "noise", options: ["high", "medium", "low"] },
+  { id: "fuelEconomy", options: ["high", "medium", "low"] },
+  { id: "budget", options: ["budget", "mid", "premium"] },
+  { id: "runflat", visibleIf: a => a.vehicleType === "car" || a.vehicleType === "suv", options: ["yes", "no", "unsure"] },
+];
+
+function finderVisibleQuestions(answers){
+  return FINDER_QUESTIONS.filter(q => !q.visibleIf || q.visibleIf(answers));
+}
+
+function computeDailyCarCategory(a, pairWinter){
+  if(a.performance === "max"){
+    return pairWinter ? "performance" : (a.winter === "mild" ? "performance" : "perfas");
+  }
+  if(a.performance === "some") return "grandtouring";
+  if(a.winter === "moderate" || (a.winter === "severe" && a.mileage === "low")) return "allweather";
+  if(a.budget === "budget") return "midtouring";
+  if(a.noise === "high" || a.budget === "premium") return "premium";
+  if(a.fuelEconomy === "high") return "standard";
+  return "midtouring";
+}
+
+function computeFinderResult(a){
+  const wantsRunFlat = a.runflat === "yes";
+
+  if(a.vehicleType === "truck"){
+    const pairWinter = a.winter === "severe";
+    let dailyCat;
+    if(a.towing === "heavy") dailyCat = "heavyduty";
+    else if(a.offroad === "regular") dailyCat = "at-lt";
+    else if(a.offroad === "occasional") dailyCat = "hybrid-lt";
+    else dailyCat = a.budget === "budget" ? "midhighway" : "highway-lt";
+    return { cat: dailyCat, jump: "rank-truck", pairWinter };
+  }
+
+  if(a.vehicleType === "suv"){
+    if(a.offroad === "regular" || a.offroad === "occasional") return { cat: "at-suv", jump: "rank-suv" };
+    if(a.budget === "budget") return { cat: "midrange-suv", jump: "rank-suv" };
+    if(wantsRunFlat) return { cat: "runflat-suv", jump: "rank-suv" };
+    const pairWinter = a.winter === "severe" && a.mileage !== "low";
+    return { cat: computeDailyCarCategory(a, pairWinter), jump: "rank-pc", pairWinter };
+  }
+
+  // Passenger Car
+  if(wantsRunFlat) return { cat: "runflat", jump: "rank-pc" };
+  const pairWinter = a.winter === "severe" && a.mileage !== "low";
+  return { cat: computeDailyCarCategory(a, pairWinter), jump: "rank-pc", pairWinter };
+}
+
+function renderFinderOnly(){
+  const root = document.getElementById("tire-finder-root");
+  if(root) root.outerHTML = tireFinderHTML();
+}
+
+function tireFinderHTML(){
+  const visible = finderVisibleQuestions(finderState.answers);
+  const total = visible.length;
+
+  if(finderState.step === 0){
+    return `
+      <div class="finder-box" id="tire-finder-root">
+        <div class="finder-start-row">
+          <div>
+            <div class="finder-question-title" style="margin-bottom:4px;">${t("finder.title")}</div>
+            <p style="font-size:12.5px; color:var(--text-dim2); margin:0; line-height:1.5;">${t("finder.intro")}</p>
+          </div>
+          <button class="btn c-amber" type="button" data-action="finder-start">${t("finder.startBtn")}</button>
+        </div>
+      </div>
+    `;
+  }
+
+  if(finderState.step > total){
+    const result = computeFinderResult(finderState.answers);
+    const resultData = t("finder.results")[result.cat];
+    return `
+      <div class="finder-box" id="tire-finder-root">
+        <div class="finder-progress">${t("finder.resultIntro")}</div>
+        <div class="finder-result-title">${resultData.title}</div>
+        <p class="finder-result-reason">${resultData.reason}</p>
+        ${result.pairWinter ? `<div class="callout" style="margin:0 0 16px;">${t("finder.pairWinterNote")}</div>` : ""}
+        <div class="finder-actions">
+          <button class="btn secondary" type="button" data-action="finder-restart">${t("finder.restartBtn")}</button>
+          <button class="btn c-amber" type="button" data-action="finder-jump" data-key="${result.jump}" data-value="cat-${result.cat}">${t("finder.jumpBtn")}</button>
+        </div>
+      </div>
+    `;
+  }
+
+  const q = visible[finderState.step - 1];
+  const qData = t("finder.q")[q.id];
+  const selected = finderState.answers[q.id];
+  const pct = Math.round(((finderState.step - 1) / total) * 100);
+
+  return `
+    <div class="finder-box" id="tire-finder-root">
+      <div class="finder-progress">${t("finder.stepOf")(finderState.step, total)}</div>
+      <div class="finder-progress-bar"><div class="finder-progress-bar-fill" style="width:${pct}%;"></div></div>
+      <div class="finder-question-title">${qData.title}</div>
+      <div class="condition-choice">
+        ${q.options.map(opt => `
+          <div class="condition-option ${selected === opt ? "selected" : ""}" data-action="select-finder-answer" data-key="${q.id}" data-value="${opt}" role="button" tabindex="0">
+            <div class="condition-option-label"><span class="condition-option-check"></span>${qData[opt]}</div>
+          </div>
+        `).join("")}
+      </div>
+      ${finderState.step > 1 ? `
+        <div class="finder-actions">
+          <button class="btn secondary" type="button" data-action="finder-back">${t("finder.backBtn")}</button>
+        </div>
+      ` : ""}
+    </div>
+  `;
+}
+
+
+function resourcesPageHTML(){
+  return state.language === "fr" ? resourcesContentFR() : resourcesContentEN();
+}
+
+function resourcesContentEN(){
+  return `
+    <p style="font-family:var(--font-mono); font-size:11.5px; color:var(--text-dim2); margin:0 0 20px;"><b style="color:var(--text);">Last updated:</b> Aug 19, 2026</p>
+
+    <details class="res-section sec-tires" id="res-tires">
+      <summary><h2>Tires</h2><span class="res-chevron">&#9660;</span></summary>
+      <div class="res-section-body">
+      <p class="card-sub">Data sources, brand rankings by category, and mid-range picks worth trusting.</p>
+
+      <details class="acc">
+        <summary><span class="summary-txt">Tire Data &amp; Reviews</span><span class="count-tag">4 primary + sources list</span></summary>
+        <div class="acc-body">
+          <div class="res-item sec-tires">
+            <a href="https://www.tyrereviews.com/" target="_blank" rel="noopener">Tyre Reviews</a>
+            <p>Excellent database on tires with extensive resources, including documented tire tests, specs, and performance comparisons — cheap vs. premium.</p>
+          </div>
+          <div class="res-item sec-tires">
+            <a href="https://www.tirerack.com/tires/tests" target="_blank" rel="noopener">Tire Rack Test Results</a>
+            <p>Tire Rack's own test track results, run on real cars (BMW M2, Tesla Model 3, and others). Cross-referenced against Tyre Reviews below, since strong performers like Falken and Toyo show up more here.</p>
+          </div>
+          <div class="res-item sec-tires">
+            <a href="https://youtu.be/UThaFOKi21g?si=cQExEa5c26JU1P1h" target="_blank" rel="noopener">Current Best Tires for 2025/26</a>
+            <p>Video roundup of top tire picks across categories.</p>
+          </div>
+          <div class="res-item sec-tires">
+            <a href="https://www.youtube.com/@tyrereviews" target="_blank" rel="noopener">Tyre Reviews — YouTube</a>
+            <p>Ongoing video coverage of group tests and new tire launches.</p>
+          </div>
+          <details class="sub theme-standard">
+            <summary><span class="summary-txt">Full Sources List</span></summary>
+            <div class="sub-body">
+              <p class="card-sub" style="margin-top:2px;">Every source cross-referenced while researching and fact-checking the rankings below, beyond the four primary ones above.</p>
+              <div class="item sd1"><div class="item-top"><div class="item-name">AutoBild</div></div><p class="note">German publication's annual summer and all-season tire group tests — cited for Grand Touring Summer and Mid-Range placements.</p></div>
+              <div class="item sd2"><div class="item-top"><div class="item-name">DEKRA (via Pirelli-cited comparison)</div></div><p class="note">Independent European testing body — source for the combined dry+wet+snow braking data used to rank the All-Weather category.</p></div>
+              <div class="item sd3"><div class="item-top"><div class="item-name">Manufacturer-published test data</div></div><p class="note">Michelin, Continental, Goodyear, and Bridgestone's own head-to-head test results, used only where corroborated by at least one independent source.</p></div>
+              <div class="item sd4"><div class="item-top"><div class="item-name">SimpleTire &amp; AAA test data</div></div><p class="note">Independent tire comparison data, particularly for Premium/Standard Touring and Truck Highway placements.</p></div>
+              <div class="item sd5"><div class="item-top"><div class="item-name">Consumer Reports &amp; Car Talk</div></div><p class="note">Independent tire testing and category classification, used to verify Standard vs. Premium Touring tier placements.</p></div>
+              <div class="item sd6"><div class="item-top"><div class="item-name">ADAC</div></div><p class="note">Germany's largest automobile club — runs some of the most rigorous independent tire group tests in Europe, cited via Tyre Reviews' coverage.</p></div>
+              <div class="item sd7"><div class="item-top"><div class="item-name">AutoView</div></div><p class="note">European test publication cited for UHP summer and all-season group test results, via Tyre Reviews' curated coverage.</p></div>
+            </div>
+          </details>
+        </div>
+      </details>
+
+      <details class="acc">
+        <summary><span class="summary-txt">Which Tire Type Do You Actually Need?</span><span class="count-tag">read this before the rankings</span></summary>
+        <div class="acc-body">
+          <p class="card-sub" style="margin-top:-4px;">A proper guide to what every category on this page actually means and who genuinely benefits from it — not a ranking, organized by vehicle type just like the rankings below.</p>
+
+          <div id="tire-finder-root">${tireFinderHTML()}</div>
+
+          <div class="item"><div class="item-top"><div class="item-name">All-Season (general)</div></div><p class="note">The default OEM-fit label across almost every category below, and honestly the most oversold name in the industry — "all-season" really means "three-season." Without a 3PMSF certification specifically, there's no snow-specific rubber compound or dedicated ice tread, so cold-weather grip is just okay at best. Fine for a mild climate with rare, light snow. Not something to trust in a real winter, regardless of which touring/performance tier it's paired with.</p></div>
+
+          <div class="item mr1"><div class="item-top"><div class="item-name">Reliable Mid-Range Brands (general)</div></div><p class="note">Who it's for: budget-conscious buyers of any vehicle type who still want a tire that genuinely competes with premium options. These brands' value showed up specifically in Highway Terrain testing, but their reputation for punching above their price extends across passenger car, SUV, and truck lines alike — not a narrow, vehicle-specific category the way the others on this page are.</p></div>
+
+          <div class="item rf1"><div class="item-top"><div class="item-name">Run-Flat (general)</div></div><p class="note">A reinforced sidewall lets the tire support the vehicle's weight for a short distance (typically ~80 km at up to 80 km/h) after total air loss, avoiding a roadside tire change. Selection genuinely shrinks as vehicle weight goes up: passenger cars have the deepest run-flat lineup (standard OE fitment on most BMW and Mini models), SUV run-flat options exist but are noticeably thinner — some tire lines simply don't offer a run-flat version of their SUV product at all — and trucks essentially have no mainstream run-flat category, since the extra sidewall stiffness needed to support that much weight would fight against the flex trucks need for towing and off-road use. If your vehicle came from the factory on run-flats, stick with run-flats — mixing a run-flat and a conventional tire on the same axle is not recommended.</p></div>
+
+          <details class="sub theme-guide" open>
+            <summary><span class="summary-txt">Passenger Car</span></summary>
+            <div class="sub-body">
+              <div class="item sd1"><div class="item-top"><div class="item-name">Standard Touring</div></div><p class="note">Who it's for: budget-conscious daily commuters who just want to get from A to B reliably. Competent but unremarkable in every category — the tradeoff for the lowest price in the touring family. Best benefit-per-dollar if you don't care about performance and just want predictable, safe transportation.</p></div>
+              <div class="item pt1"><div class="item-top"><div class="item-name">Premium Touring</div></div><p class="note">Who it's for: drivers who want the nicest possible daily-driver ride — quieter cabin, longer tread life, often better wet grip — without paying for performance they'll never use. The natural step up from Standard Touring once budget allows.</p></div>
+              <div class="item gt1"><div class="item-top"><div class="item-name">Grand Touring (Summer)</div></div><p class="note">Who it's for: drivers who want a noticeably sportier feel than any touring tire offers, but still need daily-driver comfort and quiet — the closest a touring-family tire gets to performance-tire feel. Summer-only, so it needs a winter plan alongside it.</p></div>
+              <div class="item pf1"><div class="item-top"><div class="item-name">Performance (Summer UHP/UUHP)</div></div><p class="note">Who it's for: enthusiasts and sports-car owners who want maximum dry/wet grip and don't mind a second set of tires for winter. The soft compound goes hard and loses grip below roughly 7°C — genuinely unsafe in the cold, not just "less good," so this only makes sense paired with a real winter tire for anyone outside a warm climate.</p></div>
+              <div class="item pa1"><div class="item-top"><div class="item-name">Performance All-Season</div></div><p class="note">Who it's for: drivers who want most of that UHP grip and handling without the seasonal tire swap — a genuinely good middle ground for someone who wants a "sporty daily" in a climate with mild winters. The cold-flexible compound that makes it work year-round means it never quite matches a true summer tire's peak grip, warm or cold.</p></div>
+              <div class="item aw1"><div class="item-top"><div class="item-name">All-Weather</div></div><p class="note">Who it's for: the tire that actually earns the "all-season" promise — 3PMSF-certified, genuinely capable in light-to-moderate snow, usable year-round without a seasonal swap. The best fit for lower-mileage drivers in a moderate winter climate; see the mileage guidance below for exactly when this beats a dedicated winter set.</p></div>
+              <div class="item t1"><div class="item-top"><div class="item-name">Winter / Snow</div></div><p class="note">Who it's for: anyone who drives a meaningful amount through a real winter — regular snow, ice, sustained cold. Nothing else on this page comes close to a dedicated winter tire's ice and snow grip, and that gap is exactly what keeps a higher-mileage winter driver safer.</p></div>
+              <div class="callout callout-c">
+                <b>How much you drive should decide this, not just where you live.</b> If you drive under roughly 10,000 km a year, an All-Weather tire is very likely the better call than running two dedicated sets — the incremental grip advantage of a proper winter tire only pays off once you're actually racking up real distance in genuine winter conditions, and for low-mileage driving the cost, hassle, and storage of swapping twice a year usually isn't worth it. If you drive a lot and see real winter — regular snow, ice, sustained cold — dedicated summer and winter sets are worth it: winter tires' ice/snow advantage over even a good All-Weather tire compounds significantly the more you're actually on the road in those conditions, and it's exactly the higher-mileage driver who benefits most from that gap.
+              </div>
+            </div>
+          </details>
+
+          <details class="sub theme-guide">
+            <summary><span class="summary-txt">SUV / Crossover</span></summary>
+            <div class="sub-body">
+              <div class="callout gold">SUVs genuinely mix both worlds: the Passenger Car categories above (Grand Touring, Performance, Performance All-Season, All-Weather, Winter) apply directly to SUVs too, in CUV/SUV sizing — they're not exclusive to sedans. The two categories below are the ones that are genuinely SUV-specific.</div>
+              <div class="item su1"><div class="item-top"><div class="item-name">All-Terrain</div></div><p class="note">Who it's for: crossover/CUV owners who occasionally leave pavement — gravel driveways, forest service roads, light trail — but don't want the noise or fuel penalty of a true off-road tire. Purpose-built for a lighter crossover platform, not just a smaller version of a truck tire.</p></div>
+              <div class="item uh1"><div class="item-top"><div class="item-name">Highway</div></div><p class="note">Who it's for: SUV/crossover owners who stay on pavement and want a tire engineered for the extra weight and load case of an SUV specifically, not a passenger-car touring tire stretched to fit. Usually prioritizes wet grip that holds up as the tire wears.</p></div>
+            </div>
+          </details>
+
+          <details class="sub theme-guide">
+            <summary><span class="summary-txt">Truck (body-on-frame)</span></summary>
+            <div class="sub-body">
+              <div class="item at1"><div class="item-top"><div class="item-name">All-Terrain (LT)</div></div><p class="note">Who it's for: truck owners who genuinely go off-road regularly — gravel, dirt, rock, mud — and are willing to trade some on-road quiet and fuel economy for that capability. Not a winter tire, even with the 3PMSF symbol on the sidewall — see the myth-busting callout below, since this is one of the most common and dangerous misconceptions on the road.</p></div>
+              <div class="callout callout-b">
+                <b>The all-terrain winter myth.</b> A lot of AT tire buyers assume the mountain-snowflake symbol means their truck is "basically a winter vehicle" now, and then end up in a ditch the first time a real snowstorm hits. Here's why: 3PMSF certification only tests acceleration on medium-packed snow — it doesn't test braking, cornering, or ice at all (Tire Rack's own explainer confirms this directly). AT tires also use a harder rubber compound tuned for gravel/rock durability, which stiffens up and loses grip in the cold the same way a summer tire does, and they have far fewer sipes (the tiny slits that bite into ice) than a real winter tire. The 3PMSF-rated AT tire will out-perform a plain all-season tire in snow — that part is real. It will not stop or turn like a dedicated winter tire on ice or packed snow, and treating it like one is exactly how people end up sliding through an intersection or off the road in a storm.
+              </div>
+              <div class="item hw1"><div class="item-top"><div class="item-name">Standard Highway (LT)</div></div><p class="note">Who it's for: truck owners who stay almost entirely on pavement — commuting, light hauling — and want quiet, long tread life, and better fuel economy over any off-road capability they'll never use.</p></div>
+              <div class="item hy1"><div class="item-top"><div class="item-name">Hybrid / Trail Highway (LT)</div></div><p class="note">Who it's for: the truck owner who wants Standard Highway comfort most of the time but occasionally needs light off-road capability — gravel, forest service roads, mild trail — without committing to a full All-Terrain tread and its noise/fuel tradeoffs.</p></div>
+              <div class="item hd1"><div class="item-top"><div class="item-name">Heavy Duty Highway (LT)</div></div><p class="note">Who it's for: owners of 2500/3500-series trucks who regularly tow or haul real weight — this tier is reinforced specifically for that load case, not just a Standard Highway tire in a bigger size.</p></div>
+              <div class="item lw1"><div class="item-top"><div class="item-name">Winter (LT)</div></div><p class="note">Who it's for: truck owners facing real winter who also tow or haul — a dedicated LT winter compound and construction handles load in snow and ice in a way no all-season or all-terrain LT tire can match.</p></div>
+            </div>
+          </details>
+        </div>
+      </details>
+
+      <details class="acc" id="acc-rankings">
+        <summary><span class="summary-txt">Top Tire Brands — By Category</span><span class="count-tag">via Tyre Reviews &amp; Tire Rack testing</span></summary>
+        <div class="acc-body">
+          <p class="card-sub" style="margin-top:-4px;">Organized by vehicle type, since a passenger car, a crossover SUV, and a body-on-frame truck rarely shop from the same tire lineup. Composite Top 10 and Brands to Avoid stay vehicle-agnostic since brand strength there isn't specific to one platform.</p>
+
+          <details class="sub theme-top10">
+            <summary><span class="summary-txt">Composite Top 10 — Overall</span></summary>
+            <div class="sub-body">
+              <p class="card-sub" style="margin-top:2px;">Ranked 1–10 by how consistently each brand wins or podiums across categories, not just one test.</p>
+              <div class="item tp1"><div class="item-top"><div class="item-name"><span class="rank-num">01</span>Pirelli</div></div><p class="note"><b>All-Rounder.</b> Wins across all-season, UUHP summer, and all-terrain — no other brand tops that many categories at once.</p></div>
+              <div class="item tp2"><div class="item-top"><div class="item-name"><span class="rank-num">02</span>Continental</div></div><p class="note"><b>All-Rounder.</b> Winter/snow performance plus daily all-season touring — consistently a podium finisher, rarely the weak link.</p></div>
+              <div class="item tp3"><div class="item-top"><div class="item-name"><span class="rank-num">03</span>Michelin</div></div><p class="note"><b>All-Rounder.</b> All-weather versatility (CrossClimate2) plus premium winter (Alpin / X-Ice) — the safe, proven default.</p></div>
+              <div class="item tp4"><div class="item-top"><div class="item-name"><span class="rank-num">04</span>Falken</div></div><p class="note"><b>Specialist.</b> Podiums in both all-terrain (Wildpeak AT4W) and track-level performance (Azenis RT660+) — a genuine dual-category threat, not just a value pick.</p></div>
+              <div class="item tp5"><div class="item-top"><div class="item-name"><span class="rank-num">05</span>Toyo</div></div><p class="note"><b>Specialist.</b> Same dual strength as Falken — Open Country A/T III wins on snow-heavy all-terrain, Proxes Sport 2 competes directly in UUHP summer testing.</p></div>
+              <div class="item tp6"><div class="item-top"><div class="item-name"><span class="rank-num">06</span>Goodyear</div></div><p class="note"><b>Specialist.</b> Ice traction specialist, backed by a strong all-season lineup.</p></div>
+              <div class="item tp7"><div class="item-top"><div class="item-name"><span class="rank-num">07</span>Nokian</div></div><p class="note"><b>Specialist.</b> Winter/snow specialist — Nordic-tested, and the dedicated winter all-terrain benchmark.</p></div>
+              <div class="item tp8"><div class="item-top"><div class="item-name"><span class="rank-num">08</span>BFGoodrich</div></div><p class="note"><b>Specialist.</b> All-terrain benchmark — the tire other AT tires get measured against.</p></div>
+              <div class="item tp9"><div class="item-top"><div class="item-name"><span class="rank-num">09</span>Bridgestone</div></div><p class="note"><b>Specialist.</b> Winter ice/snow (Blizzak) paired with genuine UHP performance credentials (Potenza).</p></div>
+              <div class="item tp10"><div class="item-top"><div class="item-name"><span class="rank-num">10</span>Hankook</div></div><p class="note"><b>Value.</b> Value-forward all-season and winter — competes directly with the premium tier at a lower price.</p></div>
+            </div>
+          </details>
+
+          <details class="acc vehicle-acc" id="rank-pc">
+            <summary><span class="summary-txt">Passenger Car</span><span class="count-tag">sedans, coupes</span></summary>
+            <div class="acc-body">
+
+              <details class="sub theme-standard" id="cat-standard">
+                <summary><span class="summary-txt">Standard Touring</span></summary>
+                <div class="sub-body">
+                  <p class="card-sub" style="margin-top:2px;">The everyday default: point A to B, decent tread life, competent but unremarkable. One tier below Premium Touring — trades some comfort/quiet/wear for a noticeably lower price.</p>
+                  <div class="item sd1"><div class="item-top"><div class="item-name"><span class="rank-num">01</span>Michelin</div></div><p class="note">Defender2 (and the outgoing Defender T+H) is explicitly built and marketed as a Standard Touring All-Season tire — Tire Rack's own "Standard Touring All-Season" test used it as the class reference point against the Assurance MaxLife.</p></div>
+                  <div class="item sd2"><div class="item-top"><div class="item-name"><span class="rank-num">02</span>Goodyear</div></div><p class="note">Assurance MaxLife2 is Defender2's direct rival in that same Standard Touring tier — slightly ahead on wet handling and warranty mileage (137,000 km vs 129,000 km), while Michelin holds a small wet-braking edge.</p></div>
+                  <div class="item sd3"><div class="item-top"><div class="item-name"><span class="rank-num">03</span>Hankook</div></div><p class="note">Kinergy XP is the budget-value standout in this tier — a 121,000 km warranty at a noticeably lower price than the Michelin/Goodyear pair, without a major performance cliff.</p></div>
+                  <div class="item sd4"><div class="item-top"><div class="item-name"><span class="rank-num">04</span>Kumho</div></div><p class="note">Majesty 9 Solus TA91 is repeatedly used as the budget-tier reference point in independent Standard Touring comparisons — genuinely competitive dry/wet grip for the price.</p></div>
+                  <div class="item sd5"><div class="item-top"><div class="item-name"><span class="rank-num">05</span>Vredestein</div></div><p class="note">HiTrac All Season sits solidly mid-pack in this tier on independent comparisons — a lesser-known name, but a legitimate Standard Touring option worth cross-shopping.</p></div>
+                </div>
+              </details>
+
+              <details class="sub theme-midtouring" id="cat-midtouring">
+                <summary><span class="summary-txt">Mid-Range Touring</span></summary>
+                <div class="sub-body">
+                  <p class="card-sub" style="margin-top:2px;">Distinct from Standard Touring above: these are brands with a genuine reputation for punching above their price point, not major brands' own budget product lines. The value tier proper.</p>
+                  <div class="item mt1"><div class="item-top"><div class="item-name"><span class="rank-num">01</span>Kumho</div></div><p class="note">Solus TA31 (and the newer TA51a) shows up repeatedly as the value leader across independent budget-tire roundups — the most rating-per-dollar in its class, with a controlled ride that doesn't feel flimsy for the price.</p></div>
+                  <div class="item mt2"><div class="item-top"><div class="item-name"><span class="rank-num">02</span>Hankook</div></div><p class="note">Kinergy PT is the mileage-focused pick of this tier — reduced road noise and fuel consumption for everyday driving, and a favorite OEM-equivalent swap for Hyundai/Kia/Genesis owners.</p></div>
+                  <div class="item mt3"><div class="item-top"><div class="item-name"><span class="rank-num">03</span>Falken</div></div><p class="note">Sincera SN250 A/S posts standout wet-traction and treadwear scores for the price, backed by millions of reported owner miles — a smart pick for high-mileage commuters.</p></div>
+                  <div class="item mt4"><div class="item-top"><div class="item-name"><span class="rank-num">04</span>Cooper</div></div><p class="note">Evolution Tour is the comfort-oriented choice of this tier — Cooper consistently lands in the sweet spot between price and trust across independent reviews.</p></div>
+                  <div class="item mt5"><div class="item-top"><div class="item-name"><span class="rank-num">05</span>Nexen</div></div><p class="note">N'Priz AH5 is the best-warranty pick at the true budget end — a reasonable choice for drivers who want the lowest real cost per tire without dropping to unbranded imports.</p></div>
+                </div>
+              </details>
+
+              <details class="sub theme-premium" id="cat-premium">
+                <summary><span class="summary-txt">Premium Touring</span></summary>
+                <div class="sub-body">
+                  <p class="card-sub" style="margin-top:2px;">The step up from Standard Touring: a quieter cabin, longer tread life, and often better wet grip or lower rolling resistance for fuel economy — comfort-first, all-season-capable tires for drivers who want the nicest daily-driver ride without paying for performance they'll never use.</p>
+                  <div class="item pt1"><div class="item-top"><div class="item-name"><span class="rank-num">01</span>Continental</div></div><p class="note">TrueContact Tour 54 is explicitly labeled a "premium Grand Touring" tire in direct comparisons, and beat its closest rivals on wet handling, winter control, and overall placement in two separate Tire Rack tests.</p></div>
+                  <div class="item pt2"><div class="item-top"><div class="item-name"><span class="rank-num">02</span>Bridgestone</div></div><p class="note">Turanza QuietTrack sits in the same premium tier — strongest on outright traction (SimpleScore 9.7 vs 8.4) and noise mitigation, the pick when cabin quiet is the top priority.</p></div>
+                  <div class="item pt3"><div class="item-top"><div class="item-name"><span class="rank-num">03</span>Michelin</div></div><p class="note">Primacy Tour A/S is Michelin's actual Premium Touring entry (distinct from the Standard-tier Defender2) — chosen as OEM fitment by Acura, Lexus, BMW, Mercedes-Benz, and Cadillac specifically for its quiet tread design.</p></div>
+                  <div class="item pt4"><div class="item-top"><div class="item-name"><span class="rank-num">04</span>Yokohama</div></div><p class="note">AVID Ascend GT competes directly in this same tier — tight grip in dry and wet, plus solid light-snow manners for a non-3PMSF touring tire.</p></div>
+                  <div class="item pt5"><div class="item-top"><div class="item-name"><span class="rank-num">05</span>Pirelli</div></div><p class="note">P7 AS Plus 3 rounds out Tire Rack's Grand Touring All-Season field alongside strong competitors — a dependable, comfort-oriented choice, though with less head-to-head test data available than the top four.</p></div>
+                </div>
+              </details>
+
+              <details class="sub theme-grandtouring" id="cat-grandtouring">
+                <summary><span class="summary-txt">Grand Touring (Summer)</span></summary>
+                <div class="sub-body">
+                  <p class="card-sub" style="margin-top:2px;">A step up again in performance and outright grip over Premium Touring, while still holding on to comfort and a quiet cabin — the closest a touring-family tire gets to performance-tire feel without giving up everyday manners. Summer-only, not all-season.</p>
+                  <div class="item gt1"><div class="item-top"><div class="item-name"><span class="rank-num">01</span>Continental</div></div><p class="note">PremiumContact 7 has dominated the segment since its 2023 launch, winning 11 of 12 direct comparisons against the Michelin Primacy 4+, and posting class-leading wet braking and wet handling lap times.</p></div>
+                  <div class="item gt2"><div class="item-top"><div class="item-name"><span class="rank-num">02</span>Pirelli</div></div><p class="note">Cinturato C3 is the newest entrant and has essentially matched PremiumContact 7 in overall rating — it actually beats the Continental on dry braking, handling, and cabin noise, making this a genuine rivalry rather than a runaway.</p></div>
+                  <div class="item gt3"><div class="item-top"><div class="item-name"><span class="rank-num">03</span>Bridgestone</div></div><p class="note">Turanza T005 is rated among the strongest in this segment overall, known for a particularly low rolling-resistance coefficient — the pick if fuel economy matters as much as grip.</p></div>
+                  <div class="item gt4"><div class="item-top"><div class="item-name"><span class="rank-num">04</span>Goodyear</div></div><p class="note">Eagle F1 Asymmetric 6 has won every European press test it's entered since its 2022 launch — strongest against the Turanza T005 specifically in outright wet and dry grip, though it trails on comfort and rolling resistance.</p></div>
+                  <div class="item gt5"><div class="item-top"><div class="item-name"><span class="rank-num">05</span>Michelin</div></div><p class="note">Primacy 4+ trails the field in most direct comparisons, but keeps a real edge in comfort and long-term refinement as the tire wears — the pick for drivers who value that over outright grip.</p></div>
+                </div>
+              </details>
+
+              <details class="sub theme-performance" id="cat-performance">
+                <summary><span class="summary-txt">Performance (Summer UHP / UUHP)</span></summary>
+                <div class="sub-body">
+                  <div class="item pf1"><div class="item-top"><div class="item-name"><span class="rank-num">01</span>Pirelli</div></div><p class="note">P Zero was the standout winner of Tyre Reviews' 2026 ultra-high-performance summer test.</p></div>
+                  <div class="item pf2"><div class="item-top"><div class="item-name"><span class="rank-num">02</span>Michelin</div></div><p class="note">Pilot Sport 5 remains one of the most consistently tested and recommended UHP tires; Pilot Sport Cup 2 served as the track-focused benchmark in the same UUHP test.</p></div>
+                  <div class="item pf3"><div class="item-top"><div class="item-name"><span class="rank-num">03</span>Bridgestone</div></div><p class="note">Potenza RE-71RS remains a benchmark streetable track tire, regularly used as the reference point in Tire Rack's own competition tire tests.</p></div>
+                  <div class="item pf4"><div class="item-top"><div class="item-name"><span class="rank-num">04</span>Falken</div></div><p class="note">Azenis RT660 / RT660+ regularly lines up in Tire Rack's own competition tests alongside the Bridgestone Potenza RE-71RS and Michelin Pilot Sport Cup 2 — genuine track-day company, not just a budget alternative.</p></div>
+                  <div class="item pf5"><div class="item-top"><div class="item-name"><span class="rank-num">05</span>Toyo</div></div><p class="note">Proxes Sport 2 held its own in Tire Rack's 2025 UUHP summer test against the Falken FK510, BFGoodrich g-Force Phenom TA, Sumitomo HTR Z5, and Nitto NT555 G2.</p></div>
+                </div>
+              </details>
+
+              <details class="sub theme-perfas" id="cat-perfas">
+                <summary><span class="summary-txt">Performance All-Season</span></summary>
+                <div class="sub-body">
+                  <p class="card-sub" style="margin-top:2px;">Ultra-high-performance grip paired with a winter-capable all-season compound — the closest thing to summer-UHP cornering and braking without needing a second set of tires for the off-season, though still a notch below a true summer tire's peak dry/wet grip.</p>
+                  <div class="item pa1"><div class="item-top"><div class="item-name"><span class="rank-num">01</span>Continental</div></div><p class="note">ExtremeContact DWS06 Plus is widely regarded as the segment's best all-rounder for mixed real-world driving — stronger handling, steering response, and cabin refinement than its closest rival across nearly a dozen direct comparisons.</p></div>
+                  <div class="item pa2"><div class="item-top"><div class="item-name"><span class="rank-num">02</span>Michelin</div></div><p class="note">Pilot Sport All Season 4 is the braking-numbers specialist — shortest dry and wet stopping distances in most head-to-head tests, the pick if emergency-stop performance is the priority.</p></div>
+                  <div class="item pa3"><div class="item-top"><div class="item-name"><span class="rank-num">03</span>Goodyear</div></div><p class="note">Eagle F1 All Season was one of the strongest finishers in Tire Rack's own 5-tire UHPAS test on a Tesla Model 3, beating the Michelin on-road.</p></div>
+                  <div class="item pa4"><div class="item-top"><div class="item-name"><span class="rank-num">04</span>Bridgestone</div></div><p class="note">Potenza Sport AS also finished ahead of the pack in that same Tire Rack test — a genuine podium contender, not just a filler entry.</p></div>
+                  <div class="item pa5"><div class="item-top"><div class="item-name"><span class="rank-num">05</span>Pirelli</div></div><p class="note">P Zero All Season Plus led the dry handling group in a separate Tire Rack UHPAS test — a strong option in size availability and grip, though less commonly featured in head-to-head tests than the top four.</p></div>
+                </div>
+              </details>
+
+              <details class="sub theme-allweather" id="cat-allweather">
+                <summary><span class="summary-txt">All-Weather</span></summary>
+                <div class="sub-body">
+                  <p class="card-sub" style="margin-top:2px;">3PMSF-certified tires built to handle light-to-moderate winter conditions year-round without a seasonal swap — a real step up from plain all-season, but not a substitute for dedicated winter tires in serious snow/ice climates. Ranked by combined dry + wet + snow braking distance from an independent DEKRA comparison.</p>
+                  <div class="item aw1"><div class="item-top"><div class="item-name"><span class="rank-num">01</span>Pirelli</div></div><p class="note">Cinturato All Season SF3 posted the best combined braking distance (72.8 m total across dry, wet, and snow) against four rival all-weather tires — also A-rated for wet grip on the EU tyre label.</p></div>
+                  <div class="item aw2"><div class="item-top"><div class="item-name"><span class="rank-num">02</span>Bridgestone</div></div><p class="note">Turanza All Season 6 finished a close second in the same comparison (73.1 m combined).</p></div>
+                  <div class="item aw3"><div class="item-top"><div class="item-name"><span class="rank-num">03</span>Michelin</div></div><p class="note">CrossClimate2 remains the best-known all-weather tire in North America — 3rd in this combined-braking test (74.6 m), and still one of the most broadly recommended year-round options.</p></div>
+                  <div class="item aw4"><div class="item-top"><div class="item-name"><span class="rank-num">04</span>Continental</div></div><p class="note">AllSeasonContact 2 placed 4th here (75.5 m combined) — but won AutoBild's 2025 All Season Tire Test outright, a reminder that rankings shift with test methodology.</p></div>
+                  <div class="item aw5"><div class="item-top"><div class="item-name"><span class="rank-num">05</span>Goodyear</div></div><p class="note">Assurance WeatherReady2 is Goodyear's 3PMSF all-weather entry, tested directly against CrossClimate2 by Goodyear itself — strong wet braking (1.6 m shorter than comparable tires), though not the outright class leader in this specific DEKRA comparison.</p></div>
+                </div>
+              </details>
+
+              <details class="sub theme-winter" id="cat-winter">
+                <summary><span class="summary-txt">Winter / Snow</span></summary>
+                <div class="sub-body">
+                  <div class="item t1"><div class="item-top"><div class="item-name"><span class="rank-num">01</span>Continental</div></div><p class="note">VikingContact 8 won Tyre Reviews' 2025/26 Nordic studless test outright — consistent results across snow, ice, wet, dry, noise, and rolling resistance.</p></div>
+                  <div class="item t2"><div class="item-top"><div class="item-name"><span class="rank-num">02</span>Michelin</div><span class="status-pill new">New for 2026</span></div><p class="note">X-Ice Snow+ launches for the 2026 winter season — improves on the outgoing X-Ice Snow in performance and durability, plus Piano Acoustic Tuning for a quieter ride. Pilot Alpin PA4 remains their performance winter option.</p></div>
+                  <div class="item t3"><div class="item-top"><div class="item-name"><span class="rank-num">03</span>Bridgestone</div><span class="status-pill new">New for 2026</span></div><p class="note">Blizzak IcePeak is the new flagship winter tire, launching nationally May 2026 — first Blizzak to carry both 3-Peak Mountain Snowflake and Ice Grip certifications, replacing the WS90 and DM-V2.</p></div>
+                  <div class="item t4"><div class="item-top"><div class="item-name"><span class="rank-num">04</span>Nokian</div></div><p class="note">Hakkapeliitta R5 posted the best braking distance and lap time in Tyre Reviews' snow test — the passenger-car benchmark, distinct from the LT-rated Hakkapeliitta LT3 built for trucks.</p></div>
+                  <div class="item t5"><div class="item-top"><div class="item-name"><span class="rank-num">05</span>Goodyear</div></div><p class="note">Ultra Grip Ice WRT is Goodyear's dedicated studless ice/snow tire for North America. UltraGrip Ice 3, which posted strong ice-braking results in the same test, is a Euro/Nordic-market tire not sold here — the WRT uses related ice-focused tread technology and remains a trusted Canadian winter option.</p></div>
+                  <div class="callout"><b>Note:</b> Neither the X-Ice Snow+ nor the Blizzak IcePeak has been through a Tyre Reviews group test yet — both are brand new for the 2026 season. Treat as "ones to watch" until tested head-to-head.</div>
+                </div>
+              </details>
+
+              <details class="sub theme-midwinter" id="cat-midwinter">
+                <summary><span class="summary-txt">Mid-Range Winter</span></summary>
+                <div class="sub-body">
+                  <p class="card-sub" style="margin-top:2px;">Genuine winter capability — 3PMSF-certified, studdable in most cases — at a real discount to the flagship tier above. Not a substitute for the top tier in the harshest climates, but a legitimate value option for most winter drivers.</p>
+                  <div class="item mw1"><div class="item-top"><div class="item-name"><span class="rank-num">01</span>Nokian</div></div><p class="note">Nordman North 9 is Nokian's own budget sub-brand, launched specifically to bring their Nordic winter-tire technology down to a more accessible price point.</p></div>
+                  <div class="item mw2"><div class="item-top"><div class="item-name"><span class="rank-num">02</span>Hankook</div></div><p class="note">Winter i*cept RS3 delivers strong snow performance and good wet braking at a very competitive price — repeatedly cited as the mid-range standout in independent European testing.</p></div>
+                  <div class="item mw3"><div class="item-top"><div class="item-name"><span class="rank-num">03</span>Yokohama</div></div><p class="note">iceGUARD G075 is a proven performer with especially wide fitment coverage, making it an easy find across most vehicle sizes.</p></div>
+                  <div class="item mw4"><div class="item-top"><div class="item-name"><span class="rank-num">04</span>General</div></div><p class="note">AltiMAX Arctic 12 is stud-ready and wallet-friendly — confident snow and ice traction with broad size coverage, without the premium-tier price tag.</p></div>
+                  <div class="item mw5"><div class="item-top"><div class="item-name"><span class="rank-num">05</span>Vredestein</div></div><p class="note">Wintrac performs well in snow and stays notably quiet for its price bracket.</p></div>
+                </div>
+              </details>
+
+              <details class="sub theme-runflat" id="cat-runflat">
+                <summary><span class="summary-txt">Run-Flat</span></summary>
+                <div class="sub-body">
+                  <p class="card-sub" style="margin-top:2px;">Passenger cars have the deepest run-flat selection of any vehicle type — standard OE fitment on most BMW and Mini models. Reinforced sidewall supports the vehicle for roughly 80 km at up to 80 km/h after total air loss.</p>
+                  <div class="item rf1"><div class="item-top"><div class="item-name"><span class="rank-num">01</span>Michelin</div></div><p class="note">Primacy MXM4 ZP leads on overall balance — comfort, wet grip, and tread life, backed by more than three million owner-reported miles. Pilot Sport All Season 4 ZP is their performance-focused ZP option for drivers who don't want to give up grip for run-flat security.</p></div>
+                  <div class="item rf2"><div class="item-top"><div class="item-name"><span class="rank-num">02</span>Bridgestone</div></div><p class="note">DriveGuard Plus is repeatedly called out as the best-value run-flat — genuine run-flat safety without the premium price tag, with strong dry conditions and steering response.</p></div>
+                  <div class="item rf3"><div class="item-top"><div class="item-name"><span class="rank-num">03</span>Continental</div></div><p class="note">ProContact GX SSR posted the best winter-weather showing among run-flats in independent testing; ProContact RX SSR is the more budget-friendly SSR option with wider aftermarket size availability.</p></div>
+                  <div class="item rf4"><div class="item-top"><div class="item-name"><span class="rank-num">04</span>Pirelli</div></div><p class="note">Cinturato P7 All Season Run Flat brings Pirelli's touring comfort and low noise to the run-flat category — built for premium sedans.</p></div>
+                  <div class="item rf5"><div class="item-top"><div class="item-name"><span class="rank-num">05</span>Hankook</div></div><p class="note">Ventus S1 noble2 HRS is the value alternative of this group — cuts cost without giving up much on dry/wet handling.</p></div>
+                  <div class="callout">Don't assume every run-flat fits your car — many, especially premium options, are OE-fitment specific with limited size availability outside the exact vehicles they were designed for.</div>
+                </div>
+              </details>
+
+            </div>
+          </details>
+
+          <details class="acc vehicle-acc" id="rank-suv">
+            <summary><span class="summary-txt">SUV / Crossover</span><span class="count-tag">SUVs, minivans</span></summary>
+            <div class="acc-body">
+              <p class="card-sub" style="margin-top:-4px;">Body-on-frame SUVs (4Runner, Wrangler, Land Cruiser, Suburban/Tahoe) share a tire market with trucks — see the Truck section instead. This covers crossovers and mid-size SUVs, which genuinely mix passenger-car and truck-adjacent tire types.</p>
+
+              <div class="callout gold">Grand Touring, Performance, Performance All-Season, All-Weather, and Winter fitment for SUVs all use the exact same brand rankings as Passenger Car above — the same tires (PremiumContact 7, CrossClimate2, VikingContact 8, X-Ice Snow+, and so on) are simply sold in CUV/SUV sizing, so nothing changes about which one wins.</div>
+
+              <details class="sub theme-allterrain" id="cat-at-suv">
+                <summary><span class="summary-txt">All-Terrain</span></summary>
+                <div class="sub-body">
+                  <p class="card-sub" style="margin-top:2px;">Purpose-built for crossovers, not adapted truck tires — tuned for a lighter platform, noticeably quieter on-road, and not meant for serious trail use. A different product line entirely from the Truck All-Terrain tires below.</p>
+                  <div class="item su1"><div class="item-top"><div class="item-name"><span class="rank-num">01</span>Falken</div></div><p class="note">Wildpeak A/T Trail was engineered from the ground up for CUVs — remarkably quiet for an all-terrain tire, with wide water-evacuation channels giving it a genuine wet-grip edge most AT tires don't have.</p></div>
+                  <div class="item su2"><div class="item-top"><div class="item-name"><span class="rank-num">02</span>Continental</div></div><p class="note">TerrainContact A/T is called out repeatedly as a category win specifically for crossover SUV owners — exceptional snow performance for a CUV-focused tire.</p></div>
+                  <div class="item su3"><div class="item-top"><div class="item-name"><span class="rank-num">03</span>BFGoodrich</div></div><p class="note">Trail-Terrain T/A is BFGoodrich's quieter, CUV-tuned alternative to their truck-focused KO2/KO3 line — smoother ride, less road noise, still genuinely capable off pavement.</p></div>
+                  <div class="item su4"><div class="item-top"><div class="item-name"><span class="rank-num">04</span>Yokohama</div></div><p class="note">Geolandar (CUV line) runs slightly quieter and smoother on pavement than the Wildpeak A/T Trail in some size comparisons, at some cost to sidewall protection and snow capability.</p></div>
+                  <div class="item su5"><div class="item-top"><div class="item-name"><span class="rank-num">05</span>Toyo</div></div><p class="note">Open Country A/T III is available in genuine CUV sizing too — the most well-rounded all-terrain option for owners who want one tire to split the difference between crossover comfort and real off-road capability.</p></div>
+                </div>
+              </details>
+
+              <details class="sub theme-highway" id="cat-highway-suv">
+                <summary><span class="summary-txt">Highway</span></summary>
+                <div class="sub-body">
+                  <p class="card-sub" style="margin-top:2px;">A genuinely distinct product line from passenger-car touring tires — engineered for the extra weight and different load case of an SUV/CUV, usually with a stronger emphasis on wet grip that holds up as the tire wears.</p>
+                  <div class="item uh1"><div class="item-top"><div class="item-name"><span class="rank-num">01</span>Michelin</div></div><p class="note">Premier LTX is engineered specifically for SUVs, crossovers, and light trucks, distinct from the passenger-car Primacy Tour A/S — EverGrip technology uses expanding rain grooves so wet braking stays strong even as the tire wears down.</p></div>
+                  <div class="item uh2"><div class="item-top"><div class="item-name"><span class="rank-num">02</span>Continental</div></div><p class="note">CrossContact LX25 is Premier LTX's most commonly cited direct rival in this category — a dependable, comfort-oriented alternative.</p></div>
+                  <div class="item uh3"><div class="item-top"><div class="item-name"><span class="rank-num">03</span>Bridgestone</div></div><p class="note">Alenza A/S 02 is Bridgestone's SUV-specific touring/highway line — comfort-first, though with less head-to-head data available against the top two.</p></div>
+                  <div class="item uh4"><div class="item-top"><div class="item-name"><span class="rank-num">04</span>Pirelli</div></div><p class="note">Scorpion Verde A/S Plus rounds out the field with Pirelli's SUV all-season touring option.</p></div>
+                  <div class="item uh5"><div class="item-top"><div class="item-name"><span class="rank-num">05</span>Hankook</div></div><p class="note">Dynapro HP2 is the value pick of this group — a lower-cost SUV highway option without a major performance cliff.</p></div>
+                </div>
+              </details>
+
+              <details class="sub theme-midrange" id="cat-midrange-suv">
+                <summary><span class="summary-txt">Reliable Mid-Range (HT)</span></summary>
+                <div class="sub-body">
+                  <p class="card-sub" style="margin-top:2px;">Highway Terrain tires Tyre Reviews themselves label as "mid-range" or budget in their own group tests — genuinely competitive against premium CUV/SUV tires at a lower price, based on how they actually placed.</p>
+                  <div class="item mr1"><div class="item-top"><div class="item-name"><span class="rank-num">01</span>Kumho</div></div><p class="note">The Crugen HT51 was "on another level" in Tyre Reviews' 2026 HT test — posted a snow traction time 0.2s clear of the Michelin benchmark in second place.</p></div>
+                  <div class="item mr2"><div class="item-top"><div class="item-name"><span class="rank-num">02</span>Firestone</div></div><p class="note">The Destination LE3 surprised in the same test by running the segment-benchmark Michelin Defender LTX M/S2 close on the snow handling lap.</p></div>
+                  <div class="item mr3"><div class="item-top"><div class="item-name"><span class="rank-num">03</span>Cooper</div></div><p class="note">The Endeavor Plus was one of two mid-range HT entries (with General) that stayed composed in winter conditions for an all-season-oriented tire.</p></div>
+                  <div class="item mr4"><div class="item-top"><div class="item-name"><span class="rank-num">04</span>General</div></div><p class="note">The brand-new Grabber HT held its own against established mid-range and premium HT tires, with slightly more playful handling past the limit.</p></div>
+                  <div class="item mr5"><div class="item-top"><div class="item-name"><span class="rank-num">05</span>Giti</div></div><p class="note">A genuine surprise in AutoBild's 2026 summer test — not a brand typically grouped with the premium tier, yet it scored well enough across wet and dry to join Hankook, Goodyear, Michelin, and Pirelli in the top "exemplary" rating.</p></div>
+                  <div class="callout">Even Tyre Reviews' own budget entry — the Westlake SU318 HT — showed how far cheap has come, typically landing mid-pack rather than last in overall scoring, even if it trailed on individual tests like snow acceleration.</div>
+                </div>
+              </details>
+
+              <details class="sub theme-runflat" id="cat-runflat-suv">
+                <summary><span class="summary-txt">Run-Flat</span></summary>
+                <div class="sub-body">
+                  <p class="card-sub" style="margin-top:2px;">A genuinely different, thinner lineup than passenger car run-flats — purpose-engineered for SUV weight and ride height, not just a passenger-car run-flat stretched into a bigger size. Some tire lines don't offer an SUV run-flat variant at all.</p>
+                  <div class="item rfs1"><div class="item-top"><div class="item-name"><span class="rank-num">01</span>Pirelli</div></div><p class="note">Scorpion Zero / Scorpion Verde All Season Run Flat was purpose-built to handle SUV weight and ride height while keeping handling composed rather than vague or floaty — common OE fitment on BMW X-series and Porsche Cayenne.</p></div>
+                  <div class="item rfs2"><div class="item-top"><div class="item-name"><span class="rank-num">02</span>Bridgestone</div></div><p class="note">Dueler H/P Sport RFT and Dueler H/L 400 RFT use dual-layer tread construction specifically to handle the extra load of a heavier SUV, with the precise steering response pickup drivers look for.</p></div>
+                  <div class="item rfs3"><div class="item-top"><div class="item-name"><span class="rank-num">03</span>Continental</div></div><p class="note">CrossContact LX Sport SSR and ContiSportContact 5 SUV SSR bring Continental's Self-Supporting Runflat technology to genuine SUV-specific sizing.</p></div>
+                  <div class="item rfs4"><div class="item-top"><div class="item-name"><span class="rank-num">04</span>Michelin</div></div><p class="note">The Latitude line (Tour HP ZP, Alpin LA2 ZP) and Pilot Alpin 5 SUV ZP are Michelin's genuine SUV-specific Zero Pressure run-flats, distinct from their passenger-car ZP lineup.</p></div>
+                  <div class="item rfs5"><div class="item-top"><div class="item-name"><span class="rank-num">05</span>Hankook</div></div><p class="note">Ventus S1 evo3 SUV K127C HRS is the value entry in genuine SUV run-flat sizing — a real alternative when the premium brands' SUV run-flat selection doesn't stock your size.</p></div>
+                </div>
+              </details>
+            </div>
+          </details>
+
+          <details class="acc vehicle-acc" id="rank-truck">
+            <summary><span class="summary-txt">Truck</span><span class="count-tag">body-on-frame, LT-rated</span></summary>
+            <div class="acc-body">
+              <p class="card-sub" style="margin-top:-4px;">Covers body-on-frame trucks and SUVs (F-150, Silverado, Ram, 4Runner, Wrangler, Land Cruiser, Suburban/Tahoe) — heavier-duty products built for real load capacity and off-road use, not the lighter crossover-tuned tires above.</p>
+
+              <details class="sub theme-allterrain" id="cat-at-lt">
+                <summary><span class="summary-txt">All-Terrain (LT)</span></summary>
+                <div class="sub-body">
+                  <div class="item at1"><div class="item-top"><div class="item-name"><span class="rank-num">01</span>Pirelli</div></div><p class="note">Scorpion XTM AT was the test winner of Tyre Reviews' 2026 all-terrain test — strongest in dirt handling, subjective dirt handling, snow traction, subjective snow handling, and subjective wet handling.</p></div>
+                  <div class="item at2"><div class="item-top"><div class="item-name"><span class="rank-num">02</span>Falken</div></div><p class="note">Wildpeak AT4W won a Tire Rack-sourced head-to-head against the Toyo Open Country A/T III — class-leading wet braking and aquaplaning resistance, shorter dry stops, quieter ride, and stronger dirt control.</p></div>
+                  <div class="item at3"><div class="item-top"><div class="item-name"><span class="rank-num">03</span>Toyo</div></div><p class="note">Open Country A/T III took the win when that same comparison shifted to snow — quicker snow handling, traction, and subjective control than the Wildpeak AT4W, though with slightly weaker braking.</p></div>
+                  <div class="item at4"><div class="item-top"><div class="item-name"><span class="rank-num">04</span>BFGoodrich</div></div><p class="note">All-Terrain KO3 is treated as the segment benchmark across multiple Tyre Reviews AT comparisons — the direct replacement for the legendary KO2.</p></div>
+                  <div class="item at5"><div class="item-top"><div class="item-name"><span class="rank-num">05</span>Nokian</div></div><p class="note">Outpost nAT was rated the best all-terrain tire for winter conditions — stood out in ice braking, consistent across every test.</p></div>
+                  <div class="callout">Falken vs. Toyo comes down to priorities: pick the Falken Wildpeak for on-road wet/dry manners and quiet comfort, pick the Toyo Open Country for snow-heavy climates. Both are 3-Peak Mountain Snowflake certified.</div>
+                </div>
+              </details>
+
+              <details class="sub theme-highway" id="cat-highway-lt">
+                <summary><span class="summary-txt">Standard Highway (LT)</span></summary>
+                <div class="sub-body">
+                  <p class="card-sub" style="margin-top:2px;">For trucks that stay mostly on pavement — commuting, towing, hauling — without the off-road tread of an All-Terrain tire. Quieter, longer tread life, better fuel economy.</p>
+                  <div class="item hw1"><div class="item-top"><div class="item-name"><span class="rank-num">01</span>Michelin</div></div><p class="note">Defender LTX M/S2 posts a dominant wet stopping distance (41.6 m vs 49.7 m for the Dueler H/L Alenza Plus, 52.0 m for the Wrangler SR-A) and the best snow traction score of the group in Michelin's own published testing.</p></div>
+                  <div class="item hw2"><div class="item-top"><div class="item-name"><span class="rank-num">02</span>Continental</div></div><p class="note">TerrainContact H/T runs quieter than the Defender LTX with slightly better wet braking per independent AAA test data, and a lower rolling resistance.</p></div>
+                  <div class="item hw3"><div class="item-top"><div class="item-name"><span class="rank-num">03</span>Bridgestone</div></div><p class="note">Dueler H/L Alenza Plus is the smoothest-riding tire in this class, backed by a 129,000 km warranty — the longest of the group.</p></div>
+                  <div class="item hw4"><div class="item-top"><div class="item-name"><span class="rank-num">04</span>Goodyear</div></div><p class="note">Wrangler Fortitude HT gets you nearly identical ride and noise to the Defender LTX M/S2, often for meaningfully less money.</p></div>
+                  <div class="item hw5"><div class="item-top"><div class="item-name"><span class="rank-num">05</span>Cooper</div></div><p class="note">Discoverer HT3 is the value pick of the group — matches the class's 3PMSF severe-snow rating at a noticeably lower price, with a slightly stiffer sidewall that's actually a plus for higher GVWR trucks.</p></div>
+                </div>
+              </details>
+
+              <details class="sub theme-midhighway" id="cat-midhighway">
+                <summary><span class="summary-txt">Mid-Range Highway (LT)</span></summary>
+                <div class="sub-body">
+                  <p class="card-sub" style="margin-top:2px;">A genuine value tier below Standard Highway — real LT-rated highway tires from established brands, not a step down to unbranded imports.</p>
+                  <div class="item mh1"><div class="item-top"><div class="item-name"><span class="rank-num">01</span>Kumho</div></div><p class="note">Crugen HT51 stands out with strong treadwear and the highest snow score in Kumho's truck lineup — an excellent value pick for half-ton owners who tow occasionally and want winter capability without an all-terrain tire's noise.</p></div>
+                  <div class="item mh2"><div class="item-top"><div class="item-name"><span class="rank-num">02</span>Yokohama</div></div><p class="note">Geolandar H/T4 (LT sizes) leads this tier on longevity, built for confident towing and hauling with a genuinely long tread-life warranty.</p></div>
+                  <div class="item mh3"><div class="item-top"><div class="item-name"><span class="rank-num">03</span>Falken</div></div><p class="note">Wildpeak H/T02 rounds out the value tier — Falken's balance of performance and affordability shows up clearly in this segment too, not just their AT lineup.</p></div>
+                  <div class="item mh4"><div class="item-top"><div class="item-name"><span class="rank-num">04</span>General</div></div><p class="note">AltiMAX RT43 (LT-compatible sizing) is a dependable, widely-available value option for owners who want a known brand without the Standard Highway price premium.</p></div>
+                  <div class="item mh5"><div class="item-top"><div class="item-name"><span class="rank-num">05</span>Westlake</div></div><p class="note">The true budget end of this tier — Tyre Reviews' own budget benchmark in HT testing, showing how far cheap has come even if it trails the group on individual tests like snow acceleration.</p></div>
+                </div>
+              </details>
+
+              <details class="sub theme-hybrid" id="cat-hybrid-lt">
+                <summary><span class="summary-txt">Hybrid / Trail Highway (LT)</span></summary>
+                <div class="sub-body">
+                  <p class="card-sub" style="margin-top:2px;">A step between Standard Highway and full All-Terrain — highway comfort and quiet most of the time, with light off-road capability (gravel, forest service roads, mild trail) when needed, without committing to an aggressive AT tread.</p>
+                  <div class="item hy1"><div class="item-top"><div class="item-name"><span class="rank-num">01</span>Michelin</div></div><p class="note">LTX Trail balances on-road comfort with genuine light off-road capability — reviewers consistently rate it ahead of its direct rivals on winter traction and ice/snow braking specifically.</p></div>
+                  <div class="item hy2"><div class="item-top"><div class="item-name"><span class="rank-num">02</span>Goodyear</div></div><p class="note">Wrangler All-Terrain Adventure with Kevlar matches the LTX Trail's on-road refinement and ride quality with very capable off-road ability — possibly a slight edge in treadwear and longevity.</p></div>
+                  <div class="item hy3"><div class="item-top"><div class="item-name"><span class="rank-num">03</span>Falken</div></div><p class="note">Wildpeak A/T Trail is the budget-friendly pick — surprising off-road competence for the price, though it can't quite match the LTX Trail's on-road comfort, low noise, or tread life.</p></div>
+                  <div class="item hy4"><div class="item-top"><div class="item-name"><span class="rank-num">04</span>BFGoodrich</div></div><p class="note">Trail-Terrain T/A rounds out this tier with BFGoodrich's usual comfort-first tuning — a reasonable option, though with less direct head-to-head data against the top three specifically in this LT trim.</p></div>
+                  <div class="item hy5"><div class="item-top"><div class="item-name"><span class="rank-num">05</span>General</div></div><p class="note">Grabber APT is a newer entrant in this exact niche — worth cross-shopping, though it has less independent long-term test data than the more established options above.</p></div>
+                </div>
+              </details>
+
+              <details class="sub theme-heavyduty" id="cat-heavyduty">
+                <summary><span class="summary-txt">Heavy Duty Highway (LT)</span></summary>
+                <div class="sub-body">
+                  <p class="card-sub" style="margin-top:2px;">Built specifically for heavy-duty pickups (F-250/F-350, Silverado/Sierra 2500/3500, Ram 2500/3500) — reinforced for real towing and hauling loads, not just a Standard Highway tire in a bigger size. This is a newer, smaller category with less head-to-head test data than the tiers above.</p>
+                  <div class="item hd1"><div class="item-top"><div class="item-name"><span class="rank-num">01</span>Michelin</div></div><p class="note">Defender LTX Platinum is a genuinely new tier from Michelin, not just a rebadge — engineered specifically for luxury/HD pickups, with roughly double the tread life of the standard LTX M/S2 and reinforced sidewall construction built around towing loads.</p></div>
+                  <div class="item hd2"><div class="item-top"><div class="item-name"><span class="rank-num">02</span>Toyo</div></div><p class="note">Open Country H/T II is a well-established HD-capable highway option, though it predates the LTX Platinum and hasn't been tested directly against it yet.</p></div>
+                  <div class="item hd3"><div class="item-top"><div class="item-name"><span class="rank-num">03</span>Bridgestone</div></div><p class="note">Duravis APT IV is Bridgestone's commercial/HD-duty highway line — a reasonable alternative, though with less consumer-facing test coverage than the passenger-truck-focused options.</p></div>
+                </div>
+              </details>
+
+              <details class="sub theme-ltwinter" id="cat-ltwinter">
+                <summary><span class="summary-txt">Winter (LT)</span></summary>
+                <div class="sub-body">
+                  <p class="card-sub" style="margin-top:2px;">Dedicated winter tires built in LT load ranges for trucks and body-on-frame SUVs — a different compound and construction from the passenger-car winter tires above, built to handle real load while towing or hauling in snow.</p>
+                  <div class="item lw1"><div class="item-top"><div class="item-name"><span class="rank-num">01</span>Nokian</div></div><p class="note">Hakkapeliitta LT3 rates strongest on ice and snow across independent comparison data — studded versions available for the harshest conditions.</p></div>
+                  <div class="item lw2"><div class="item-top"><div class="item-name"><span class="rank-num">02</span>Cooper</div></div><p class="note">Discoverer Snow Claw sits right behind the Nokian on winter grip, with a notably comfortable ride for a dedicated LT winter tire.</p></div>
+                  <div class="item lw3"><div class="item-top"><div class="item-name"><span class="rank-num">03</span>Bridgestone</div></div><p class="note">Blizzak LT is a consistent, widely-available all-rounder — though owners report its LT-specific compound isn't quite as ice-focused as Bridgestone's passenger-car Blizzak line.</p></div>
+                  <div class="item lw4"><div class="item-top"><div class="item-name"><span class="rank-num">04</span>Goodyear</div></div><p class="note">Ultra Grip Ice WRT (LT) offers a decent balance of winter and wet performance, with slightly lower comfort than the top three.</p></div>
+                  <div class="item lw5"><div class="item-top"><div class="item-name"><span class="rank-num">05</span>Toyo</div></div><p class="note">Open Country WLT1 leads this group on tread-life durability, with solid — if not class-leading — winter performance.</p></div>
+                </div>
+              </details>
+
+              <details class="sub theme-midltwinter" id="cat-midltwinter">
+                <summary><span class="summary-txt">Mid-Range Winter (LT)</span></summary>
+                <div class="sub-body">
+                  <p class="card-sub" style="margin-top:2px;">Real LT-rated, 3PMSF-certified winter tires at a genuine discount to the flagship tier above — a legitimate option for truck owners who want real winter capability without the premium-tier price.</p>
+                  <div class="item mlw1"><div class="item-top"><div class="item-name"><span class="rank-num">01</span>General</div></div><p class="note">Grabber Arctic LT is DuraGen-reinforced for durability and cut/tear resistance, studdable, 3PMSF-certified, and backed by a 72-month warranty — widely praised by truck owners as excellent value for the price.</p></div>
+                  <div class="item mlw2"><div class="item-top"><div class="item-name"><span class="rank-num">02</span>Firestone</div></div><p class="note">Winterforce LT is a longtime budget LT winter option — studdable with a patented tread for snow and wet-road grip, though some owners consider it a step below the true premium tier.</p></div>
+                  <div class="item mlw3"><div class="item-top"><div class="item-name"><span class="rank-num">03</span>Hercules</div></div><p class="note">Avalanche TT is a genuine budget contender that comes up in real truck-owner buying discussions when the top-tier brands don't stock a needed size or load rating.</p></div>
+                  <div class="item mlw4"><div class="item-top"><div class="item-name"><span class="rank-num">04</span>Hankook</div></div><p class="note">Dynapro (winter LT trim) extends Hankook's established value reputation into the LT winter category — less directly tested in LT sizing than the top three, but a reasonable value option.</p></div>
+                  <div class="item mlw5"><div class="item-top"><div class="item-name"><span class="rank-num">05</span>Nokian</div></div><p class="note">Nordman (LT-compatible sizing) brings Nokian's budget sub-brand into truck territory — the same value proposition as the passenger-car Nordman line, less independently tested in LT specifically.</p></div>
+                </div>
+              </details>
+            </div>
+          </details>
+
+          <details class="sub theme-avoid">
+            <summary><span class="summary-txt">Top 10 Brands to Avoid</span></summary>
+            <div class="sub-body">
+              <p class="card-sub" style="margin-top:2px;">A few ultra-budget import brands come up again and again at the bottom of independent comparative tests and in mechanic/owner reports — not just "basic," but with genuine safety concerns. Several of these are widely stocked specifically because of aggressive pricing, which is exactly why they're worth knowing about. Not exhaustive — treat it as a reason to research a specific model before buying an unfamiliar budget brand.</p>
+              <div class="item avoid"><div class="item-top"><div class="item-name"><span class="rank-num">01</span>Triangle</div></div><p class="note">Repeatedly posted the worst wet-braking results in independent multi-brand comparison tests — in one, a Triangle-equipped car was still travelling at nearly 48 km/h when premium-tire cars in the same test had already stopped.</p></div>
+              <div class="item avoid"><div class="item-top"><div class="item-name"><span class="rank-num">02</span>Accelera</div></div><p class="note">Independent Tyre Reviews rankings have placed tested Accelera models near the very bottom of their field (152nd of 192 in one comparison), with owners commonly reporting weak grip and long braking distances.</p></div>
+              <div class="item avoid"><div class="item-top"><div class="item-name"><span class="rank-num">03</span>Geostar</div></div><p class="note">Frequently flagged by mechanics for premature tread balding and belt separation, and finished at the bottom of comparative testing from outlets like VW Vortex.</p></div>
+              <div class="item avoid"><div class="item-top"><div class="item-name"><span class="rank-num">04</span>Sailun</div></div><p class="note">A common sight on budget-focused retailer shelves — owners repeatedly report rapid tread wear, poor wet traction, and a noisy ride, the same pattern that shows up across several independent budget-tire roundups.</p></div>
+              <div class="item avoid"><div class="item-top"><div class="item-name"><span class="rank-num">05</span>Kenda</div></div><p class="note">Widely sold as one of the cheapest options at big-box retailers; frequently cited for rapid tread wear and weak wet-surface traction relative to similarly-priced alternatives.</p></div>
+              <div class="item avoid"><div class="item-top"><div class="item-name"><span class="rank-num">06</span>Linglong</div></div><p class="note">Another frequent big-box budget pick, criticized across multiple sources for inconsistent build quality and rapid tread wear.</p></div>
+              <div class="item avoid"><div class="item-top"><div class="item-name"><span class="rank-num">07</span>Goodride</div></div><p class="note">Comes up across independent reviews and mechanic write-ups alike for unbalanced handling, weak grip in wet conditions, and tread life well short of similarly-priced alternatives.</p></div>
+              <div class="item avoid"><div class="item-top"><div class="item-name"><span class="rank-num">08</span>Compass</div></div><p class="note">Multiple independent write-ups document a pattern of tread separation and even complete blowouts — a structural failure mode, not just a performance shortfall.</p></div>
+              <div class="item avoid"><div class="item-top"><div class="item-name"><span class="rank-num">09</span>Telluride</div></div><p class="note">Consistently flagged for shorter-than-expected tread life, elevated road noise, and sub-par wet-weather grip across multiple independent brand roundups.</p></div>
+              <div class="item avoid"><div class="item-top"><div class="item-name"><span class="rank-num">10</span>Chaoyang</div></div><p class="note">Reports of thin sidewall protection and a tendency to "pop" at highway speeds show up repeatedly — the kind of failure mode that matters more than a slightly harsher ride.</p></div>
+            </div>
+          </details>
+        </div>
+      </details>
+      </div>
+    </details>
+
+    <details class="res-section sec-shops">
+      <summary><h2>Shops</h2><span class="res-chevron">&#9660;</span></summary>
+      <div class="res-section-body">
+      <p class="card-sub" style="margin-bottom:2px;">Trusted local shops — Ottawa, ON region.</p>
+      <p class="card-sub" style="font-style:italic;">These are personal recommendations based on direct experience, not an independent or exhaustive review of the local market — your own experience may vary.</p>
+      <div class="item sec-shops"><div class="item-top"><div class="item-name"><a href="https://randrauto.ca/" target="_blank" rel="noopener">R&amp;R Auto</a></div></div><p class="note">All makes &amp; models — general maintenance and repairs. Highly reliable, fair pricing, transparent, friendly &amp; honest.</p></div>
+      <div class="item sec-shops"><div class="item-top"><div class="item-name"><a href="https://takakiauto.com/" target="_blank" rel="noopener">Takaki Auto</a></div></div><p class="note">Japanese specialty shop. Very friendly, honest, transparent &amp; fair pricing.</p></div>
+      <div class="item sec-shops"><div class="item-top"><div class="item-name"><a href="https://rodgersperformance.ca/" target="_blank" rel="noopener">Rodgers Performance</a></div></div><p class="note">Performance / import specialty. Friendly, honest &amp; transparent.</p></div>
+      </div>
+    </details>
+
+    <details class="res-section sec-other">
+      <summary><h2>Other Resources</h2><span class="res-chevron">&#9660;</span></summary>
+      <div class="res-section-body">
+      <p class="card-sub" style="margin-bottom:2px;">Video and testing channels.</p>
+      <p class="card-sub" style="font-style:italic;">These picks reflect personal opinion on which channels are worth following, not an independent or exhaustive review of everything out there.</p>
+      <div class="item sec-other"><div class="item-top"><div class="item-name"><a href="https://www.youtube.com/@themotoroilgeek" target="_blank" rel="noopener">The Motor Oil Geek</a></div></div><p class="note">Great insight on motor oils.</p></div>
+      <div class="item sec-other"><div class="item-top"><div class="item-name"><a href="https://www.youtube.com/c/ProjectFarm" target="_blank" rel="noopener">Project Farm</a></div></div><p class="note">Rigorous, documented performance tests across automotive products: oils, batteries, oil/fuel additives, cleaning supplies, tools, and even home appliances.</p></div>
+      </div>
+    </details>
+
+    <details class="res-section sec-parts">
+      <summary><h2>Aftermarket Parts</h2><span class="res-chevron">&#9660;</span></summary>
+      <div class="res-section-body">
+      <p class="card-sub">Many of these are the actual OEM suppliers behind the badge — same parts, without the dealership markup.</p>
+
+      <details class="sub"><summary><span class="summary-txt">Brakes</span></summary><div class="sub-body">
+        <div class="item sec-parts"><div class="item-top"><div class="item-name">Advics</div></div><p class="note">Toyota brake parts (OEM supplier)</p></div>
+        <div class="item sec-parts"><div class="item-top"><div class="item-name">Akebono</div></div><p class="note">Top brand for Japanese and other brand brake pads</p></div>
+        <div class="item sec-parts"><div class="item-top"><div class="item-name">EBC</div></div><p class="note">High-performance brakes</p></div>
+        <div class="item sec-parts"><div class="item-top"><div class="item-name">Hawk</div></div><p class="note">High-performance brakes</p></div>
+        <div class="item sec-parts"><div class="item-top"><div class="item-name">Brembo</div></div><p class="note">European brakes</p></div>
+        <div class="item sec-parts"><div class="item-top"><div class="item-name">Wilwood</div></div><p class="note">American brakes</p></div>
+        <div class="item sec-parts"><div class="item-top"><div class="item-name">PowerStop</div></div><p class="note">High-performance brakes</p></div>
+        <div class="item sec-parts"><div class="item-top"><div class="item-name">Zimmermann</div></div><p class="note">Euro brake parts</p></div>
+        <div class="item sec-parts"><div class="item-top"><div class="item-name">Raybestos</div></div><p class="note">Long-time brake parts supplier</p></div>
+        <div class="item sec-parts"><div class="item-top"><div class="item-name">Centric</div></div><p class="note">Long-time brake parts supplier</p></div>
+      </div></details>
+
+      <details class="sub"><summary><span class="summary-txt">Suspension</span></summary><div class="sub-body">
+        <div class="item sec-parts"><div class="item-top"><div class="item-name">Sankei555</div></div><p class="note">Japanese suspension parts</p></div>
+        <div class="item sec-parts"><div class="item-top"><div class="item-name">Bilstein</div></div><p class="note">German suspension, common on Japanese models too</p></div>
+        <div class="item sec-parts"><div class="item-top"><div class="item-name">KYB</div></div><p class="note">Japanese suspension</p></div>
+        <div class="item sec-parts"><div class="item-top"><div class="item-name">MOOG</div></div><p class="note">Domestic car suspensions</p></div>
+        <div class="item sec-parts"><div class="item-top"><div class="item-name">Delphi</div></div><p class="note">Aftermarket suspension</p></div>
+        <div class="item sec-parts"><div class="item-top"><div class="item-name">Mevotech</div></div><p class="note">TTX line only</p></div>
+      </div></details>
+
+      <details class="sub"><summary><span class="summary-txt">Electrical &amp; Thermal</span></summary><div class="sub-body">
+        <div class="item sec-parts"><div class="item-top"><div class="item-name">Denso</div></div><p class="note">Toyota electrical &amp; thermal parts (OEM supplier)</p></div>
+        <div class="item sec-parts"><div class="item-top"><div class="item-name">NGK &amp; NTK</div></div><p class="note">Honda &amp; other Japanese electrical parts</p></div>
+        <div class="item sec-parts"><div class="item-top"><div class="item-name">Bosch</div></div><p class="note">European electrical parts</p></div>
+      </div></details>
+
+      <details class="sub"><summary><span class="summary-txt">Engine Internals &amp; Filtration</span></summary><div class="sub-body">
+        <div class="item sec-parts"><div class="item-top"><div class="item-name">Aisin</div></div><p class="note">Toyota mechanical engine parts — water pumps, timing components (OEM supplier)</p></div>
+        <div class="item sec-parts"><div class="item-top"><div class="item-name">Mahle</div></div><p class="note">Engine internals &amp; oil filters</p></div>
+        <div class="item sec-parts"><div class="item-top"><div class="item-name">Melling</div></div><p class="note">Engine internals</p></div>
+        <div class="item sec-parts"><div class="item-top"><div class="item-name">Wix</div></div><p class="note">Oil filters</p></div>
+      </div></details>
+
+      <details class="sub"><summary><span class="summary-txt">Drivetrain</span></summary><div class="sub-body">
+        <div class="item sec-parts"><div class="item-top"><div class="item-name">Exedy / LuK</div></div><p class="note">Clutches &amp; flywheels</p></div>
+      </div></details>
+
+      <details class="sub"><summary><span class="summary-txt">Bearings</span></summary><div class="sub-body">
+        <div class="item sec-parts"><div class="item-top"><div class="item-name">Timken</div></div><p class="note">Gold standard bearings</p></div>
+        <div class="item sec-parts"><div class="item-top"><div class="item-name">Koyo</div></div><p class="note">Toyota bearings</p></div>
+        <div class="item sec-parts"><div class="item-top"><div class="item-name">NSK &amp; NTN</div></div><p class="note">Honda bearings</p></div>
+        <div class="item sec-parts"><div class="item-top"><div class="item-name">Schaeffler</div></div><p class="note">Euro bearings</p></div>
+        <div class="item sec-parts"><div class="item-top"><div class="item-name">National</div></div><p class="note">Timken's budget line</p></div>
+      </div></details>
+
+      <details class="sub"><summary><span class="summary-txt">General / Manufacturer-Specific</span></summary><div class="sub-body">
+        <div class="item sec-parts"><div class="item-top"><div class="item-name">ACDelco</div></div><p class="note">GM parts supplier</p></div>
+        <div class="item sec-parts"><div class="item-top"><div class="item-name">Motorcraft</div></div><p class="note">Ford parts supplier</p></div>
+        <div class="item sec-parts"><div class="item-top"><div class="item-name">Mopar</div></div><p class="note">Dodge parts supplier</p></div>
+        <div class="item sec-parts"><div class="item-top"><div class="item-name">Gates</div></div><p class="note">Leading supplier for belts, pulleys &amp; tensioners</p></div>
+      </div></details>
+      </div>
+    </details>
+
+    <details class="res-section sec-oil">
+      <summary><h2>Motor Oil &amp; Transmission Fluid</h2><span class="res-chevron">&#9660;</span></summary>
+      <div class="res-section-body">
+      <p class="card-sub">Trusted lubricant brands, grouped by what they're actually known for.</p>
+
+      <details class="sub" open><summary><span class="summary-txt">Daily Driver / OEM-Approved</span></summary><div class="sub-body">
+        <div class="item sec-oil"><div class="item-top"><div class="item-name">Mobil 1</div></div><p class="note">Widely available full synthetic with broad dexos/OEM approvals — the safe daily-driver default</p></div>
+        <div class="item sec-oil"><div class="item-top"><div class="item-name">Pennzoil</div></div><p class="note">PurePlus gas-to-liquid base oil; strong deposit and cleaning performance</p></div>
+        <div class="item sec-oil"><div class="item-top"><div class="item-name">Valvoline</div></div><p class="note">Broad range from conventional to full synthetic; heavy presence at quick-lube chains</p></div>
+        <div class="item sec-oil"><div class="item-top"><div class="item-name">Castrol</div></div><p class="note">EDGE line with Fluid Titanium tech; deep OEM and motorsport partnerships (BMW, Ford)</p></div>
+      </div></details>
+
+      <details class="sub"><summary><span class="summary-txt">Extended-Drain / Severe-Duty</span></summary><div class="sub-body">
+        <div class="item sec-oil"><div class="item-top"><div class="item-name">AMSOIL</div></div><p class="note">First API-certified synthetic motor oil (1972); built around extended drain intervals, diesel &amp; severe-duty use</p></div>
+        <div class="item sec-oil"><div class="item-top"><div class="item-name">Liqui Moly</div></div><p class="note">German engineering with a huge additive/oil catalog; strong following in European &amp; JDM tuning circles</p></div>
+      </div></details>
+
+      <details class="sub"><summary><span class="summary-txt">Performance / Racing Synthetic</span></summary><div class="sub-body">
+        <div class="item sec-oil"><div class="item-top"><div class="item-name">Motul</div></div><p class="note">French motorsport heritage (Le Mans, MotoGP); ester-based technology; popular in JDM &amp; sportbike scenes</p></div>
+        <div class="item sec-oil"><div class="item-top"><div class="item-name">Royal Purple</div></div><p class="note">Proprietary Synerlec additive technology, marketed on friction reduction and performance gains</p></div>
+        <div class="item sec-oil"><div class="item-top"><div class="item-name">Redline</div></div><p class="note">Ester-based full synthetic, premium price — the go-to for track/drag racing and manual gearbox oil</p></div>
+      </div></details>
+      </div>
+    </details>
+
+    <details class="res-section sec-rust">
+      <summary><h2>Undercoating &amp; Rustproofing</h2><span class="res-chevron">&#9660;</span></summary>
+      <div class="res-section-body">
+      <p class="card-sub">Oil/wax-based rustproofing vs. rubberized undercoating vs. doing nothing, plus recommended products and local shops.</p>
+
+      <div class="callout">
+        <b>Oil-based beats rubberized, with one exception.</b> Lanolin/oil-based coatings (Fluid Film, Woolwax, Surface Shield) stay soft and creep into seams, welds, and cavities rather than forming a hard shell — and because they never fully harden, a scratch or scrape mostly self-heals as the coating flows back over the exposed spot. Rubberized undercoating does the opposite over time: as the vehicle flexes through its life, the rigid coating cracks and chips, and once that happens it traps moisture and road salt directly against the metal — often accelerating rust in exactly the spots it was meant to protect. The one real exception is a rubberized coating applied brand new, before the vehicle has seen meaningful mileage or road salt; in that narrow window it hasn't had a chance to crack yet and can still do its job. The tradeoff with oil-based products is upkeep — since they stay soft, they also wear away and need reapplication roughly once a year.
+      </div>
+      <div class="callout callout-b">
+        <b>Vs. doing nothing:</b> any of these products is meaningfully better than bare metal exposed to Canadian winters, and the main value is preventing rust from starting in the first place. Once rust has already taken hold under trapped moisture, no undercoating fixes that on its own — the rust needs to be treated or removed first.
+      </div>
+
+      <details class="sub" open>
+        <summary><span class="summary-txt">Recommended Products</span></summary>
+        <div class="sub-body">
+          <div class="item sec-rust"><div class="item-top"><div class="item-name"><a href="https://www.fluid-film.com/" target="_blank" rel="noopener">Fluid Film</a></div></div><p class="note">The original and most widely available lanolin-based rustproofing oil — thin enough to creep deep into seams and cavities, with a long track record in marine and aviation corrosion prevention. Has a distinct lanolin smell that fades after a few days.</p></div>
+          <div class="item sec-rust"><div class="item-top"><div class="item-name"><a href="https://www.woolwax.com/" target="_blank" rel="noopener">Woolwax</a></div></div><p class="note">Also lanolin-based, but noticeably thicker than Fluid Film — resists wash-off better on high-exposure areas like rocker panels and wheel wells, with less odour. A lower-viscosity (LV) version exists for creeping into tight seams.</p></div>
+          <div class="item sec-rust"><div class="item-top"><div class="item-name"><a href="https://blasterproducts.com/product/surface-shield/" target="_blank" rel="noopener">Surface Shield (B'laster)</a></div></div><p class="note">A newer lanolin-based entry, positioned as comparable to Fluid Film and Woolwax, marketed for up to 2 years of protection. Widely available at hardware stores, making it an easy pick for a DIY driveway job.</p></div>
+          <div class="callout callout-c" style="margin-top:16px;">Project Farm has put rust-preventative fluids through comparative testing (multiple products applied side-by-side, tracked over a winter season) — worth watching before picking a product. See the Other Resources section above for their channel.</div>
+        </div>
+      </details>
+
+      <details class="sub">
+        <summary><span class="summary-txt">Local Shops</span></summary>
+        <div class="sub-body">
+          <div class="item sec-rust"><div class="item-top"><div class="item-name"><a href="https://www.rustproofingottawa.com/" target="_blank" rel="noopener">Oil Shield Rust Proofing Ottawa</a></div></div><p class="note">Budget-friendly option for oil-based rustproofing.</p></div>
+          <div class="item sec-rust"><div class="item-top"><div class="item-name"><a href="https://www.fullmoonautoworks.ca/" target="_blank" rel="noopener">Full Moon Autoworks</a></div></div><p class="note">Uses Fluid Film for their rustproofing service.</p></div>
+        </div>
+      </details>
+      </div>
+    </details>
+
+    <footer class="foot">GearLog Resources — compiled Aug 19, 2026</footer>
+  `;
+}
+
+function resourcesContentFR(){
+  return `
+    <p style="font-family:var(--font-mono); font-size:11.5px; color:var(--text-dim2); margin:0 0 20px;"><b style="color:var(--text);">Dernière mise à jour :</b> 19 août 2026</p>
+
+    <details class="res-section sec-tires" id="res-tires">
+      <summary><h2>Pneus</h2><span class="res-chevron">&#9660;</span></summary>
+      <div class="res-section-body">
+      <p class="card-sub">Sources de données, classements de marques par catégorie et choix milieu de gamme fiables.</p>
+
+      <details class="acc">
+        <summary><span class="summary-txt">Données et avis sur les pneus</span><span class="count-tag">4 sources principales + liste</span></summary>
+        <div class="acc-body">
+          <div class="res-item sec-tires"><a href="https://www.tyrereviews.com/" target="_blank" rel="noopener">Tyre Reviews</a><p>Excellente base de données sur les pneus, avec de nombreuses ressources : essais documentés, fiches techniques et comparaisons de performance — économique vs premium.</p></div>
+          <div class="res-item sec-tires"><a href="https://www.tirerack.com/tires/tests" target="_blank" rel="noopener">Résultats d'essais Tire Rack</a><p>Les propres résultats d'essais sur piste de Tire Rack, réalisés sur de vraies voitures (BMW M2, Tesla Model 3 et autres). Croisés avec Tyre Reviews ci-dessous, puisque des marques performantes comme Falken et Toyo ressortent davantage ici.</p></div>
+          <div class="res-item sec-tires"><a href="https://youtu.be/UThaFOKi21g?si=cQExEa5c26JU1P1h" target="_blank" rel="noopener">Current Best Tires for 2025/26</a><p>Vidéo récapitulative des meilleurs pneus par catégorie.</p></div>
+          <div class="res-item sec-tires"><a href="https://www.youtube.com/@tyrereviews" target="_blank" rel="noopener">Tyre Reviews — YouTube</a><p>Couverture vidéo continue des essais comparatifs et des nouveaux lancements de pneus.</p></div>
+          <details class="sub theme-standard">
+            <summary><span class="summary-txt">Liste complète des sources</span></summary>
+            <div class="sub-body">
+              <p class="card-sub" style="margin-top:2px;">Toutes les sources croisées durant la recherche et la vérification des classements ci-dessous, en plus des quatre sources principales ci-dessus.</p>
+              <div class="item sd1"><div class="item-top"><div class="item-name">AutoBild</div></div><p class="note">Essais comparatifs été et quatre-saisons annuels de la publication allemande — cités pour les classements Grand Tourisme Été et Milieu de gamme.</p></div>
+              <div class="item sd2"><div class="item-top"><div class="item-name">DEKRA (via une comparaison citée par Pirelli)</div></div><p class="note">Organisme d'essais indépendant européen — source des données de freinage combiné sec+mouillé+neige utilisées pour classer la catégorie Tout-Temps.</p></div>
+              <div class="item sd3"><div class="item-top"><div class="item-name">Données d'essais publiées par les fabricants</div></div><p class="note">Résultats d'essais tête-à-tête de Michelin, Continental, Goodyear et Bridgestone, utilisés seulement lorsque corroborés par au moins une source indépendante.</p></div>
+              <div class="item sd4"><div class="item-top"><div class="item-name">Données d'essais SimpleTire et AAA</div></div><p class="note">Données de comparaison de pneus indépendantes, particulièrement pour les classements Tourisme Premium/Standard et Route de camion.</p></div>
+              <div class="item sd5"><div class="item-top"><div class="item-name">Consumer Reports et Car Talk</div></div><p class="note">Essais de pneus et classification de catégories indépendants, utilisés pour vérifier le positionnement Tourisme Standard vs Premium.</p></div>
+              <div class="item sd6"><div class="item-top"><div class="item-name">ADAC</div></div><p class="note">Le plus grand club automobile d'Allemagne — mène certains des essais comparatifs indépendants de pneus les plus rigoureux en Europe, cités via la couverture de Tyre Reviews.</p></div>
+              <div class="item sd7"><div class="item-top"><div class="item-name">AutoView</div></div><p class="note">Publication d'essais européenne citée pour les résultats d'essais comparatifs UHP été et quatre-saisons, via la couverture organisée de Tyre Reviews.</p></div>
+            </div>
+          </details>
+        </div>
+      </details>
+
+      <details class="acc">
+        <summary><span class="summary-txt">De quel type de pneu avez-vous vraiment besoin?</span><span class="count-tag">à lire avant les classements</span></summary>
+        <div class="acc-body">
+          <p class="card-sub" style="margin-top:-4px;">Un véritable guide sur ce que chaque catégorie de cette page signifie vraiment et à qui elle profite réellement — pas un classement, organisé par type de véhicule tout comme les classements ci-dessous.</p>
+
+          <div id="tire-finder-root">${tireFinderHTML()}</div>
+
+          <div class="item"><div class="item-top"><div class="item-name">Quatre-saisons (général)</div></div><p class="note">L'étiquette par défaut installée d'usine dans presque toutes les catégories ci-dessous, et honnêtement le nom le plus survendu de l'industrie — « quatre-saisons » signifie en réalité « trois saisons ». Sans certification 3PMSF spécifique, aucun composé propre au froid ni bande de roulement dédiée à la glace, donc l'adhérence par temps froid est tout juste correcte. Convient à un climat doux avec de la neige rare et légère. Rien à voir avec un vrai hiver, peu importe le palier tourisme/performance auquel il est associé.</p></div>
+
+          <div class="item mr1"><div class="item-top"><div class="item-name">Marques milieu de gamme fiables (général)</div></div><p class="note">Pour qui : les acheteurs soucieux du budget de n'importe quel type de véhicule qui veulent tout de même un pneu qui rivalise véritablement avec les options premium. La valeur de ces marques s'est démontrée spécifiquement dans les essais Highway Terrain, mais leur réputation de dépasser leur gamme de prix s'étend aux voitures de tourisme, VUS et camions — pas une catégorie étroite propre à un seul véhicule comme les autres sur cette page.</p></div>
+
+          <div class="item rf1"><div class="item-top"><div class="item-name">Pneus increvables / Run-Flat (général)</div></div><p class="note">Un flanc renforcé permet au pneu de soutenir le poids du véhicule sur une courte distance (habituellement ~80 km à un maximum de 80 km/h) après une perte totale de pression, évitant un changement de pneu sur le bord de la route. Le choix rétrécit véritablement à mesure que le poids du véhicule augmente : les voitures de tourisme ont la gamme run-flat la plus étendue (équipement d'origine standard sur la plupart des BMW et Mini), les options run-flat pour VUS existent mais sont nettement plus limitées — certaines gammes de pneus n'offrent tout simplement pas de version run-flat de leur produit VUS — et les camions n'ont essentiellement aucune catégorie run-flat grand public, puisque la rigidité de flanc supplémentaire nécessaire pour soutenir un tel poids nuirait à la flexibilité dont les camions ont besoin pour le remorquage et le hors route. Si votre véhicule est sorti d'usine avec des pneus run-flat, restez avec des run-flat — mélanger un pneu run-flat et un pneu conventionnel sur le même essieu n'est pas recommandé.</p></div>
+
+          <details class="sub theme-guide" open>
+            <summary><span class="summary-txt">Voiture de tourisme</span></summary>
+            <div class="sub-body">
+              <div class="item sd1"><div class="item-top"><div class="item-name">Tourisme Standard</div></div><p class="note">Pour qui : les conducteurs soucieux du budget qui veulent simplement se rendre d'un point A à un point B de façon fiable. Compétent mais sans éclat dans chaque catégorie — le compromis pour le prix le plus bas de la famille tourisme. Meilleur rapport bénéfice-prix si la performance ne compte pas et que seul le transport prévisible et sûr importe.</p></div>
+              <div class="item pt1"><div class="item-top"><div class="item-name">Tourisme Premium</div></div><p class="note">Pour qui : les conducteurs qui veulent la conduite quotidienne la plus agréable possible — habitacle plus silencieux, usure plus lente, souvent une meilleure adhérence mouillée — sans payer pour de la performance qu'ils n'utiliseront jamais. Le pas naturel au-dessus du Tourisme Standard quand le budget le permet.</p></div>
+              <div class="item gt1"><div class="item-top"><div class="item-name">Grand Tourisme (Été)</div></div><p class="note">Pour qui : les conducteurs qui veulent un caractère nettement plus sportif que n'importe quel pneu tourisme, tout en gardant le confort et le silence d'une conduite quotidienne — ce qu'un pneu de la famille tourisme offre de plus proche d'un pneu performance. Été seulement, donc un plan hiver s'impose en complément.</p></div>
+              <div class="item pf1"><div class="item-top"><div class="item-name">Performance (UHP été/UUHP)</div></div><p class="note">Pour qui : les passionnés et propriétaires de voitures sport qui veulent l'adhérence sec/mouillé maximale et n'ont pas d'objection à un second jeu pour l'hiver. Le composé souple durcit et perd son adhérence sous environ 7 °C — véritablement dangereux au froid, pas seulement « moins bon » — donc ce choix n'a de sens qu'avec un vrai pneu d'hiver en complément pour quiconque hors d'un climat chaud.</p></div>
+              <div class="item pa1"><div class="item-top"><div class="item-name">Performance Quatre-Saisons</div></div><p class="note">Pour qui : les conducteurs qui veulent la majeure partie de cette adhérence et tenue de route UHP sans le changement saisonnier — un excellent compromis pour qui veut une « sportive quotidienne » dans un climat aux hivers doux. Le composé flexible au froid qui le rend utilisable à l'année fait qu'il n'égale jamais tout à fait l'adhérence maximale d'un vrai pneu été, chaud ou froid.</p></div>
+              <div class="item aw1"><div class="item-top"><div class="item-name">Tout-Temps</div></div><p class="note">Pour qui : le pneu qui mérite vraiment la promesse « quatre-saisons » — certifié 3PMSF, véritablement capable en neige légère à modérée, utilisable à l'année sans changement saisonnier. Le meilleur choix pour les conducteurs à plus faible kilométrage dans un climat hivernal modéré; voir les conseils selon le kilométrage ci-dessous pour savoir exactement quand ceci devance un jeu d'hiver dédié.</p></div>
+              <div class="item t1"><div class="item-top"><div class="item-name">Hiver / Neige</div></div><p class="note">Pour qui : quiconque roule de façon significative durant un vrai hiver — neige régulière, glace, froid soutenu. Rien d'autre sur cette page ne s'approche de l'adhérence sur neige et glace d'un pneu d'hiver dédié, et c'est exactement cet écart qui protège davantage un conducteur hivernal à haut kilométrage.</p></div>
+              <div class="callout callout-c">
+                <b>C'est votre kilométrage qui devrait trancher, pas seulement où vous habitez.</b> Si vous parcourez moins d'environ 10 000 km par année, un pneu Tout-Temps est très probablement le meilleur choix plutôt que deux jeux dédiés — l'avantage d'adhérence supplémentaire d'un vrai pneu d'hiver ne devient rentable que lorsque vous accumulez réellement de la distance en conditions hivernales véritables, et pour une faible utilisation annuelle, le coût, le tracas et l'entreposage de deux changements par année n'en valent généralement pas la peine. Si vous roulez beaucoup et voyez un vrai hiver — neige régulière, glace, froid soutenu — des jeux été et hiver dédiés en valent la peine : l'avantage neige/glace d'un pneu d'hiver par rapport à un bon pneu Tout-Temps s'accumule considérablement plus vous roulez réellement dans ces conditions, et c'est justement le conducteur à haut kilométrage qui en profite le plus.
+              </div>
+            </div>
+          </details>
+
+          <details class="sub theme-guide">
+            <summary><span class="summary-txt">VUS / Multisegment</span></summary>
+            <div class="sub-body">
+              <div class="callout gold">Les VUS mélangent véritablement les deux mondes : les catégories Voiture de tourisme ci-dessus (Grand Tourisme, Performance, Performance Quatre-Saisons, Tout-Temps, Hiver) s'appliquent directement aux VUS aussi, en dimensions VUS/multisegment — elles ne sont pas exclusives aux berlines. Les deux catégories ci-dessous sont celles qui sont véritablement propres aux VUS.</div>
+              <div class="item su1"><div class="item-top"><div class="item-name">Tout-terrain</div></div><p class="note">Pour qui : les propriétaires de multisegments/VUS qui quittent occasionnellement la route pavée — entrées de gravier, chemins forestiers, sentier léger — sans vouloir le bruit ou la pénalité de consommation d'un vrai pneu hors route. Conçu spécifiquement pour une plateforme multisegment plus légère, pas simplement une version réduite d'un pneu de camion.</p></div>
+              <div class="item uh1"><div class="item-top"><div class="item-name">Route</div></div><p class="note">Pour qui : les propriétaires de VUS/multisegments qui restent sur route pavée et veulent un pneu conçu pour le poids supplémentaire et le cas de charge propre à un VUS, pas un pneu tourisme de voiture étiré pour s'ajuster. Priorise généralement une adhérence mouillée qui tient bon à mesure que le pneu s'use.</p></div>
+            </div>
+          </details>
+
+          <details class="sub theme-guide">
+            <summary><span class="summary-txt">Camion (châssis séparé)</span></summary>
+            <div class="sub-body">
+              <div class="item at1"><div class="item-top"><div class="item-name">Tout-terrain (LT)</div></div><p class="note">Pour qui : les propriétaires de camions qui vont véritablement hors route régulièrement — gravier, terre, roche, boue — et acceptent d'échanger un peu de silence routier et d'économie de carburant contre cette capacité. Ce n'est pas un pneu d'hiver, même avec le symbole 3PMSF sur le flanc — voir l'encadré démystificateur ci-dessous, car c'est l'une des méprises les plus courantes et les plus dangereuses sur la route.</p></div>
+              <div class="callout callout-b">
+                <b>Le mythe du tout-terrain en hiver.</b> Beaucoup d'acheteurs de pneus AT présument que le symbole montagne-flocon fait de leur camion « essentiellement un véhicule d'hiver », puis se retrouvent dans le fossé à la première vraie tempête de neige. Voici pourquoi : la certification 3PMSF ne teste que l'accélération sur neige moyennement tassée — elle ne teste ni le freinage, ni la tenue de route, ni la glace (l'explication officielle de Tire Rack le confirme directement). Les pneus AT utilisent aussi un composé de caoutchouc plus dur, conçu pour la durabilité sur gravier/roche, qui raidit et perd de l'adhérence au froid de la même façon qu'un pneu été, et ils ont beaucoup moins de lamelles (les petites fentes qui mordent la glace) qu'un vrai pneu d'hiver. Le pneu AT certifié 3PMSF surpassera un pneu quatre-saisons ordinaire dans la neige — ça, c'est réel. Il ne freinera pas et ne tournera pas comme un pneu d'hiver dédié sur glace ou neige tassée, et le traiter comme tel est exactement ce qui mène les gens à glisser dans une intersection ou hors route pendant une tempête.
+              </div>
+              <div class="item hw1"><div class="item-top"><div class="item-name">Route standard (LT)</div></div><p class="note">Pour qui : les propriétaires de camions qui restent presque entièrement sur route pavée — navettage, transport léger — et veulent le silence, une usure lente et une meilleure économie de carburant plutôt qu'une capacité hors route qu'ils n'utiliseront jamais.</p></div>
+              <div class="item hy1"><div class="item-top"><div class="item-name">Route hybride / sentier (LT)</div></div><p class="note">Pour qui : le propriétaire de camion qui veut le confort de la Route standard la plupart du temps, mais a occasionnellement besoin d'une capacité hors route légère — gravier, chemins forestiers, sentier léger — sans s'engager dans une bande de roulement Tout-terrain complète et ses compromis de bruit/consommation.</p></div>
+              <div class="item hd1"><div class="item-top"><div class="item-name">Route robuste (LT)</div></div><p class="note">Pour qui : les propriétaires de camionnettes de série 2500/3500 qui remorquent ou transportent régulièrement une vraie charge — ce segment est renforcé spécifiquement pour ce cas de charge, pas simplement un pneu Route standard dans un plus grand format.</p></div>
+              <div class="item lw1"><div class="item-top"><div class="item-name">Hiver (LT)</div></div><p class="note">Pour qui : les propriétaires de camions qui font face à un vrai hiver tout en remorquant ou transportant — un composé et une construction d'hiver LT dédiés gèrent la charge en neige et glace d'une façon qu'aucun pneu quatre-saisons ou tout-terrain LT ne peut égaler.</p></div>
+            </div>
+          </details>
+        </div>
+      </details>
+
+      <details class="acc" id="acc-rankings">
+        <summary><span class="summary-txt">Meilleures marques de pneus — par catégorie</span><span class="count-tag">selon les essais de Tyre Reviews et Tire Rack</span></summary>
+        <div class="acc-body">
+          <p class="card-sub" style="margin-top:-4px;">Organisé par type de véhicule, puisqu'une voiture de tourisme, un VUS multisegment et un camion à châssis séparé ne magasinent rarement dans le même éventail de pneus. Le Top 10 composite et les Marques à éviter demeurent neutres, puisque la force des marques là-bas n'est pas propre à une seule plateforme.</p>
+
+          <details class="sub theme-top10">
+            <summary><span class="summary-txt">Top 10 composite — Ensemble</span></summary>
+            <div class="sub-body">
+              <p class="card-sub" style="margin-top:2px;">Classées de 1 à 10 selon la constance avec laquelle chaque marque gagne ou se classe sur le podium dans plusieurs catégories, pas seulement un essai.</p>
+              <div class="item tp1"><div class="item-top"><div class="item-name"><span class="rank-num">01</span>Pirelli</div></div><p class="note"><b>Polyvalente.</b> Gagne en quatre-saisons, été UUHP et tout-terrain — aucune autre marque ne domine autant de catégories à la fois.</p></div>
+              <div class="item tp2"><div class="item-top"><div class="item-name"><span class="rank-num">02</span>Continental</div></div><p class="note"><b>Polyvalente.</b> Performance hiver/neige combinée au tourisme quatre-saisons quotidien — toujours sur le podium, rarement le maillon faible.</p></div>
+              <div class="item tp3"><div class="item-top"><div class="item-name"><span class="rank-num">03</span>Michelin</div></div><p class="note"><b>Polyvalente.</b> Polyvalence tout-temps (CrossClimate2) et hiver premium (Alpin / X-Ice) — le choix sûr et éprouvé par défaut.</p></div>
+              <div class="item tp4"><div class="item-top"><div class="item-name"><span class="rank-num">04</span>Falken</div></div><p class="note"><b>Spécialiste.</b> Sur le podium à la fois en tout-terrain (Wildpeak AT4W) et en performance de piste (Azenis RT660+) — une vraie double menace, pas seulement un choix économique.</p></div>
+              <div class="item tp5"><div class="item-top"><div class="item-name"><span class="rank-num">05</span>Toyo</div></div><p class="note"><b>Spécialiste.</b> Même double force que Falken — l'Open Country A/T III gagne en tout-terrain neigeux, le Proxes Sport 2 rivalise directement en essai été UUHP.</p></div>
+              <div class="item tp6"><div class="item-top"><div class="item-name"><span class="rank-num">06</span>Goodyear</div></div><p class="note"><b>Spécialiste.</b> Spécialiste de la traction sur glace, appuyé par une solide gamme quatre-saisons.</p></div>
+              <div class="item tp7"><div class="item-top"><div class="item-name"><span class="rank-num">07</span>Nokian</div></div><p class="note"><b>Spécialiste.</b> Spécialiste hiver/neige — testé dans les pays nordiques, et référence en tout-terrain hivernal dédié.</p></div>
+              <div class="item tp8"><div class="item-top"><div class="item-name"><span class="rank-num">08</span>BFGoodrich</div></div><p class="note"><b>Spécialiste.</b> Référence tout-terrain — le pneu auquel les autres pneus AT sont comparés.</p></div>
+              <div class="item tp9"><div class="item-top"><div class="item-name"><span class="rank-num">09</span>Bridgestone</div></div><p class="note"><b>Spécialiste.</b> Glace/neige hivernale (Blizzak) combinée à de véritables lettres de noblesse en performance UHP (Potenza).</p></div>
+              <div class="item tp10"><div class="item-top"><div class="item-name"><span class="rank-num">10</span>Hankook</div></div><p class="note"><b>Économique.</b> Quatre-saisons et hiver à prix avantageux — rivalise directement avec le segment premium à prix moindre.</p></div>
+            </div>
+          </details>
+
+          <details class="acc vehicle-acc" id="rank-pc">
+            <summary><span class="summary-txt">Voiture de tourisme</span><span class="count-tag">berlines, coupés</span></summary>
+            <div class="acc-body">
+
+              <details class="sub theme-standard" id="cat-standard">
+                <summary><span class="summary-txt">Tourisme standard</span></summary>
+                <div class="sub-body">
+                  <p class="card-sub" style="margin-top:2px;">L'option quotidienne par défaut : point A à B, usure décente, compétent mais sans éclat. Un cran sous le Tourisme Premium — sacrifie un peu de confort/silence/usure pour un prix nettement inférieur.</p>
+                  <div class="item sd1"><div class="item-top"><div class="item-name"><span class="rank-num">01</span>Michelin</div></div><p class="note">Le Defender2 (et le Defender T+H sortant) est explicitement conçu et commercialisé comme pneu Tourisme Standard quatre-saisons — le propre essai « Standard Touring All-Season » de Tire Rack l'a utilisé comme référence de catégorie face à l'Assurance MaxLife.</p></div>
+                  <div class="item sd2"><div class="item-top"><div class="item-name"><span class="rank-num">02</span>Goodyear</div></div><p class="note">L'Assurance MaxLife2 est le rival direct du Defender2 dans ce même segment Tourisme Standard — légèrement en avance en tenue de route mouillée et en kilométrage de garantie (137 000 km contre 129 000 km), tandis que Michelin garde une légère avance en freinage mouillé.</p></div>
+                  <div class="item sd3"><div class="item-top"><div class="item-name"><span class="rank-num">03</span>Hankook</div></div><p class="note">Le Kinergy XP se démarque comme choix économique dans ce segment — une garantie de 121 000 km à un prix nettement inférieur au duo Michelin/Goodyear, sans chute majeure de performance.</p></div>
+                  <div class="item sd4"><div class="item-top"><div class="item-name"><span class="rank-num">04</span>Kumho</div></div><p class="note">Le Majesty 9 Solus TA91 est utilisé à répétition comme référence économique dans les comparatifs indépendants de Tourisme Standard — adhérence sèche/mouillée véritablement compétitive pour le prix.</p></div>
+                  <div class="item sd5"><div class="item-top"><div class="item-name"><span class="rank-num">05</span>Vredestein</div></div><p class="note">Le HiTrac All Season se situe solidement dans le peloton médian de ce segment selon les comparatifs indépendants — une marque moins connue, mais une option Tourisme Standard légitime à considérer.</p></div>
+                </div>
+              </details>
+
+              <details class="sub theme-midtouring" id="cat-midtouring">
+                <summary><span class="summary-txt">Tourisme milieu de gamme</span></summary>
+                <div class="sub-body">
+                  <p class="card-sub" style="margin-top:2px;">Distinct du Tourisme Standard ci-dessus : ce sont des marques réputées pour dépasser leur gamme de prix, pas les lignes de produits économiques des grandes marques elles-mêmes. Le véritable palier de la valeur.</p>
+                  <div class="item mt1"><div class="item-top"><div class="item-name"><span class="rank-num">01</span>Kumho</div></div><p class="note">Le Solus TA31 (et le plus récent TA51a) revient constamment comme meneur de valeur dans les comparatifs indépendants de pneus économiques — le meilleur rapport cote-prix de sa catégorie, avec une conduite maîtrisée qui ne semble pas fragile pour le prix.</p></div>
+                  <div class="item mt2"><div class="item-top"><div class="item-name"><span class="rank-num">02</span>Hankook</div></div><p class="note">Le Kinergy PT est le choix axé kilométrage de ce segment — bruit routier et consommation de carburant réduits pour la conduite quotidienne, et un remplacement équivalent OEM prisé pour les propriétaires de Hyundai/Kia/Genesis.</p></div>
+                  <div class="item mt3"><div class="item-top"><div class="item-name"><span class="rank-num">03</span>Falken</div></div><p class="note">Le Sincera SN250 A/S affiche des scores remarquables d'adhérence mouillée et d'usure pour le prix, appuyés par des millions de kilomètres rapportés par les propriétaires — un choix judicieux pour les navetteurs à haut kilométrage.</p></div>
+                  <div class="item mt4"><div class="item-top"><div class="item-name"><span class="rank-num">04</span>Cooper</div></div><p class="note">L'Evolution Tour est le choix axé confort de ce segment — Cooper se situe constamment dans la zone idéale entre prix et confiance selon les avis indépendants.</p></div>
+                  <div class="item mt5"><div class="item-top"><div class="item-name"><span class="rank-num">05</span>Nexen</div></div><p class="note">Le N'Priz AH5 est le choix à meilleure garantie à l'extrémité vraiment économique — un choix raisonnable pour qui veut le plus bas coût réel par pneu sans descendre vers des importations sans marque.</p></div>
+                </div>
+              </details>
+
+              <details class="sub theme-premium" id="cat-premium">
+                <summary><span class="summary-txt">Tourisme Premium</span></summary>
+                <div class="sub-body">
+                  <p class="card-sub" style="margin-top:2px;">Le cran au-dessus du Tourisme Standard : un habitacle plus silencieux, une usure plus lente, et souvent une meilleure adhérence mouillée ou une résistance au roulement plus faible pour l'économie de carburant — des pneus axés confort, homologués quatre-saisons, pour qui veut la conduite quotidienne la plus agréable sans payer pour de la performance qu'il n'utilisera jamais.</p>
+                  <div class="item pt1"><div class="item-top"><div class="item-name"><span class="rank-num">01</span>Continental</div></div><p class="note">Le TrueContact Tour 54 est explicitement qualifié de pneu « Grand Touring premium » dans les comparatifs directs, et a devancé ses plus proches rivaux en tenue de route mouillée, contrôle hivernal et classement général dans deux essais Tire Rack distincts.</p></div>
+                  <div class="item pt2"><div class="item-top"><div class="item-name"><span class="rank-num">02</span>Bridgestone</div></div><p class="note">Le Turanza QuietTrack se situe dans ce même segment premium — le plus fort en traction pure (SimpleScore de 9,7 contre 8,4) et en atténuation du bruit, le choix quand le silence d'habitacle est la priorité absolue.</p></div>
+                  <div class="item pt3"><div class="item-top"><div class="item-name"><span class="rank-num">03</span>Michelin</div></div><p class="note">Le Primacy Tour A/S est le véritable pneu Tourisme Premium de Michelin (distinct du Defender2, de niveau Standard) — choisi comme équipement d'origine par Acura, Lexus, BMW, Mercedes-Benz et Cadillac spécifiquement pour son dessin de bande de roulement silencieux.</p></div>
+                  <div class="item pt4"><div class="item-top"><div class="item-name"><span class="rank-num">04</span>Yokohama</div></div><p class="note">L'AVID Ascend GT rivalise directement dans ce même segment — bonne adhérence en sec et en mouillé, ainsi que de bonnes manières en neige légère pour un pneu tourisme non certifié 3PMSF.</p></div>
+                  <div class="item pt5"><div class="item-top"><div class="item-name"><span class="rank-num">05</span>Pirelli</div></div><p class="note">Le P7 AS Plus 3 complète le peloton Grand Touring quatre-saisons de Tire Rack aux côtés de solides concurrents — un choix fiable axé sur le confort, bien qu'avec moins de données d'essais tête-à-tête disponibles que les quatre premiers.</p></div>
+                </div>
+              </details>
+
+              <details class="sub theme-grandtouring" id="cat-grandtouring">
+                <summary><span class="summary-txt">Grand Tourisme (Été)</span></summary>
+                <div class="sub-body">
+                  <p class="card-sub" style="margin-top:2px;">Encore un cran au-dessus en performance et adhérence pure par rapport au Tourisme Premium, tout en conservant le confort et un habitacle silencieux — ce qu'un pneu de la famille tourisme offre de plus proche d'un pneu performance sans sacrifier les qualités quotidiennes. Été seulement, pas quatre-saisons.</p>
+                  <div class="item gt1"><div class="item-top"><div class="item-name"><span class="rank-num">01</span>Continental</div></div><p class="note">Le PremiumContact 7 domine le segment depuis son lancement en 2023, remportant 11 comparatifs directs sur 12 face au Michelin Primacy 4+, avec un freinage mouillé et des temps au tour mouillés de premier ordre.</p></div>
+                  <div class="item gt2"><div class="item-top"><div class="item-name"><span class="rank-num">02</span>Pirelli</div></div><p class="note">Le Cinturato C3, le plus récent, a essentiellement égalé le PremiumContact 7 en cote générale — il devance même le Continental en freinage sec, tenue de route et bruit d'habitacle, faisant de cette rivalité une vraie lutte plutôt qu'une victoire écrasante.</p></div>
+                  <div class="item gt3"><div class="item-top"><div class="item-name"><span class="rank-num">03</span>Bridgestone</div></div><p class="note">Le Turanza T005 est considéré parmi les plus solides du segment dans l'ensemble, reconnu pour un coefficient de résistance au roulement particulièrement faible — le choix si l'économie de carburant compte autant que l'adhérence.</p></div>
+                  <div class="item gt4"><div class="item-top"><div class="item-name"><span class="rank-num">04</span>Goodyear</div></div><p class="note">L'Eagle F1 Asymmetric 6 a remporté tous les essais de presse européens auxquels il a participé depuis son lancement en 2022 — particulièrement fort face au Turanza T005 en adhérence sèche et mouillée pure, bien qu'à la traîne en confort et résistance au roulement.</p></div>
+                  <div class="item gt5"><div class="item-top"><div class="item-name"><span class="rank-num">05</span>Michelin</div></div><p class="note">Le Primacy 4+ accuse un retard face au reste du peloton dans la plupart des comparatifs directs, mais conserve un réel avantage en confort et en raffinement à long terme à mesure que le pneu s'use — le choix pour qui privilégie cela à l'adhérence pure.</p></div>
+                </div>
+              </details>
+
+              <details class="sub theme-performance" id="cat-performance">
+                <summary><span class="summary-txt">Performance (UHP été / UUHP)</span></summary>
+                <div class="sub-body">
+                  <div class="item pf1"><div class="item-top"><div class="item-name"><span class="rank-num">01</span>Pirelli</div></div><p class="note">Le P Zero a été le grand gagnant de l'essai été ultra-haute performance 2026 de Tyre Reviews.</p></div>
+                  <div class="item pf2"><div class="item-top"><div class="item-name"><span class="rank-num">02</span>Michelin</div></div><p class="note">Le Pilot Sport 5 demeure l'un des pneus UHP les plus testés et recommandés; le Pilot Sport Cup 2 a servi de référence piste dans le même essai UUHP.</p></div>
+                  <div class="item pf3"><div class="item-top"><div class="item-name"><span class="rank-num">03</span>Bridgestone</div></div><p class="note">Le Potenza RE-71RS demeure une référence parmi les pneus piste homologués route, régulièrement utilisé comme point de comparaison dans les propres essais de compétition de Tire Rack.</p></div>
+                  <div class="item pf4"><div class="item-top"><div class="item-name"><span class="rank-num">04</span>Falken</div></div><p class="note">Les Azenis RT660 / RT660+ se retrouvent régulièrement dans les propres essais de compétition de Tire Rack, aux côtés du Bridgestone Potenza RE-71RS et du Michelin Pilot Sport Cup 2 — une vraie place de choix pour la piste, pas seulement une option économique.</p></div>
+                  <div class="item pf5"><div class="item-top"><div class="item-name"><span class="rank-num">05</span>Toyo</div></div><p class="note">Le Proxes Sport 2 a bien tenu tête dans l'essai été UUHP 2026 de Tire Rack, face au Falken FK510, au BFGoodrich g-Force Phenom TA, au Sumitomo HTR Z5 et au Nitto NT555 G2.</p></div>
+                </div>
+              </details>
+
+              <details class="sub theme-perfas" id="cat-perfas">
+                <summary><span class="summary-txt">Performance Quatre-Saisons</span></summary>
+                <div class="sub-body">
+                  <p class="card-sub" style="margin-top:2px;">Adhérence ultra-haute performance combinée à un composé quatre-saisons homologué pour l'hiver — ce qui se rapproche le plus de la tenue de route et du freinage d'un pneu UHP été sans nécessiter un second jeu hors-saison, bien qu'encore un cran sous l'adhérence maximale d'un vrai pneu été.</p>
+                  <div class="item pa1"><div class="item-top"><div class="item-name"><span class="rank-num">01</span>Continental</div></div><p class="note">L'ExtremeContact DWS06 Plus est largement considéré comme le meilleur généraliste du segment pour la conduite mixte réelle — meilleure tenue de route, réponse de direction et raffinement d'habitacle que son plus proche rival dans près d'une douzaine de comparatifs directs.</p></div>
+                  <div class="item pa2"><div class="item-top"><div class="item-name"><span class="rank-num">02</span>Michelin</div></div><p class="note">Le Pilot Sport All Season 4 est le spécialiste des chiffres de freinage — distances d'arrêt les plus courtes en sec et en mouillé dans la plupart des essais tête-à-tête, le choix si la performance de freinage d'urgence est la priorité.</p></div>
+                  <div class="item pa3"><div class="item-top"><div class="item-name"><span class="rank-num">03</span>Goodyear</div></div><p class="note">L'Eagle F1 All Season a été l'un des meilleurs résultats du propre essai UHPAS à 5 pneus de Tire Rack sur une Tesla Model 3, devançant le Michelin sur route.</p></div>
+                  <div class="item pa4"><div class="item-top"><div class="item-name"><span class="rank-num">04</span>Bridgestone</div></div><p class="note">Le Potenza Sport AS a aussi terminé en tête du peloton dans ce même essai Tire Rack — un véritable candidat au podium, pas seulement un élément de remplissage.</p></div>
+                  <div class="item pa5"><div class="item-top"><div class="item-name"><span class="rank-num">05</span>Pirelli</div></div><p class="note">Le P Zero All Season Plus a mené le groupe en tenue de route sèche dans un autre essai UHPAS de Tire Rack — une bonne option côté disponibilité de tailles et adhérence, bien que moins souvent présent dans les essais tête-à-tête que les quatre premiers.</p></div>
+                </div>
+              </details>
+
+              <details class="sub theme-allweather" id="cat-allweather">
+                <summary><span class="summary-txt">Tout-Temps</span></summary>
+                <div class="sub-body">
+                  <p class="card-sub" style="margin-top:2px;">Pneus certifiés 3PMSF conçus pour gérer des conditions hivernales légères à modérées à l'année, sans changement saisonnier — un vrai pas au-dessus du quatre-saisons ordinaire, mais pas un substitut aux pneus d'hiver dédiés dans les climats à forte neige/glace. Classés selon la distance de freinage combinée sec + mouillé + neige d'une comparaison indépendante DEKRA.</p>
+                  <div class="item aw1"><div class="item-top"><div class="item-name"><span class="rank-num">01</span>Pirelli</div></div><p class="note">Le Cinturato All Season SF3 a affiché la meilleure distance de freinage combinée (72,8 m au total en sec, mouillé et neige) face à quatre pneus tout-temps rivaux — aussi coté A pour l'adhérence mouillée sur l'étiquette européenne des pneus.</p></div>
+                  <div class="item aw2"><div class="item-top"><div class="item-name"><span class="rank-num">02</span>Bridgestone</div></div><p class="note">Le Turanza All Season 6 a terminé deuxième de justesse dans la même comparaison (73,1 m combinés).</p></div>
+                  <div class="item aw3"><div class="item-top"><div class="item-name"><span class="rank-num">03</span>Michelin</div></div><p class="note">Le CrossClimate2 demeure le pneu tout-temps le plus connu en Amérique du Nord — 3e à cet essai de freinage combiné (74,6 m), et toujours l'une des options quatre-saisons les plus recommandées.</p></div>
+                  <div class="item aw4"><div class="item-top"><div class="item-name"><span class="rank-num">04</span>Continental</div></div><p class="note">L'AllSeasonContact 2 s'est classé 4e ici (75,5 m combinés) — mais a remporté l'essai été quatre-saisons 2025 d'AutoBild haut la main, un rappel que les classements varient selon la méthodologie d'essai.</p></div>
+                  <div class="item aw5"><div class="item-top"><div class="item-name"><span class="rank-num">05</span>Goodyear</div></div><p class="note">L'Assurance WeatherReady2 est le pneu tout-temps certifié 3PMSF de Goodyear, testé directement contre le CrossClimate2 par Goodyear lui-même — bon freinage mouillé (1,6 m plus court que des pneus comparables), sans toutefois être le meneur absolu de cette comparaison DEKRA précise.</p></div>
+                </div>
+              </details>
+
+              <details class="sub theme-winter" id="cat-winter">
+                <summary><span class="summary-txt">Hiver / Neige</span></summary>
+                <div class="sub-body">
+                  <div class="item t1"><div class="item-top"><div class="item-name"><span class="rank-num">01</span>Continental</div></div><p class="note">Le VikingContact 8 a remporté l'essai nordique sans clous 2025/26 de Tyre Reviews haut la main — résultats constants en neige, glace, pluie, sec, bruit et résistance au roulement.</p></div>
+                  <div class="item t2"><div class="item-top"><div class="item-name"><span class="rank-num">02</span>Michelin</div><span class="status-pill new">Nouveau pour 2026</span></div><p class="note">Le X-Ice Snow+ arrive pour la saison hivernale 2026 — amélioration de la performance et de la durabilité par rapport au X-Ice Snow, plus la technologie Piano Acoustic Tuning pour un roulement plus silencieux. Le Pilot Alpin PA4 demeure leur option hiver performance.</p></div>
+                  <div class="item t3"><div class="item-top"><div class="item-name"><span class="rank-num">03</span>Bridgestone</div><span class="status-pill new">Nouveau pour 2026</span></div><p class="note">Le Blizzak IcePeak est le nouveau pneu hiver phare, lancé à l'échelle nationale en mai 2026 — premier Blizzak à obtenir à la fois les certifications 3-Peak Mountain Snowflake et Ice Grip, remplaçant les WS90 et DM-V2.</p></div>
+                  <div class="item t4"><div class="item-top"><div class="item-name"><span class="rank-num">04</span>Nokian</div></div><p class="note">Le Hakkapeliitta R5 a affiché la meilleure distance de freinage et le meilleur temps au tour dans l'essai neige de Tyre Reviews — la référence pour voiture de tourisme, distincte du Hakkapeliitta LT3 homologué LT conçu pour les camions.</p></div>
+                  <div class="item t5"><div class="item-top"><div class="item-name"><span class="rank-num">05</span>Goodyear</div></div><p class="note">L'Ultra Grip Ice WRT est le pneu glace/neige cloutable dédié de Goodyear pour l'Amérique du Nord. L'UltraGrip Ice 3, qui a obtenu de bons résultats de freinage sur glace dans le même essai, est un pneu du marché européen/nordique non vendu ici — le WRT utilise une technologie de bande de roulement similaire axée sur la glace et demeure une option hivernale fiable au Canada.</p></div>
+                  <div class="callout"><b>Remarque :</b> ni le X-Ice Snow+ ni le Blizzak IcePeak n'ont encore été soumis à un essai comparatif de Tyre Reviews — les deux sont tout nouveaux pour la saison 2026. À surveiller jusqu'à un essai tête-à-tête.</div>
+                </div>
+              </details>
+
+              <details class="sub theme-midwinter" id="cat-midwinter">
+                <summary><span class="summary-txt">Hiver milieu de gamme</span></summary>
+                <div class="sub-body">
+                  <p class="card-sub" style="margin-top:2px;">Une véritable capacité hivernale — certifié 3PMSF, cloutable dans la plupart des cas — à un vrai rabais par rapport au segment phare ci-dessus. Pas un substitut au segment supérieur dans les climats les plus rudes, mais une option de valeur légitime pour la plupart des conducteurs hivernaux.</p>
+                  <div class="item mw1"><div class="item-top"><div class="item-name"><span class="rank-num">01</span>Nokian</div></div><p class="note">Le Nordman North 9 est la propre sous-marque économique de Nokian, lancée spécifiquement pour rendre leur technologie de pneu d'hiver nordique accessible à un prix plus abordable.</p></div>
+                  <div class="item mw2"><div class="item-top"><div class="item-name"><span class="rank-num">02</span>Hankook</div></div><p class="note">Le Winter i*cept RS3 offre une bonne performance sur neige et un bon freinage mouillé à un prix très compétitif — cité à répétition comme le meneur du milieu de gamme dans les essais européens indépendants.</p></div>
+                  <div class="item mw3"><div class="item-top"><div class="item-name"><span class="rank-num">03</span>Yokohama</div></div><p class="note">L'iceGUARD G075 est un performant éprouvé avec une couverture de dimensions particulièrement large, facile à trouver pour la plupart des tailles de véhicules.</p></div>
+                  <div class="item mw4"><div class="item-top"><div class="item-name"><span class="rank-num">04</span>General</div></div><p class="note">L'AltiMAX Arctic 12 est prêt pour les clous et économique — traction confiante sur neige et glace avec une large couverture de dimensions, sans l'étiquette de prix du segment premium.</p></div>
+                  <div class="item mw5"><div class="item-top"><div class="item-name"><span class="rank-num">05</span>Vredestein</div></div><p class="note">Le Wintrac performe bien dans la neige et demeure notablement silencieux pour sa gamme de prix.</p></div>
+                </div>
+              </details>
+
+              <details class="sub theme-runflat" id="cat-runflat">
+                <summary><span class="summary-txt">Pneus increvables (Run-Flat)</span></summary>
+                <div class="sub-body">
+                  <p class="card-sub" style="margin-top:2px;">Les voitures de tourisme ont la sélection run-flat la plus étendue de tous les types de véhicules — équipement d'origine standard sur la plupart des BMW et Mini. Le flanc renforcé soutient le véhicule sur environ 80 km à un maximum de 80 km/h après une perte totale d'air.</p>
+                  <div class="item rf1"><div class="item-top"><div class="item-name"><span class="rank-num">01</span>Michelin</div></div><p class="note">Le Primacy MXM4 ZP mène en équilibre général — confort, adhérence mouillée et durée de vie de la bande de roulement, appuyé par plus de trois millions de kilomètres rapportés par les propriétaires. Le Pilot Sport All Season 4 ZP est leur option ZP axée performance pour qui ne veut pas sacrifier l'adhérence pour la sécurité run-flat.</p></div>
+                  <div class="item rf2"><div class="item-top"><div class="item-name"><span class="rank-num">02</span>Bridgestone</div></div><p class="note">Le DriveGuard Plus est cité à répétition comme le meilleur rapport qualité-prix run-flat — une véritable sécurité run-flat sans l'étiquette de prix premium, avec de solides conditions sèches et réponse de direction.</p></div>
+                  <div class="item rf3"><div class="item-top"><div class="item-name"><span class="rank-num">03</span>Continental</div></div><p class="note">Le ProContact GX SSR a affiché la meilleure performance hivernale parmi les run-flat dans les essais indépendants; le ProContact RX SSR est l'option SSR plus économique avec une disponibilité de dimensions de rechange plus large.</p></div>
+                  <div class="item rf4"><div class="item-top"><div class="item-name"><span class="rank-num">04</span>Pirelli</div></div><p class="note">Le Cinturato P7 All Season Run Flat apporte le confort tourisme et le faible bruit de Pirelli à la catégorie run-flat — conçu pour les berlines premium.</p></div>
+                  <div class="item rf5"><div class="item-top"><div class="item-name"><span class="rank-num">05</span>Hankook</div></div><p class="note">Le Ventus S1 noble2 HRS est l'alternative économique de ce groupe — réduit le coût sans trop sacrifier la tenue de route sèche/mouillée.</p></div>
+                  <div class="callout">Ne présumez pas que tout pneu run-flat convient à votre voiture — plusieurs, surtout les options premium, sont spécifiques à l'équipement d'origine avec une disponibilité de dimensions limitée en dehors des véhicules exacts pour lesquels ils ont été conçus.</div>
+                </div>
+              </details>
+
+            </div>
+          </details>
+
+          <details class="acc vehicle-acc" id="rank-suv">
+            <summary><span class="summary-txt">VUS / Multisegment</span><span class="count-tag">VUS, fourgonnettes</span></summary>
+            <div class="acc-body">
+              <p class="card-sub" style="margin-top:-4px;">Les VUS à châssis séparé (4Runner, Wrangler, Land Cruiser, Suburban/Tahoe) partagent le marché des pneus avec les camions — voir la section Camion à la place. Ceci couvre les multisegments et VUS intermédiaires, qui mélangent véritablement les types de pneus de voiture de tourisme et de camion.</p>
+
+              <div class="callout gold">Le montage Grand Tourisme, Performance, Performance Quatre-Saisons, Tout-Temps et Hiver pour les VUS utilise exactement les mêmes classements de marques que Voiture de tourisme ci-dessus — les mêmes pneus (PremiumContact 7, CrossClimate2, VikingContact 8, X-Ice Snow+, etc.) sont simplement vendus en dimensions VUS/multisegment, alors le gagnant ne change pas.</div>
+
+              <details class="sub theme-allterrain" id="cat-at-suv">
+                <summary><span class="summary-txt">Tout-terrain</span></summary>
+                <div class="sub-body">
+                  <p class="card-sub" style="margin-top:2px;">Conçu spécifiquement pour les multisegments, pas des pneus de camion adaptés — ajusté pour une plateforme plus légère, nettement plus silencieux sur route, et non destiné à un usage hors route sérieux. Une gamme de produits entièrement différente des pneus Tout-terrain de camion ci-dessous.</p>
+                  <div class="item su1"><div class="item-top"><div class="item-name"><span class="rank-num">01</span>Falken</div></div><p class="note">Le Wildpeak A/T Trail a été conçu dès le départ pour les multisegments — remarquablement silencieux pour un pneu tout-terrain, avec de larges canaux d'évacuation d'eau lui donnant un réel avantage en adhérence mouillée que peu de pneus AT possèdent.</p></div>
+                  <div class="item su2"><div class="item-top"><div class="item-name"><span class="rank-num">02</span>Continental</div></div><p class="note">Le TerrainContact A/T est cité à répétition comme une réussite de catégorie spécifiquement pour les propriétaires de VUS multisegments — performance en neige exceptionnelle pour un pneu axé multisegment.</p></div>
+                  <div class="item su3"><div class="item-top"><div class="item-name"><span class="rank-num">03</span>BFGoodrich</div></div><p class="note">Le Trail-Terrain T/A est l'alternative plus silencieuse et adaptée aux multisegments de BFGoodrich à leur gamme KO2/KO3 axée camion — conduite plus douce, moins de bruit routier, tout en restant véritablement capable hors route.</p></div>
+                  <div class="item su4"><div class="item-top"><div class="item-name"><span class="rank-num">04</span>Yokohama</div></div><p class="note">Le Geolandar (gamme multisegment) roule légèrement plus silencieusement et en douceur sur route que le Wildpeak A/T Trail dans certaines comparaisons de dimensions, au prix d'une protection de flanc et d'une capacité de neige moindres.</p></div>
+                  <div class="item su5"><div class="item-top"><div class="item-name"><span class="rank-num">05</span>Toyo</div></div><p class="note">L'Open Country A/T III est aussi offert en véritables dimensions multisegments — l'option tout-terrain la plus polyvalente pour qui veut un seul pneu qui équilibre le confort d'un multisegment et une vraie capacité hors route.</p></div>
+                </div>
+              </details>
+
+              <details class="sub theme-highway" id="cat-highway-suv">
+                <summary><span class="summary-txt">Route</span></summary>
+                <div class="sub-body">
+                  <p class="card-sub" style="margin-top:2px;">Une gamme de produits véritablement distincte des pneus tourisme de voiture — conçue pour le poids supplémentaire et le cas de charge différent d'un VUS/multisegment, généralement avec un accent plus marqué sur l'adhérence mouillée qui tient bon à mesure que le pneu s'use.</p>
+                  <div class="item uh1"><div class="item-top"><div class="item-name"><span class="rank-num">01</span>Michelin</div></div><p class="note">Le Premier LTX est conçu spécifiquement pour les VUS, multisegments et camionnettes légères, distinct du Primacy Tour A/S de voiture de tourisme — la technologie EverGrip utilise des rainures d'évacuation d'eau qui s'élargissent pour que le freinage mouillé reste solide même à mesure que le pneu s'use.</p></div>
+                  <div class="item uh2"><div class="item-top"><div class="item-name"><span class="rank-num">02</span>Continental</div></div><p class="note">Le CrossContact LX25 est le rival direct le plus souvent cité du Premier LTX dans cette catégorie — une alternative fiable et axée confort.</p></div>
+                  <div class="item uh3"><div class="item-top"><div class="item-name"><span class="rank-num">03</span>Bridgestone</div></div><p class="note">L'Alenza A/S 02 est la gamme tourisme/route propre aux VUS de Bridgestone — axée confort, bien qu'avec moins de données d'essais tête-à-tête disponibles face aux deux premiers.</p></div>
+                  <div class="item uh4"><div class="item-top"><div class="item-name"><span class="rank-num">04</span>Pirelli</div></div><p class="note">Le Scorpion Verde A/S Plus complète le peloton avec l'option tourisme quatre-saisons pour VUS de Pirelli.</p></div>
+                  <div class="item uh5"><div class="item-top"><div class="item-name"><span class="rank-num">05</span>Hankook</div></div><p class="note">Le Dynapro HP2 est le choix économique de ce groupe — une option route pour VUS à coût moindre sans chute de performance majeure.</p></div>
+                </div>
+              </details>
+
+              <details class="sub theme-midrange" id="cat-midrange-suv">
+                <summary><span class="summary-txt">Milieu de gamme fiable (HT)</span></summary>
+                <div class="sub-body">
+                  <p class="card-sub" style="margin-top:2px;">Pneus Highway Terrain que Tyre Reviews qualifie eux-mêmes de « milieu de gamme » ou économiques dans leurs propres essais — véritablement compétitifs face aux pneus VUS/multisegment premium à prix moindre, selon leur classement réel.</p>
+                  <div class="item mr1"><div class="item-top"><div class="item-name"><span class="rank-num">01</span>Kumho</div></div><p class="note">Le Crugen HT51 était « sur une autre planète » lors de l'essai HT 2026 de Tyre Reviews — a devancé la référence Michelin de 0,2 s en traction sur neige, se classant deuxième.</p></div>
+                  <div class="item mr2"><div class="item-top"><div class="item-name"><span class="rank-num">02</span>Firestone</div></div><p class="note">Le Destination LE3 a surpris dans le même essai en talonnant la référence du segment, le Michelin Defender LTX M/S2, au tour de tenue de route sur neige.</p></div>
+                  <div class="item mr3"><div class="item-top"><div class="item-name"><span class="rank-num">03</span>Cooper</div></div><p class="note">L'Endeavor Plus était l'un des deux pneus HT milieu de gamme (avec General) restés stables en conditions hivernales pour un pneu à vocation quatre-saisons.</p></div>
+                  <div class="item mr4"><div class="item-top"><div class="item-name"><span class="rank-num">04</span>General</div></div><p class="note">Le tout nouveau Grabber HT a tenu tête aux pneus HT milieu de gamme et premium établis, avec une tenue de route légèrement plus ludique à la limite.</p></div>
+                  <div class="item mr5"><div class="item-top"><div class="item-name"><span class="rank-num">05</span>Giti</div></div><p class="note">Une vraie surprise à l'essai été 2026 d'AutoBild — une marque qu'on ne classe pas normalement avec le segment premium, mais qui a obtenu d'assez bons résultats en mouillé et en sec pour rejoindre Hankook, Goodyear, Michelin et Pirelli dans la cote « exemplaire ».</p></div>
+                  <div class="callout">Même le pneu économique choisi par Tyre Reviews — le Westlake SU318 HT — a montré à quel point les pneus bon marché ont progressé, se classant généralement dans le peloton plutôt que dernier au pointage global, même s'il accusait un retard sur certains essais comme l'accélération sur neige.</div>
+                </div>
+              </details>
+
+              <details class="sub theme-runflat" id="cat-runflat-suv">
+                <summary><span class="summary-txt">Pneus increvables (Run-Flat)</span></summary>
+                <div class="sub-body">
+                  <p class="card-sub" style="margin-top:2px;">Une gamme véritablement différente et plus mince que les run-flat de voiture de tourisme — conçue spécifiquement pour le poids et la hauteur de caisse d'un VUS, pas un run-flat de voiture étiré dans une dimension plus grande. Certaines gammes de pneus n'offrent aucune version run-flat pour VUS.</p>
+                  <div class="item rfs1"><div class="item-top"><div class="item-name"><span class="rank-num">01</span>Pirelli</div></div><p class="note">Le Scorpion Zero / Scorpion Verde All Season Run Flat a été conçu spécifiquement pour gérer le poids et la hauteur de caisse d'un VUS tout en gardant une tenue de route maîtrisée plutôt que vague ou flottante — équipement d'origine courant sur les BMW série X et Porsche Cayenne.</p></div>
+                  <div class="item rfs2"><div class="item-top"><div class="item-name"><span class="rank-num">02</span>Bridgestone</div></div><p class="note">Le Dueler H/P Sport RFT et le Dueler H/L 400 RFT utilisent une construction de bande de roulement à double couche spécifiquement pour gérer la charge supplémentaire d'un VUS plus lourd, avec la réponse de direction précise que recherchent les conducteurs.</p></div>
+                  <div class="item rfs3"><div class="item-top"><div class="item-name"><span class="rank-num">03</span>Continental</div></div><p class="note">Le CrossContact LX Sport SSR et le ContiSportContact 5 SUV SSR apportent la technologie Self-Supporting Runflat de Continental dans des dimensions véritablement propres aux VUS.</p></div>
+                  <div class="item rfs4"><div class="item-top"><div class="item-name"><span class="rank-num">04</span>Michelin</div></div><p class="note">La gamme Latitude (Tour HP ZP, Alpin LA2 ZP) et le Pilot Alpin 5 SUV ZP sont les véritables run-flat Zero Pressure propres aux VUS de Michelin, distincts de leur gamme ZP pour voiture de tourisme.</p></div>
+                  <div class="item rfs5"><div class="item-top"><div class="item-name"><span class="rank-num">05</span>Hankook</div></div><p class="note">Le Ventus S1 evo3 SUV K127C HRS est l'option économique dans les véritables dimensions run-flat pour VUS — une vraie alternative quand la sélection run-flat pour VUS des marques premium n'a pas votre dimension.</p></div>
+                </div>
+              </details>
+            </div>
+          </details>
+
+          <details class="acc vehicle-acc" id="rank-truck">
+            <summary><span class="summary-txt">Camion</span><span class="count-tag">châssis séparé, homologué LT</span></summary>
+            <div class="acc-body">
+              <p class="card-sub" style="margin-top:-4px;">Couvre les camions et VUS à châssis séparé (F-150, Silverado, Ram, 4Runner, Wrangler, Land Cruiser, Suburban/Tahoe) — des produits plus robustes conçus pour une véritable capacité de charge et un usage hors route, pas les pneus plus légers axés multisegment ci-dessus.</p>
+
+              <details class="sub theme-allterrain" id="cat-at-lt">
+                <summary><span class="summary-txt">Tout-terrain (LT)</span></summary>
+                <div class="sub-body">
+                  <div class="item at1"><div class="item-top"><div class="item-name"><span class="rank-num">01</span>Pirelli</div></div><p class="note">Le Scorpion XTM AT a remporté l'essai tout-terrain 2026 de Tyre Reviews — le plus fort en tenue de route sur terre, tenue de route subjective sur terre, traction sur neige, tenue de route subjective sur neige et tenue de route subjective sur chaussée mouillée.</p></div>
+                  <div class="item at2"><div class="item-top"><div class="item-name"><span class="rank-num">02</span>Falken</div></div><p class="note">Le Wildpeak AT4W a remporté un comparatif direct (source Tire Rack) face au Toyo Open Country A/T III — meilleur freinage sur chaussée mouillée et résistance à l'aquaplanage de la catégorie, arrêts secs plus courts, roulement plus silencieux et meilleur contrôle sur terre.</p></div>
+                  <div class="item at3"><div class="item-top"><div class="item-name"><span class="rank-num">03</span>Toyo</div></div><p class="note">L'Open Country A/T III a pris l'avantage dans ce même comparatif une fois passé à la neige — meilleure tenue de route, traction et contrôle subjectif sur neige que le Wildpeak AT4W, malgré un freinage légèrement plus faible.</p></div>
+                  <div class="item at4"><div class="item-top"><div class="item-name"><span class="rank-num">04</span>BFGoodrich</div></div><p class="note">Le All-Terrain KO3 est considéré comme la référence du segment dans plusieurs comparatifs tout-terrain de Tyre Reviews — le remplaçant direct du légendaire KO2.</p></div>
+                  <div class="item at5"><div class="item-top"><div class="item-name"><span class="rank-num">05</span>Nokian</div></div><p class="note">L'Outpost nAT a été jugé le meilleur pneu tout-terrain pour les conditions hivernales — s'est démarqué au freinage sur glace, constant dans tous les essais.</p></div>
+                  <div class="callout">Falken vs Toyo est une question de priorités : choisissez le Falken Wildpeak pour la tenue de route sur chaussée sèche/mouillée et le confort silencieux, choisissez le Toyo Open Country pour les climats très neigeux. Les deux sont certifiés 3-Peak Mountain Snowflake.</div>
+                </div>
+              </details>
+
+              <details class="sub theme-highway" id="cat-highway-lt">
+                <summary><span class="summary-txt">Route standard (LT)</span></summary>
+                <div class="sub-body">
+                  <p class="card-sub" style="margin-top:2px;">Pour les camions qui restent surtout sur route pavée — navettage, remorquage, transport — sans la bande de roulement hors route d'un pneu tout-terrain. Plus silencieux, usure plus lente, meilleure économie de carburant.</p>
+                  <div class="item hw1"><div class="item-top"><div class="item-name"><span class="rank-num">01</span>Michelin</div></div><p class="note">Le Defender LTX M/S2 affiche une distance de freinage mouillée dominante (41,6 m contre 49,7 m pour le Dueler H/L Alenza Plus, 52,0 m pour le Wrangler SR-A) et la meilleure cote de traction sur neige du groupe dans les propres essais publiés de Michelin.</p></div>
+                  <div class="item hw2"><div class="item-top"><div class="item-name"><span class="rank-num">02</span>Continental</div></div><p class="note">Le TerrainContact H/T roule plus silencieusement que le Defender LTX avec un freinage mouillé légèrement meilleur selon les données d'essai indépendantes de l'AAA, et une résistance au roulement plus faible.</p></div>
+                  <div class="item hw3"><div class="item-top"><div class="item-name"><span class="rank-num">03</span>Bridgestone</div></div><p class="note">Le Dueler H/L Alenza Plus offre la conduite la plus douce de cette catégorie, appuyée par une garantie de 129 000 km — la plus longue du groupe.</p></div>
+                  <div class="item hw4"><div class="item-top"><div class="item-name"><span class="rank-num">04</span>Goodyear</div></div><p class="note">Le Wrangler Fortitude HT offre une conduite et un niveau de bruit presque identiques au Defender LTX M/S2, souvent pour nettement moins cher.</p></div>
+                  <div class="item hw5"><div class="item-top"><div class="item-name"><span class="rank-num">05</span>Cooper</div></div><p class="note">Le Discoverer HT3 est le choix économique du groupe — égale la cote de neige sévère 3PMSF de la catégorie à un prix nettement inférieur, avec un flanc légèrement plus rigide qui est en fait un avantage pour les camions à PNBV plus élevé.</p></div>
+                </div>
+              </details>
+
+              <details class="sub theme-midhighway" id="cat-midhighway">
+                <summary><span class="summary-txt">Route milieu de gamme (LT)</span></summary>
+                <div class="sub-body">
+                  <p class="card-sub" style="margin-top:2px;">Un véritable palier de valeur sous la Route standard — de vrais pneus route homologués LT de marques établies, pas un pas vers des importations sans marque.</p>
+                  <div class="item mh1"><div class="item-top"><div class="item-name"><span class="rank-num">01</span>Kumho</div></div><p class="note">Le Crugen HT51 se démarque par une usure solide et le meilleur score de neige de la gamme camion de Kumho — un excellent choix de valeur pour les propriétaires de camionnettes demi-tonne qui remorquent occasionnellement et veulent une capacité hivernale sans le bruit d'un pneu tout-terrain.</p></div>
+                  <div class="item mh2"><div class="item-top"><div class="item-name"><span class="rank-num">02</span>Yokohama</div></div><p class="note">Le Geolandar H/T4 (dimensions LT) mène ce segment en longévité, conçu pour un remorquage et un transport confiants avec une garantie de durée de vie de bande de roulement véritablement longue.</p></div>
+                  <div class="item mh3"><div class="item-top"><div class="item-name"><span class="rank-num">03</span>Falken</div></div><p class="note">Le Wildpeak H/T02 complète ce segment de valeur — l'équilibre entre performance et prix abordable de Falken se démarque clairement aussi dans ce segment, pas seulement dans leur gamme AT.</p></div>
+                  <div class="item mh4"><div class="item-top"><div class="item-name"><span class="rank-num">04</span>General</div></div><p class="note">L'AltiMAX RT43 (dimensions compatibles LT) est une option de valeur fiable et largement disponible pour qui veut une marque connue sans la prime de prix de la Route standard.</p></div>
+                  <div class="item mh5"><div class="item-top"><div class="item-name"><span class="rank-num">05</span>Westlake</div></div><p class="note">La véritable extrémité économique de ce segment — la propre référence économique de Tyre Reviews dans les essais HT, montrant à quel point les pneus bon marché ont progressé, même s'il accuse un retard sur certains essais comme l'accélération sur neige.</p></div>
+                </div>
+              </details>
+
+              <details class="sub theme-hybrid" id="cat-hybrid-lt">
+                <summary><span class="summary-txt">Route hybride / sentier (LT)</span></summary>
+                <div class="sub-body">
+                  <p class="card-sub" style="margin-top:2px;">Un cran entre la Route standard et le Tout-terrain complet — confort et silence routiers la plupart du temps, avec une capacité hors route légère (gravier, chemins forestiers, sentier léger) au besoin, sans s'engager dans une bande de roulement AT agressive.</p>
+                  <div class="item hy1"><div class="item-top"><div class="item-name"><span class="rank-num">01</span>Michelin</div></div><p class="note">Le LTX Trail équilibre le confort routier avec une véritable capacité hors route légère — les critiques le classent systématiquement devant ses rivaux directs en traction hivernale et en freinage sur glace/neige spécifiquement.</p></div>
+                  <div class="item hy2"><div class="item-top"><div class="item-name"><span class="rank-num">02</span>Goodyear</div></div><p class="note">Le Wrangler All-Terrain Adventure with Kevlar égale le raffinement routier et la qualité de conduite du LTX Trail avec une capacité hors route très solide — possiblement un léger avantage en usure et en longévité.</p></div>
+                  <div class="item hy3"><div class="item-top"><div class="item-name"><span class="rank-num">03</span>Falken</div></div><p class="note">Le Wildpeak A/T Trail est le choix économique — une compétence hors route surprenante pour le prix, bien qu'il n'égale pas tout à fait le confort routier, le faible bruit ou la durée de vie du LTX Trail.</p></div>
+                  <div class="item hy4"><div class="item-top"><div class="item-name"><span class="rank-num">04</span>BFGoodrich</div></div><p class="note">Le Trail-Terrain T/A complète ce segment avec le réglage habituel axé confort de BFGoodrich — une option raisonnable, bien qu'avec moins de données d'essais tête-à-tête directes face aux trois premiers dans cette version LT précisément.</p></div>
+                  <div class="item hy5"><div class="item-top"><div class="item-name"><span class="rank-num">05</span>General</div></div><p class="note">Le Grabber APT est un nouvel arrivant dans ce créneau précis — à considérer, bien qu'il ait moins de données d'essais indépendants à long terme que les options plus établies ci-dessus.</p></div>
+                </div>
+              </details>
+
+              <details class="sub theme-heavyduty" id="cat-heavyduty">
+                <summary><span class="summary-txt">Route robuste (LT)</span></summary>
+                <div class="sub-body">
+                  <p class="card-sub" style="margin-top:2px;">Conçu spécifiquement pour les camionnettes robustes (F-250/F-350, Silverado/Sierra 2500/3500, Ram 2500/3500) — renforcé pour de vraies charges de remorquage et de transport, pas simplement un pneu Route standard dans un plus grand format. Une catégorie plus récente et plus restreinte, avec moins de données d'essais tête-à-tête que les segments ci-dessus.</p>
+                  <div class="item hd1"><div class="item-top"><div class="item-name"><span class="rank-num">01</span>Michelin</div></div><p class="note">Le Defender LTX Platinum est un tout nouveau segment chez Michelin, pas seulement un rebadgeage — conçu spécifiquement pour les camionnettes robustes/de luxe, avec environ le double de la durée de vie de la bande de roulement du LTX M/S2 standard et une construction de flanc renforcée pensée pour les charges de remorquage.</p></div>
+                  <div class="item hd2"><div class="item-top"><div class="item-name"><span class="rank-num">02</span>Toyo</div></div><p class="note">L'Open Country H/T II est une option robuste bien établie, bien qu'elle précède le LTX Platinum et n'ait pas encore été testée directement contre lui.</p></div>
+                  <div class="item hd3"><div class="item-top"><div class="item-name"><span class="rank-num">03</span>Bridgestone</div></div><p class="note">Le Duravis APT IV est la gamme route robuste/commerciale de Bridgestone — une alternative raisonnable, bien qu'avec une couverture d'essais destinée au grand public moins étendue que les options axées camionnettes personnelles.</p></div>
+                </div>
+              </details>
+
+              <details class="sub theme-ltwinter" id="cat-ltwinter">
+                <summary><span class="summary-txt">Hiver (LT)</span></summary>
+                <div class="sub-body">
+                  <p class="card-sub" style="margin-top:2px;">Pneus d'hiver dédiés fabriqués en cotes de charge LT pour camions et VUS à châssis séparé — un composé et une construction différents des pneus d'hiver de voiture de tourisme ci-dessus, conçus pour gérer une vraie charge en remorquant ou transportant dans la neige.</p>
+                  <div class="item lw1"><div class="item-top"><div class="item-name"><span class="rank-num">01</span>Nokian</div></div><p class="note">Le Hakkapeliitta LT3 se classe le plus fort sur glace et neige selon les données comparatives indépendantes — versions cloutées offertes pour les conditions les plus sévères.</p></div>
+                  <div class="item lw2"><div class="item-top"><div class="item-name"><span class="rank-num">02</span>Cooper</div></div><p class="note">Le Discoverer Snow Claw se situe juste derrière le Nokian en adhérence hivernale, avec une conduite notablement confortable pour un pneu d'hiver LT dédié.</p></div>
+                  <div class="item lw3"><div class="item-top"><div class="item-name"><span class="rank-num">03</span>Bridgestone</div></div><p class="note">Le Blizzak LT est un généraliste constant et largement disponible — bien que des propriétaires rapportent que son composé propre au LT n'est pas tout à fait aussi axé sur la glace que la gamme Blizzak pour voitures de tourisme de Bridgestone.</p></div>
+                  <div class="item lw4"><div class="item-top"><div class="item-name"><span class="rank-num">04</span>Goodyear</div></div><p class="note">L'Ultra Grip Ice WRT (LT) offre un équilibre décent entre performance hivernale et mouillée, avec un confort légèrement inférieur aux trois premiers.</p></div>
+                  <div class="item lw5"><div class="item-top"><div class="item-name"><span class="rank-num">05</span>Toyo</div></div><p class="note">L'Open Country WLT1 mène ce groupe en durabilité de la bande de roulement, avec une performance hivernale solide, sans être la meilleure de la catégorie.</p></div>
+                </div>
+              </details>
+
+              <details class="sub theme-midltwinter" id="cat-midltwinter">
+                <summary><span class="summary-txt">Hiver milieu de gamme (LT)</span></summary>
+                <div class="sub-body">
+                  <p class="card-sub" style="margin-top:2px;">De vrais pneus d'hiver homologués LT, certifiés 3PMSF, à un vrai rabais par rapport au segment phare ci-dessus — une option légitime pour les propriétaires de camions qui veulent une véritable capacité hivernale sans le prix du segment premium.</p>
+                  <div class="item mlw1"><div class="item-top"><div class="item-name"><span class="rank-num">01</span>General</div></div><p class="note">Le Grabber Arctic LT est renforcé avec la technologie DuraGen pour la durabilité et la résistance aux coupures/déchirures, cloutable, certifié 3PMSF, et appuyé par une garantie de 72 mois — largement salué par les propriétaires de camions comme un excellent rapport qualité-prix.</p></div>
+                  <div class="item mlw2"><div class="item-top"><div class="item-name"><span class="rank-num">02</span>Firestone</div></div><p class="note">Le Winterforce LT est une option économique LT hivernale de longue date — cloutable avec une bande de roulement brevetée pour l'adhérence sur neige et chaussée mouillée, bien que certains propriétaires le considèrent en retrait par rapport au véritable segment premium.</p></div>
+                  <div class="item mlw3"><div class="item-top"><div class="item-name"><span class="rank-num">03</span>Hercules</div></div><p class="note">L'Avalanche TT est un véritable concurrent économique qui revient dans les discussions réelles de propriétaires de camions lorsque les marques haut de gamme n'ont pas la dimension ou la cote de charge recherchée.</p></div>
+                  <div class="item mlw4"><div class="item-top"><div class="item-name"><span class="rank-num">04</span>Hankook</div></div><p class="note">Le Dynapro (version hivernale LT) étend la réputation de valeur établie de Hankook à la catégorie hivernale LT — moins directement testé en dimension LT que les trois premiers, mais une option de valeur raisonnable.</p></div>
+                  <div class="item mlw5"><div class="item-top"><div class="item-name"><span class="rank-num">05</span>Nokian</div></div><p class="note">Le Nordman (dimensions compatibles LT) amène la sous-marque économique de Nokian en territoire camion — la même proposition de valeur que la gamme Nordman pour voiture de tourisme, moins testée indépendamment en LT précisément.</p></div>
+                </div>
+              </details>
+            </div>
+          </details>
+
+          <details class="sub theme-avoid">
+            <summary><span class="summary-txt">Top 10 des marques à éviter</span></summary>
+            <div class="sub-body">
+              <p class="card-sub" style="margin-top:2px;">Quelques marques d'importation à très bas prix reviennent constamment en fin de classement dans les essais comparatifs indépendants et dans les rapports de mécaniciens/propriétaires — pas seulement « basiques », mais avec de véritables préoccupations de sécurité. Plusieurs sont largement vendues justement à cause de leur prix agressif, ce qui les rend d'autant plus importantes à connaître. Liste non exhaustive — considérez-la comme une raison de faire des recherches sur un modèle précis avant d'acheter une marque économique peu connue.</p>
+              <div class="item avoid"><div class="item-top"><div class="item-name"><span class="rank-num">01</span>Triangle</div></div><p class="note">A obtenu à répétition les pires résultats de freinage sur chaussée mouillée dans des essais comparatifs indépendants multi-marques — dans l'un d'eux, une voiture chaussée de Triangle roulait encore à près de 48 km/h alors que des voitures à pneus premium du même essai s'étaient déjà arrêtées.</p></div>
+              <div class="item avoid"><div class="item-top"><div class="item-name"><span class="rank-num">02</span>Accelera</div></div><p class="note">Les classements indépendants de Tyre Reviews ont placé des modèles Accelera testés près du bas de leur classement (152e sur 192 dans une comparaison), les propriétaires signalant couramment une faible adhérence et de longues distances de freinage.</p></div>
+              <div class="item avoid"><div class="item-top"><div class="item-name"><span class="rank-num">03</span>Geostar</div></div><p class="note">Fréquemment signalé par des mécaniciens pour usure prématurée de la bande de roulement et séparation des nappes, et s'est classé au bas d'essais comparatifs menés par des sources comme VW Vortex.</p></div>
+              <div class="item avoid"><div class="item-top"><div class="item-name"><span class="rank-num">04</span>Sailun</div></div><p class="note">Une présence courante chez les détaillants axés sur le prix — les propriétaires signalent à répétition une usure rapide, une faible traction sur chaussée mouillée et un roulement bruyant, le même profil qui revient dans plusieurs comparatifs indépendants de pneus économiques.</p></div>
+              <div class="item avoid"><div class="item-top"><div class="item-name"><span class="rank-num">05</span>Kenda</div></div><p class="note">Largement vendu comme l'une des options les moins chères chez les grandes surfaces; fréquemment cité pour usure rapide de la bande de roulement et faible traction sur chaussée mouillée par rapport à des alternatives de prix similaire.</p></div>
+              <div class="item avoid"><div class="item-top"><div class="item-name"><span class="rank-num">06</span>Linglong</div></div><p class="note">Un autre choix économique fréquent en grande surface, critiqué par plusieurs sources pour une qualité de fabrication inconstante et une usure rapide.</p></div>
+              <div class="item avoid"><div class="item-top"><div class="item-name"><span class="rank-num">07</span>Goodride</div></div><p class="note">Revient constamment dans les avis indépendants et les commentaires de mécaniciens pour une tenue de route déséquilibrée, une faible adhérence en conditions mouillées, et une durée de vie bien inférieure à des alternatives de prix similaire.</p></div>
+              <div class="item avoid"><div class="item-top"><div class="item-name"><span class="rank-num">08</span>Compass</div></div><p class="note">Plusieurs analyses indépendantes documentent un profil récurrent de séparation de la bande de roulement, voire d'éclatements complets — un mode de défaillance structurel, pas seulement une faiblesse de performance.</p></div>
+              <div class="item avoid"><div class="item-top"><div class="item-name"><span class="rank-num">09</span>Telluride</div></div><p class="note">Constamment signalé pour une durée de vie plus courte que prévu, un niveau de bruit élevé, et une adhérence sur chaussée mouillée sous la moyenne dans plusieurs comparatifs indépendants de marques.</p></div>
+              <div class="item avoid"><div class="item-top"><div class="item-name"><span class="rank-num">10</span>Chaoyang</div></div><p class="note">Des rapports de protection de flanc mince et une tendance à « éclater » à vitesse autoroutière reviennent régulièrement — le genre de défaillance qui compte plus qu'une conduite légèrement plus dure.</p></div>
+            </div>
+          </details>
+        </div>
+      </details>
+      </div>
+    </details>
+
+    <details class="res-section sec-shops">
+      <summary><h2>Ateliers</h2><span class="res-chevron">&#9660;</span></summary>
+      <div class="res-section-body">
+      <p class="card-sub" style="margin-bottom:2px;">Ateliers locaux de confiance — région d'Ottawa (Ont.).</p>
+      <p class="card-sub" style="font-style:italic;">Ce sont des recommandations personnelles basées sur une expérience directe, pas un examen indépendant ou exhaustif du marché local — votre propre expérience peut varier.</p>
+      <div class="item sec-shops"><div class="item-top"><div class="item-name"><a href="https://randrauto.ca/" target="_blank" rel="noopener">R&amp;R Auto</a></div></div><p class="note">Toutes marques et modèles — entretien général et réparations. Très fiable, prix justes, transparent, amical et honnête.</p></div>
+      <div class="item sec-shops"><div class="item-top"><div class="item-name"><a href="https://takakiauto.com/" target="_blank" rel="noopener">Takaki Auto</a></div></div><p class="note">Atelier spécialisé japonais. Très amical, honnête, transparent et prix justes.</p></div>
+      <div class="item sec-shops"><div class="item-top"><div class="item-name"><a href="https://rodgersperformance.ca/" target="_blank" rel="noopener">Rodgers Performance</a></div></div><p class="note">Spécialiste performance / importation. Amical, honnête et transparent.</p></div>
+      </div>
+    </details>
+
+    <details class="res-section sec-other">
+      <summary><h2>Autres ressources</h2><span class="res-chevron">&#9660;</span></summary>
+      <div class="res-section-body">
+      <p class="card-sub" style="margin-bottom:2px;">Chaînes vidéo et d'essais.</p>
+      <p class="card-sub" style="font-style:italic;">Ces choix reflètent une opinion personnelle sur les chaînes qui valent la peine d'être suivies, pas un examen indépendant ou exhaustif de tout ce qui existe.</p>
+      <div class="item sec-other"><div class="item-top"><div class="item-name"><a href="https://www.youtube.com/@themotoroilgeek" target="_blank" rel="noopener">The Motor Oil Geek</a></div></div><p class="note">Excellent contenu sur les huiles moteur.</p></div>
+      <div class="item sec-other"><div class="item-top"><div class="item-name"><a href="https://www.youtube.com/c/ProjectFarm" target="_blank" rel="noopener">Project Farm</a></div></div><p class="note">Essais de performance rigoureux et documentés sur des produits automobiles : huiles, batteries, additifs à huile/essence, produits de nettoyage, outils, et même des électroménagers.</p></div>
+      </div>
+    </details>
+
+    <details class="res-section sec-parts">
+      <summary><h2>Pièces de rechange</h2><span class="res-chevron">&#9660;</span></summary>
+      <div class="res-section-body">
+      <p class="card-sub">Plusieurs sont en fait les fournisseurs OEM derrière l'écusson — les mêmes pièces, sans la marge du concessionnaire.</p>
+
+      <details class="sub"><summary><span class="summary-txt">Freins</span></summary><div class="sub-body">
+        <div class="item sec-parts"><div class="item-top"><div class="item-name">Advics</div></div><p class="note">Pièces de frein Toyota (fournisseur OEM)</p></div>
+        <div class="item sec-parts"><div class="item-top"><div class="item-name">Akebono</div></div><p class="note">Marque de choix pour les plaquettes de frein japonaises et autres</p></div>
+        <div class="item sec-parts"><div class="item-top"><div class="item-name">EBC</div></div><p class="note">Freins haute performance</p></div>
+        <div class="item sec-parts"><div class="item-top"><div class="item-name">Hawk</div></div><p class="note">Freins haute performance</p></div>
+        <div class="item sec-parts"><div class="item-top"><div class="item-name">Brembo</div></div><p class="note">Freins européens</p></div>
+        <div class="item sec-parts"><div class="item-top"><div class="item-name">Wilwood</div></div><p class="note">Freins américains</p></div>
+        <div class="item sec-parts"><div class="item-top"><div class="item-name">PowerStop</div></div><p class="note">Freins haute performance</p></div>
+        <div class="item sec-parts"><div class="item-top"><div class="item-name">Zimmermann</div></div><p class="note">Pièces de frein européennes</p></div>
+        <div class="item sec-parts"><div class="item-top"><div class="item-name">Raybestos</div></div><p class="note">Fournisseur de pièces de frein de longue date</p></div>
+        <div class="item sec-parts"><div class="item-top"><div class="item-name">Centric</div></div><p class="note">Fournisseur de pièces de frein de longue date</p></div>
+      </div></details>
+
+      <details class="sub"><summary><span class="summary-txt">Suspension</span></summary><div class="sub-body">
+        <div class="item sec-parts"><div class="item-top"><div class="item-name">Sankei555</div></div><p class="note">Pièces de suspension japonaises</p></div>
+        <div class="item sec-parts"><div class="item-top"><div class="item-name">Bilstein</div></div><p class="note">Suspension allemande, courante aussi sur les modèles japonais</p></div>
+        <div class="item sec-parts"><div class="item-top"><div class="item-name">KYB</div></div><p class="note">Suspension japonaise</p></div>
+        <div class="item sec-parts"><div class="item-top"><div class="item-name">MOOG</div></div><p class="note">Suspensions pour voitures nord-américaines</p></div>
+        <div class="item sec-parts"><div class="item-top"><div class="item-name">Delphi</div></div><p class="note">Suspension de rechange</p></div>
+        <div class="item sec-parts"><div class="item-top"><div class="item-name">Mevotech</div></div><p class="note">Gamme TTX seulement</p></div>
+      </div></details>
+
+      <details class="sub"><summary><span class="summary-txt">Électrique et thermique</span></summary><div class="sub-body">
+        <div class="item sec-parts"><div class="item-top"><div class="item-name">Denso</div></div><p class="note">Pièces électriques et thermiques Toyota (fournisseur OEM)</p></div>
+        <div class="item sec-parts"><div class="item-top"><div class="item-name">NGK &amp; NTK</div></div><p class="note">Pièces électriques Honda et autres marques japonaises</p></div>
+        <div class="item sec-parts"><div class="item-top"><div class="item-name">Bosch</div></div><p class="note">Pièces électriques européennes</p></div>
+      </div></details>
+
+      <details class="sub"><summary><span class="summary-txt">Composants internes du moteur et filtration</span></summary><div class="sub-body">
+        <div class="item sec-parts"><div class="item-top"><div class="item-name">Aisin</div></div><p class="note">Pièces mécaniques de moteur Toyota — pompes à eau, composants de distribution (fournisseur OEM)</p></div>
+        <div class="item sec-parts"><div class="item-top"><div class="item-name">Mahle</div></div><p class="note">Composants internes de moteur et filtres à huile</p></div>
+        <div class="item sec-parts"><div class="item-top"><div class="item-name">Melling</div></div><p class="note">Composants internes de moteur</p></div>
+        <div class="item sec-parts"><div class="item-top"><div class="item-name">Wix</div></div><p class="note">Filtres à huile</p></div>
+      </div></details>
+
+      <details class="sub"><summary><span class="summary-txt">Groupe motopropulseur</span></summary><div class="sub-body">
+        <div class="item sec-parts"><div class="item-top"><div class="item-name">Exedy / LuK</div></div><p class="note">Embrayages et volants moteur</p></div>
+      </div></details>
+
+      <details class="sub"><summary><span class="summary-txt">Roulements</span></summary><div class="sub-body">
+        <div class="item sec-parts"><div class="item-top"><div class="item-name">Timken</div></div><p class="note">Référence en roulements</p></div>
+        <div class="item sec-parts"><div class="item-top"><div class="item-name">Koyo</div></div><p class="note">Roulements Toyota</p></div>
+        <div class="item sec-parts"><div class="item-top"><div class="item-name">NSK &amp; NTN</div></div><p class="note">Roulements Honda</p></div>
+        <div class="item sec-parts"><div class="item-top"><div class="item-name">Schaeffler</div></div><p class="note">Roulements européens</p></div>
+        <div class="item sec-parts"><div class="item-top"><div class="item-name">National</div></div><p class="note">Gamme économique de Timken</p></div>
+      </div></details>
+
+      <details class="sub"><summary><span class="summary-txt">Généraux / spécifiques au fabricant</span></summary><div class="sub-body">
+        <div class="item sec-parts"><div class="item-top"><div class="item-name">ACDelco</div></div><p class="note">Fournisseur de pièces GM</p></div>
+        <div class="item sec-parts"><div class="item-top"><div class="item-name">Motorcraft</div></div><p class="note">Fournisseur de pièces Ford</p></div>
+        <div class="item sec-parts"><div class="item-top"><div class="item-name">Mopar</div></div><p class="note">Fournisseur de pièces Dodge</p></div>
+        <div class="item sec-parts"><div class="item-top"><div class="item-name">Gates</div></div><p class="note">Fournisseur de premier plan pour courroies, poulies et tendeurs</p></div>
+      </div></details>
+      </div>
+    </details>
+
+    <details class="res-section sec-oil">
+      <summary><h2>Huile moteur et liquide de transmission</h2><span class="res-chevron">&#9660;</span></summary>
+      <div class="res-section-body">
+      <p class="card-sub">Marques de lubrifiants fiables, regroupées selon leur véritable réputation.</p>
+
+      <details class="sub" open><summary><span class="summary-txt">Conduite quotidienne / approuvé OEM</span></summary><div class="sub-body">
+        <div class="item sec-oil"><div class="item-top"><div class="item-name">Mobil 1</div></div><p class="note">Synthétique pur largement disponible avec de nombreuses approbations dexos/OEM — le choix sûr par défaut pour la conduite quotidienne</p></div>
+        <div class="item sec-oil"><div class="item-top"><div class="item-name">Pennzoil</div></div><p class="note">Huile de base PurePlus issue du gaz naturel; excellente performance de nettoyage et anti-dépôts</p></div>
+        <div class="item sec-oil"><div class="item-top"><div class="item-name">Valvoline</div></div><p class="note">Vaste gamme, du conventionnel au synthétique pur; forte présence dans les centres de vidange rapide</p></div>
+        <div class="item sec-oil"><div class="item-top"><div class="item-name">Castrol</div></div><p class="note">Gamme EDGE avec technologie Fluid Titanium; partenariats OEM et sport automobile approfondis (BMW, Ford)</p></div>
+      </div></details>
+
+      <details class="sub"><summary><span class="summary-txt">Intervalles prolongés / usage sévère</span></summary><div class="sub-body">
+        <div class="item sec-oil"><div class="item-top"><div class="item-name">AMSOIL</div></div><p class="note">Première huile moteur synthétique certifiée API (1972); conçue pour des intervalles de vidange prolongés, le diesel et l'usage sévère</p></div>
+        <div class="item sec-oil"><div class="item-top"><div class="item-name">Liqui Moly</div></div><p class="note">Ingénierie allemande avec un immense catalogue d'huiles et d'additifs; très populaire dans les cercles de modification européens et JDM</p></div>
+      </div></details>
+
+      <details class="sub"><summary><span class="summary-txt">Synthétique performance / course</span></summary><div class="sub-body">
+        <div class="item sec-oil"><div class="item-top"><div class="item-name">Motul</div></div><p class="note">Héritage du sport automobile français (Le Mans, MotoGP); technologie à base d'esters; populaire dans les scènes JDM et motos sportives</p></div>
+        <div class="item sec-oil"><div class="item-top"><div class="item-name">Royal Purple</div></div><p class="note">Technologie d'additif exclusive Synerlec, mise en marché pour la réduction de friction et les gains de performance</p></div>
+        <div class="item sec-oil"><div class="item-top"><div class="item-name">Redline</div></div><p class="note">Synthétique pur à base d'esters, prix premium — la référence pour la piste, le drag et l'huile de boîte manuelle</p></div>
+      </div></details>
+      </div>
+    </details>
+
+    <details class="res-section sec-rust">
+      <summary><h2>Antirouille et protection du dessous de caisse</h2><span class="res-chevron">&#9660;</span></summary>
+      <div class="res-section-body">
+      <p class="card-sub">Produits à base d'huile/cire vs revêtement caoutchouté vs ne rien faire, ainsi que des produits recommandés et des ateliers locaux.</p>
+
+      <div class="callout">
+        <b>L'huile bat le caoutchouté, avec une exception.</b> Les revêtements à base de lanoline/huile (Fluid Film, Woolwax, Surface Shield) restent souples et s'infiltrent dans les joints, soudures et cavités plutôt que de former une coque rigide — et comme ils ne durcissent jamais complètement, une éraflure se referme en bonne partie d'elle-même puisque le produit s'écoule à nouveau sur la zone exposée. Le revêtement caoutchouté fait l'inverse avec le temps : à mesure que le véhicule fléchit au fil de sa vie, le revêtement rigide se fissure et s'écaille, et une fois cela fait, il emprisonne l'humidité et le sel de route directement contre le métal — accélérant souvent la rouille exactement aux endroits qu'il devait protéger. La vraie exception est un revêtement caoutchouté appliqué à l'état neuf, avant que le véhicule n'ait vu un kilométrage significatif ou du sel de route; dans cette fenêtre étroite, il n'a pas encore eu la chance de se fissurer et peut encore bien faire son travail. Le compromis avec les produits à base d'huile est l'entretien — puisqu'ils restent souples, ils s'usent aussi et nécessitent une réapplication environ une fois par année.
+      </div>
+      <div class="callout callout-b">
+        <b>Vs ne rien faire :</b> n'importe lequel de ces produits est nettement meilleur que le métal nu exposé aux hivers canadiens, et leur principale valeur est d'empêcher la rouille de commencer. Une fois que la rouille s'est déjà installée sous l'humidité emprisonnée, aucun revêtement ne règle ça à lui seul — la rouille doit d'abord être traitée ou retirée.
+      </div>
+
+      <details class="sub" open>
+        <summary><span class="summary-txt">Produits recommandés</span></summary>
+        <div class="sub-body">
+          <div class="item sec-rust"><div class="item-top"><div class="item-name"><a href="https://www.fluid-film.com/" target="_blank" rel="noopener">Fluid Film</a></div></div><p class="note">L'huile antirouille à base de lanoline la plus connue et la plus répandue — assez fluide pour s'infiltrer profondément dans les joints et cavités, avec un long historique en prévention de la corrosion marine et aéronautique. A une odeur de lanoline distincte qui s'estompe après quelques jours.</p></div>
+          <div class="item sec-rust"><div class="item-top"><div class="item-name"><a href="https://www.woolwax.com/" target="_blank" rel="noopener">Woolwax</a></div></div><p class="note">Également à base de lanoline, mais nettement plus épais que le Fluid Film — résiste mieux au lessivage sur les zones très exposées comme les bas de caisse et les passages de roue, avec moins d'odeur. Une version à faible viscosité (LV) existe pour s'infiltrer dans les joints serrés.</p></div>
+          <div class="item sec-rust"><div class="item-top"><div class="item-name"><a href="https://blasterproducts.com/product/surface-shield/" target="_blank" rel="noopener">Surface Shield (B'laster)</a></div></div><p class="note">Un produit plus récent à base de lanoline, positionné comme comparable au Fluid Film et au Woolwax, offrant jusqu'à 2 ans de protection selon le fabricant. Largement disponible en quincaillerie, ce qui en fait un choix facile pour un travail sur l'entrée de garage.</p></div>
+          <div class="callout callout-c" style="margin-top:16px;">Project Farm a soumis des fluides antirouille à des essais comparatifs (plusieurs produits appliqués côte à côte, suivis sur une saison hivernale) — à voir avant de choisir un produit. Voir la section Autres ressources ci-dessus pour leur chaîne.</div>
+        </div>
+      </details>
+
+      <details class="sub">
+        <summary><span class="summary-txt">Ateliers locaux</span></summary>
+        <div class="sub-body">
+          <div class="item sec-rust"><div class="item-top"><div class="item-name"><a href="https://www.rustproofingottawa.com/" target="_blank" rel="noopener">Oil Shield Rust Proofing Ottawa</a></div></div><p class="note">Option économique pour la protection antirouille à base d'huile.</p></div>
+          <div class="item sec-rust"><div class="item-top"><div class="item-name"><a href="https://www.fullmoonautoworks.ca/" target="_blank" rel="noopener">Full Moon Autoworks</a></div></div><p class="note">Utilise le Fluid Film pour leur service de protection antirouille.</p></div>
+        </div>
+      </details>
+      </div>
+    </details>
+
+    <footer class="foot">Ressources GearLog — compilé le 19 août 2026</footer>
+  `;
+}
+
+function render(){
+  try{
+    document.documentElement.lang = state.language;
+    let html = headerHTML() + navHTML();
+    html += resourcesPageHTML();
+    html += footerHTML() + changelogModalHTML() + confirmModalHTML() + toastHTML();
+    appEl.innerHTML = html;
+  }catch(err){
+    console.error("GearLog render error:", err);
+    appEl.innerHTML = `
+      <div style="padding:60px 20px; text-align:center; font-family:sans-serif; color:#EDEAE3;">
+        <p style="color:#D4574B; font-size:15px;">Something went wrong displaying GearLog.</p>
+        <p style="color:#9096A0; font-size:13px; max-width:420px; margin:8px auto 20px;">This is usually caused by leftover data from an older version. Clearing saved data will fix it — export a backup first if you can.</p>
+        <button type="button" onclick="localStorage.removeItem('gearlog_state_v2'); localStorage.removeItem('gearlog_state_v1'); location.reload();" style="padding:12px 20px; background:#D4574B; color:#2A0C09; border:none; border-radius:6px; cursor:pointer; font-weight:600;">Clear saved data & reload</button>
+      </div>
+    `;
+  }
+}
+
+appEl.addEventListener("click", (e) => {
+  if(e.target.classList && e.target.classList.contains("modal-overlay")){
+    const overlayAction = e.target.getAttribute("data-dismiss-action");
+    if(overlayAction === "dismiss-changelog"){
+      state.lastSeenChangelogVersion = t("changelog")[0].version;
+      saveState(); render();
+    }
+    return;
+  }
+
+  const el = e.target.closest("[data-action]");
+  if(!el) return;
+  const action = el.getAttribute("data-action");
+  const key = el.getAttribute("data-key");
+
+  switch(action){
+    case "dismiss-changelog":
+      state.lastSeenChangelogVersion = t("changelog")[0].version;
+      saveState(); render();
+      break;
+
+    case "toggle-language":
+      state.language = state.language === "en" ? "fr" : "en";
+      saveState(); render();
+      break;
+
+    case "finder-start":
+      finderState = { step: 1, answers: {} };
+      renderFinderOnly();
+      break;
+
+    case "select-finder-answer": {
+      const qId = key;
+      const qVal = el.getAttribute("data-value");
+      finderState.answers[qId] = qVal;
+      finderState.step += 1;
+      renderFinderOnly();
+      break;
+    }
+
+    case "finder-back":
+      finderState.step = Math.max(1, finderState.step - 1);
+      renderFinderOnly();
+      break;
+
+    case "finder-restart":
+      finderState = { step: 0, answers: {} };
+      renderFinderOnly();
+      break;
+
+    case "finder-jump": {
+      const vehicleWrapperId = key;
+      const catId = el.getAttribute("data-value");
+      setTimeout(() => {
+        ["res-tires", "acc-rankings", vehicleWrapperId, catId].forEach(id => {
+          const elx = id && document.getElementById(id);
+          if(elx && elx.tagName === "DETAILS") elx.open = true;
+        });
+        const target = catId && document.getElementById(catId);
+        if(target) target.scrollIntoView({behavior: "smooth", block: "start"});
+      }, 50);
+      break;
+    }
+  }
+});
+render();
+</script>
+</body>
+</html>

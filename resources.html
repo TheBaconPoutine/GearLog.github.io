@@ -30,6 +30,7 @@ const FINDER_QUESTIONS = [
   { id: "performance", options: ["max", "some", "none"] },
   { id: "noise", options: ["high", "medium", "low"] },
   { id: "fuelEconomy", options: ["high", "medium", "low"] },
+  { id: "longevity", options: ["high", "medium", "low"] },
   { id: "budget", options: ["budget", "mid", "premium"] },
   { id: "runflat", visibleIf: a => a.vehicleType === "car" || a.vehicleType === "suv", options: ["yes", "no", "unsure"] },
 ];
@@ -38,16 +39,43 @@ function finderVisibleQuestions(answers){
   return FINDER_QUESTIONS.filter(q => !q.visibleIf || q.visibleIf(answers));
 }
 
+const CATEGORY_PROFILES = {
+  // Each axis scored 1 (worst) to 5 (best) on that trait, based on real tread-life and
+  // engineering tradeoffs: performance tiers trade tread life, quiet, and fuel economy for grip.
+  standard:     { performance: 1, quiet: 3, fuelEconomy: 5, longevity: 5 }, // 10-12/32 new
+  midtouring:   { performance: 1, quiet: 3, fuelEconomy: 4, longevity: 4 },
+  premium:      { performance: 2, quiet: 5, fuelEconomy: 4, longevity: 4 },
+  grandtouring: { performance: 3, quiet: 4, fuelEconomy: 3, longevity: 3 }, // 9-11/32 new
+  perfas:       { performance: 4, quiet: 2, fuelEconomy: 2, longevity: 2 }, // 8-10/32 new
+  performance:  { performance: 5, quiet: 1, fuelEconomy: 1, longevity: 1 }, // 7-9/32 new
+};
+const ANSWER_WEIGHT = { max: 3, some: 1, none: 0, high: 3, medium: 1, low: 0 };
+
 function computeDailyCarCategory(a, pairWinter){
-  if(a.performance === "max"){
-    return pairWinter ? "performance" : (a.winter === "mild" ? "performance" : "perfas");
-  }
-  if(a.performance === "some") return "grandtouring";
+  // Winter and budget are decisive, near-binary signals — handle them as pre-filters first.
   if(a.winter === "moderate" || (a.winter === "severe" && a.mileage === "low")) return "allweather";
   if(a.budget === "budget") return "midtouring";
-  if(a.noise === "high" || a.budget === "premium") return "premium";
-  if(a.fuelEconomy === "high") return "standard";
-  return "midtouring";
+
+  // Everything else is a genuine tradeoff (grip vs. quiet vs. fuel economy vs. tread life),
+  // so score every remaining category against how strongly the driver weighted each trait,
+  // instead of letting one answer (like "max performance") silently override the rest.
+  const weights = {
+    performance: ANSWER_WEIGHT[a.performance] ?? 1,
+    quiet: ANSWER_WEIGHT[a.noise] ?? 1,
+    fuelEconomy: ANSWER_WEIGHT[a.fuelEconomy] ?? 1,
+    longevity: ANSWER_WEIGHT[a.longevity] ?? 1,
+  };
+
+  let best = null, bestScore = -Infinity;
+  for(const cat of Object.keys(CATEGORY_PROFILES)){
+    const profile = CATEGORY_PROFILES[cat];
+    const score = profile.performance * weights.performance
+                + profile.quiet * weights.quiet
+                + profile.fuelEconomy * weights.fuelEconomy
+                + profile.longevity * weights.longevity;
+    if(score > bestScore){ bestScore = score; best = cat; }
+  }
+  return best;
 }
 
 function computeFinderResult(a){
@@ -208,11 +236,11 @@ function resourcesContentEN(){
           <details class="sub theme-guide" open>
             <summary><span class="summary-txt">Passenger Car</span></summary>
             <div class="sub-body">
-              <div class="item sd1"><div class="item-top"><div class="item-name">Standard Touring</div></div><p class="note">Who it's for: budget-conscious daily commuters who just want to get from A to B reliably. Competent but unremarkable in every category — the tradeoff for the lowest price in the touring family. Best benefit-per-dollar if you don't care about performance and just want predictable, safe transportation.</p></div>
+              <div class="item sd1"><div class="item-top"><div class="item-name">Standard Touring</div></div><p class="note">Who it's for: budget-conscious daily commuters who just want to get from A to B reliably. Competent but unremarkable in every category — the tradeoff for the lowest price in the touring family. Best benefit-per-dollar if you don't care about performance and just want predictable, safe transportation. Typically the deepest new tread depth of any touring tier — usually 10-12/32", meaning the longest tread life before replacement.</p></div>
               <div class="item pt1"><div class="item-top"><div class="item-name">Premium Touring</div></div><p class="note">Who it's for: drivers who want the nicest possible daily-driver ride — quieter cabin, longer tread life, often better wet grip — without paying for performance they'll never use. The natural step up from Standard Touring once budget allows.</p></div>
-              <div class="item gt1"><div class="item-top"><div class="item-name">Grand Touring (Summer)</div></div><p class="note">Who it's for: drivers who want a noticeably sportier feel than any touring tire offers, but still need daily-driver comfort and quiet — the closest a touring-family tire gets to performance-tire feel. Summer-only, so it needs a winter plan alongside it.</p></div>
-              <div class="item pf1"><div class="item-top"><div class="item-name">Performance (Summer UHP/UUHP)</div></div><p class="note">Who it's for: enthusiasts and sports-car owners who want maximum dry/wet grip and don't mind a second set of tires for winter. The soft compound goes hard and loses grip below roughly 7°C — genuinely unsafe in the cold, not just "less good," so this only makes sense paired with a real winter tire for anyone outside a warm climate.</p></div>
-              <div class="item pa1"><div class="item-top"><div class="item-name">Performance All-Season</div></div><p class="note">Who it's for: drivers who want most of that UHP grip and handling without the seasonal tire swap — a genuinely good middle ground for someone who wants a "sporty daily" in a climate with mild winters. The cold-flexible compound that makes it work year-round means it never quite matches a true summer tire's peak grip, warm or cold.</p></div>
+              <div class="item gt1"><div class="item-top"><div class="item-name">Grand Touring (Summer)</div></div><p class="note">Who it's for: drivers who want a noticeably sportier feel than any touring tire offers, but still need daily-driver comfort and quiet — the closest a touring-family tire gets to performance-tire feel. Summer-only, so it needs a winter plan alongside it. New tread depth is typically 9-11/32" — a bit shallower than Standard Touring in exchange for the sportier feel.</p></div>
+              <div class="item pf1"><div class="item-top"><div class="item-name">Performance (Summer UHP/UUHP)</div></div><p class="note">Who it's for: enthusiasts and sports-car owners who want maximum dry/wet grip and don't mind a second set of tires for winter. The soft compound goes hard and loses grip below roughly 7°C — genuinely unsafe in the cold, not just "less good," so this only makes sense paired with a real winter tire for anyone outside a warm climate. New tread depth is typically the shallowest of any touring/performance tier — around 7-9/32" — since a softer, grippier compound wears faster.</p></div>
+              <div class="item pa1"><div class="item-top"><div class="item-name">Performance All-Season</div></div><p class="note">Who it's for: drivers who want most of that UHP grip and handling with a longer usable season than pure summer tires — not a way to skip the seasonal swap entirely, still not recommended for real winter driving, but the cold-flexible compound holds up down to roughly -5°C versus a Summer UHP tire's ~7°C cutoff, so it stretches further into shoulder-season cold before a swap is actually needed. Also trades some peak grip for meaningfully better fuel economy and tread life than a pure Summer UHP tire — typically 8-10/32" new versus UHP's 7-9/32".</p></div>
               <div class="item aw1"><div class="item-top"><div class="item-name">All-Weather</div></div><p class="note">Who it's for: the tire that actually earns the "all-season" promise — 3PMSF-certified, genuinely capable in light-to-moderate snow, usable year-round without a seasonal swap. The best fit for lower-mileage drivers in a moderate winter climate; see the mileage guidance below for exactly when this beats a dedicated winter set.</p></div>
               <div class="item t1"><div class="item-top"><div class="item-name">Winter / Snow</div></div><p class="note">Who it's for: anyone who drives a meaningful amount through a real winter — regular snow, ice, sustained cold. Nothing else on this page comes close to a dedicated winter tire's ice and snow grip, and that gap is exactly what keeps a higher-mileage winter driver safer.</p></div>
               <div class="callout callout-c">
@@ -334,7 +362,7 @@ function resourcesContentEN(){
               <details class="sub theme-perfas" id="cat-perfas">
                 <summary><span class="summary-txt">Performance All-Season</span></summary>
                 <div class="sub-body">
-                  <p class="card-sub" style="margin-top:2px;">Ultra-high-performance grip paired with a winter-capable all-season compound — the closest thing to summer-UHP cornering and braking without needing a second set of tires for the off-season, though still a notch below a true summer tire's peak dry/wet grip.</p>
+                  <p class="card-sub" style="margin-top:2px;">Ultra-high-performance grip paired with a cold-flexible all-season compound — the closest thing to summer-UHP cornering and braking with a longer usable season than a pure summer tire, though still a notch below a true summer tire's peak dry/wet grip and still not a substitute for real winter tires once snow shows up.</p>
                   <div class="item pa1"><div class="item-top"><div class="item-name"><span class="rank-num">01</span>Continental</div></div><p class="note">ExtremeContact DWS06 Plus is widely regarded as the segment's best all-rounder for mixed real-world driving — stronger handling, steering response, and cabin refinement than its closest rival across nearly a dozen direct comparisons.</p></div>
                   <div class="item pa2"><div class="item-top"><div class="item-name"><span class="rank-num">02</span>Michelin</div></div><p class="note">Pilot Sport All Season 4 is the braking-numbers specialist — shortest dry and wet stopping distances in most head-to-head tests, the pick if emergency-stop performance is the priority.</p></div>
                   <div class="item pa3"><div class="item-top"><div class="item-name"><span class="rank-num">03</span>Goodyear</div></div><p class="note">Eagle F1 All Season was one of the strongest finishers in Tire Rack's own 5-tire UHPAS test on a Tesla Model 3, beating the Michelin on-road.</p></div>
@@ -754,11 +782,11 @@ function resourcesContentFR(){
           <details class="sub theme-guide" open>
             <summary><span class="summary-txt">Voiture de tourisme</span></summary>
             <div class="sub-body">
-              <div class="item sd1"><div class="item-top"><div class="item-name">Tourisme Standard</div></div><p class="note">Pour qui : les conducteurs soucieux du budget qui veulent simplement se rendre d'un point A à un point B de façon fiable. Compétent mais sans éclat dans chaque catégorie — le compromis pour le prix le plus bas de la famille tourisme. Meilleur rapport bénéfice-prix si la performance ne compte pas et que seul le transport prévisible et sûr importe.</p></div>
+              <div class="item sd1"><div class="item-top"><div class="item-name">Tourisme Standard</div></div><p class="note">Pour qui : les conducteurs soucieux du budget qui veulent simplement se rendre d'un point A à un point B de façon fiable. Compétent mais sans éclat dans chaque catégorie — le compromis pour le prix le plus bas de la famille tourisme. Meilleur rapport bénéfice-prix si la performance ne compte pas et que seul le transport prévisible et sûr importe. Généralement la profondeur de bande de roulement neuve la plus profonde de tous les paliers tourisme — habituellement 10-12/32 po, donc la plus longue durée de vie avant remplacement.</p></div>
               <div class="item pt1"><div class="item-top"><div class="item-name">Tourisme Premium</div></div><p class="note">Pour qui : les conducteurs qui veulent la conduite quotidienne la plus agréable possible — habitacle plus silencieux, usure plus lente, souvent une meilleure adhérence mouillée — sans payer pour de la performance qu'ils n'utiliseront jamais. Le pas naturel au-dessus du Tourisme Standard quand le budget le permet.</p></div>
-              <div class="item gt1"><div class="item-top"><div class="item-name">Grand Tourisme (Été)</div></div><p class="note">Pour qui : les conducteurs qui veulent un caractère nettement plus sportif que n'importe quel pneu tourisme, tout en gardant le confort et le silence d'une conduite quotidienne — ce qu'un pneu de la famille tourisme offre de plus proche d'un pneu performance. Été seulement, donc un plan hiver s'impose en complément.</p></div>
-              <div class="item pf1"><div class="item-top"><div class="item-name">Performance (UHP été/UUHP)</div></div><p class="note">Pour qui : les passionnés et propriétaires de voitures sport qui veulent l'adhérence sec/mouillé maximale et n'ont pas d'objection à un second jeu pour l'hiver. Le composé souple durcit et perd son adhérence sous environ 7 °C — véritablement dangereux au froid, pas seulement « moins bon » — donc ce choix n'a de sens qu'avec un vrai pneu d'hiver en complément pour quiconque hors d'un climat chaud.</p></div>
-              <div class="item pa1"><div class="item-top"><div class="item-name">Performance Quatre-Saisons</div></div><p class="note">Pour qui : les conducteurs qui veulent la majeure partie de cette adhérence et tenue de route UHP sans le changement saisonnier — un excellent compromis pour qui veut une « sportive quotidienne » dans un climat aux hivers doux. Le composé flexible au froid qui le rend utilisable à l'année fait qu'il n'égale jamais tout à fait l'adhérence maximale d'un vrai pneu été, chaud ou froid.</p></div>
+              <div class="item gt1"><div class="item-top"><div class="item-name">Grand Tourisme (Été)</div></div><p class="note">Pour qui : les conducteurs qui veulent un caractère nettement plus sportif que n'importe quel pneu tourisme, tout en gardant le confort et le silence d'une conduite quotidienne — ce qu'un pneu de la famille tourisme offre de plus proche d'un pneu performance. Été seulement, donc un plan hiver s'impose en complément. La profondeur de bande de roulement neuve est habituellement de 9-11/32 po — un peu moins que le Tourisme Standard en échange du caractère plus sportif.</p></div>
+              <div class="item pf1"><div class="item-top"><div class="item-name">Performance (UHP été/UUHP)</div></div><p class="note">Pour qui : les passionnés et propriétaires de voitures sport qui veulent l'adhérence sec/mouillé maximale et n'ont pas d'objection à un second jeu pour l'hiver. Le composé souple durcit et perd son adhérence sous environ 7 °C — véritablement dangereux au froid, pas seulement « moins bon » — donc ce choix n'a de sens qu'avec un vrai pneu d'hiver en complément pour quiconque hors d'un climat chaud. La profondeur de bande de roulement neuve est habituellement la plus mince de tous les paliers tourisme/performance — environ 7-9/32 po — puisqu'un composé plus souple et plus adhérent s'use plus vite.</p></div>
+              <div class="item pa1"><div class="item-top"><div class="item-name">Performance Quatre-Saisons</div></div><p class="note">Pour qui : les conducteurs qui veulent la majeure partie de cette adhérence et tenue de route UHP avec une saison utilisable plus longue qu'un pneu été pur — pas une façon d'éviter complètement le changement saisonnier, toujours pas recommandé pour la conduite hivernale réelle, mais le composé flexible au froid tient jusqu'à environ -5 °C contre un seuil d'environ 7 °C pour un pneu UHP été, donc il s'étend plus loin dans le froid de mi-saison avant qu'un changement soit vraiment nécessaire. Sacrifie aussi une partie de l'adhérence maximale pour une économie de carburant et une durée de vie de bande de roulement nettement meilleures qu'un vrai pneu UHP été — habituellement 8-10/32 po neuf contre 7-9/32 po pour l'UHP.</p></div>
               <div class="item aw1"><div class="item-top"><div class="item-name">Tout-Temps</div></div><p class="note">Pour qui : le pneu qui mérite vraiment la promesse « quatre-saisons » — certifié 3PMSF, véritablement capable en neige légère à modérée, utilisable à l'année sans changement saisonnier. Le meilleur choix pour les conducteurs à plus faible kilométrage dans un climat hivernal modéré; voir les conseils selon le kilométrage ci-dessous pour savoir exactement quand ceci devance un jeu d'hiver dédié.</p></div>
               <div class="item t1"><div class="item-top"><div class="item-name">Hiver / Neige</div></div><p class="note">Pour qui : quiconque roule de façon significative durant un vrai hiver — neige régulière, glace, froid soutenu. Rien d'autre sur cette page ne s'approche de l'adhérence sur neige et glace d'un pneu d'hiver dédié, et c'est exactement cet écart qui protège davantage un conducteur hivernal à haut kilométrage.</p></div>
               <div class="callout callout-c">
@@ -880,7 +908,7 @@ function resourcesContentFR(){
               <details class="sub theme-perfas" id="cat-perfas">
                 <summary><span class="summary-txt">Performance Quatre-Saisons</span></summary>
                 <div class="sub-body">
-                  <p class="card-sub" style="margin-top:2px;">Adhérence ultra-haute performance combinée à un composé quatre-saisons homologué pour l'hiver — ce qui se rapproche le plus de la tenue de route et du freinage d'un pneu UHP été sans nécessiter un second jeu hors-saison, bien qu'encore un cran sous l'adhérence maximale d'un vrai pneu été.</p>
+                  <p class="card-sub" style="margin-top:2px;">Adhérence ultra-haute performance combinée à un composé quatre-saisons flexible au froid — ce qui se rapproche le plus de la tenue de route et du freinage d'un pneu UHP été, avec une saison utilisable plus longue qu'un pneu été pur, bien qu'encore un cran sous l'adhérence maximale d'un vrai pneu été et toujours pas un substitut à de vrais pneus d'hiver une fois la neige arrivée.</p>
                   <div class="item pa1"><div class="item-top"><div class="item-name"><span class="rank-num">01</span>Continental</div></div><p class="note">L'ExtremeContact DWS06 Plus est largement considéré comme le meilleur généraliste du segment pour la conduite mixte réelle — meilleure tenue de route, réponse de direction et raffinement d'habitacle que son plus proche rival dans près d'une douzaine de comparatifs directs.</p></div>
                   <div class="item pa2"><div class="item-top"><div class="item-name"><span class="rank-num">02</span>Michelin</div></div><p class="note">Le Pilot Sport All Season 4 est le spécialiste des chiffres de freinage — distances d'arrêt les plus courtes en sec et en mouillé dans la plupart des essais tête-à-tête, le choix si la performance de freinage d'urgence est la priorité.</p></div>
                   <div class="item pa3"><div class="item-top"><div class="item-name"><span class="rank-num">03</span>Goodyear</div></div><p class="note">L'Eagle F1 All Season a été l'un des meilleurs résultats du propre essai UHPAS à 5 pneus de Tire Rack sur une Tesla Model 3, devançant le Michelin sur route.</p></div>

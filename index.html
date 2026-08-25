@@ -92,7 +92,7 @@ let activeTab = {};     // itemKey -> "last" | "intervals"
 let detailsOpen = {};   // itemKey -> true/false
 let historySort = {field: "date", dir: "desc"};
 let historyFilter = "all"; // "all" | "service" | "repair"
-let dataWarningDismissedThisSession = false; // not persisted — resets every page load, by design
+let dataWarningDismissedThisSession = sessionStorage.getItem("gearlog_data_warning_dismissed") === "1"; // persists for this browser tab session — survives navigating between pages, resets when the tab/window is closed
 let pendingCondition = {}; // vehicleId -> "severe" | "normal", transient selection awaiting confirmation
 
 function ensureItemsForCurrentPreset(vehicle){
@@ -798,6 +798,7 @@ appEl.addEventListener("click", (e) => {
     const overlayAction = e.target.getAttribute("data-dismiss-action");
     if(overlayAction === "dismiss-data-warning"){
       dataWarningDismissedThisSession = true;
+      sessionStorage.setItem("gearlog_data_warning_dismissed", "1");
       render();
     } else if(overlayAction === "dismiss-changelog"){
       state.lastSeenChangelogVersion = t("changelog")[0].version;
@@ -818,6 +819,7 @@ appEl.addEventListener("click", (e) => {
   switch(action){
     case "dismiss-data-warning":
       dataWarningDismissedThisSession = true;
+      sessionStorage.setItem("gearlog_data_warning_dismissed", "1");
       render();
       break;
 

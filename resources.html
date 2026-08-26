@@ -15,6 +15,7 @@
 <body>
 <div class="wrap"><div id="app"></div></div>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="shared.js"></script>
 <script>
 window.CURRENT_PAGE = "resources";
@@ -105,6 +106,18 @@ function computeFinderResult(a){
   return { cat: computeDailyCarCategory(a, pairWinter), jump: "rank-pc", pairWinter };
 }
 
+function accOpenAttr(id, defaultOpen){
+  // Remembers whether a given collapsible section was open/closed across refreshes.
+  // Falls back to defaultOpen only the first time this id has never been toggled.
+  try{
+    const stored = localStorage.getItem("gearlog_acc_" + id);
+    if(stored === null) return defaultOpen ? " open" : "";
+    return stored === "1" ? " open" : "";
+  }catch(err){
+    return defaultOpen ? " open" : "";
+  }
+}
+
 function renderFinderOnly(){
   const root = document.getElementById("tire-finder-root");
   if(!root) return;
@@ -186,12 +199,12 @@ function resourcesContentEN(){
   return `
     <p style="font-family:var(--font-mono); font-size:11.5px; color:var(--text-dim2); margin:0 0 20px;"><b style="color:var(--text);">Last updated:</b> Aug 19, 2026</p>
 
-    <details class="res-section sec-tires" id="res-tires">
+    <details class="res-section sec-tires" id="res-tires"${accOpenAttr('res-tires', false)}>
       <summary><h2>Tires</h2><span class="res-chevron">&#9660;</span></summary>
       <div class="res-section-body">
       <p class="card-sub">Data sources, brand rankings by category, and mid-range picks worth trusting.</p>
 
-      <details class="acc">
+      <details class="acc" id="acc-data"${accOpenAttr('acc-data', false)}>
         <summary><span class="summary-txt">Tire Data &amp; Reviews</span><span class="count-tag">4 primary + sources list</span></summary>
         <div class="acc-body">
           <div class="res-item sec-tires">
@@ -226,7 +239,7 @@ function resourcesContentEN(){
         </div>
       </details>
 
-      <details class="acc">
+      <details class="acc" id="acc-guide"${accOpenAttr('acc-guide', false)}>
         <summary><span class="summary-txt">Which Tire Type Do You Actually Need?</span><span class="count-tag">read this before the rankings</span></summary>
         <div class="acc-body">
           <p class="card-sub" style="margin-top:-4px;">A proper guide to what every category on this page actually means and who genuinely benefits from it — not a ranking, organized by vehicle type just like the rankings below.</p>
@@ -239,7 +252,7 @@ function resourcesContentEN(){
 
           <div class="item rf1"><div class="item-top"><div class="item-name">Run-Flat (general)</div></div><p class="note">A reinforced sidewall lets the tire support the vehicle's weight for a short distance (typically ~80 km at up to 80 km/h) after total air loss, avoiding a roadside tire change. Selection genuinely shrinks as vehicle weight goes up: passenger cars have the deepest run-flat lineup (standard OE fitment on most BMW and Mini models), SUV run-flat options exist but are noticeably thinner — some tire lines simply don't offer a run-flat version of their SUV product at all — and trucks essentially have no mainstream run-flat category, since the extra sidewall stiffness needed to support that much weight would fight against the flex trucks need for towing and off-road use. If your vehicle came from the factory on run-flats, stick with run-flats — mixing a run-flat and a conventional tire on the same axle is not recommended.</p></div>
 
-          <details class="sub theme-guide" open>
+          <details class="sub theme-guide" id="guide-pc"${accOpenAttr('guide-pc', true)}>
             <summary><span class="summary-txt">Passenger Car</span></summary>
             <div class="sub-body">
               <div class="item sd1"><div class="item-top"><div class="item-name">Standard Touring</div></div><p class="note">Who it's for: budget-conscious daily commuters who just want to get from A to B reliably. Competent but unremarkable in every category — the tradeoff for the lowest price in the touring family. Best benefit-per-dollar if you don't care about performance and just want predictable, safe transportation. Typically the deepest new tread depth of any touring tier — usually 10-12/32", meaning the longest tread life before replacement.</p></div>
@@ -255,7 +268,7 @@ function resourcesContentEN(){
             </div>
           </details>
 
-          <details class="sub theme-guide">
+          <details class="sub theme-guide" id="guide-suv"${accOpenAttr('guide-suv', false)}>
             <summary><span class="summary-txt">SUV / Crossover</span></summary>
             <div class="sub-body">
               <div class="callout gold">SUVs genuinely mix both worlds: the Passenger Car categories above (Grand Touring, Performance, Performance All-Season, All-Weather, Winter) apply directly to SUVs too, in CUV/SUV sizing — they're not exclusive to sedans. The two categories below are the ones that are genuinely SUV-specific.</div>
@@ -264,7 +277,7 @@ function resourcesContentEN(){
             </div>
           </details>
 
-          <details class="sub theme-guide">
+          <details class="sub theme-guide" id="guide-truck"${accOpenAttr('guide-truck', false)}>
             <summary><span class="summary-txt">Truck (body-on-frame)</span></summary>
             <div class="sub-body">
               <div class="item at1"><div class="item-top"><div class="item-name">All-Terrain (LT)</div></div><p class="note">Who it's for: truck owners who genuinely go off-road regularly — gravel, dirt, rock, mud — and are willing to trade some on-road quiet and fuel economy for that capability. Not a winter tire, even with the 3PMSF symbol on the sidewall — see the myth-busting callout below, since this is one of the most common and dangerous misconceptions on the road.</p></div>
@@ -280,7 +293,7 @@ function resourcesContentEN(){
         </div>
       </details>
 
-      <details class="acc" id="acc-rankings">
+      <details class="acc" id="acc-rankings"${accOpenAttr('acc-rankings', false)}>
         <summary><span class="summary-txt">Top Tire Brands — By Category</span><span class="count-tag">via Tyre Reviews &amp; Tire Rack testing</span></summary>
         <div class="acc-body">
           <p class="card-sub" style="margin-top:-4px;">Organized by vehicle type, since a passenger car, a crossover SUV, and a body-on-frame truck rarely shop from the same tire lineup. Composite Top 10 and Brands to Avoid stay vehicle-agnostic since brand strength there isn't specific to one platform.</p>
@@ -302,7 +315,7 @@ function resourcesContentEN(){
             </div>
           </details>
 
-          <details class="acc vehicle-acc" id="rank-pc">
+          <details class="acc vehicle-acc" id="rank-pc"${accOpenAttr('rank-pc', false)}>
             <summary><span class="summary-txt">Passenger Car</span><span class="count-tag">sedans, coupes</span></summary>
             <div class="acc-body">
 
@@ -429,7 +442,7 @@ function resourcesContentEN(){
             </div>
           </details>
 
-          <details class="acc vehicle-acc" id="rank-suv">
+          <details class="acc vehicle-acc" id="rank-suv"${accOpenAttr('rank-suv', false)}>
             <summary><span class="summary-txt">SUV / Crossover</span><span class="count-tag">SUVs, minivans</span></summary>
             <div class="acc-body">
               <p class="card-sub" style="margin-top:-4px;">Body-on-frame SUVs (4Runner, Wrangler, Land Cruiser, Suburban/Tahoe) share a tire market with trucks — see the Truck section instead. This covers crossovers and mid-size SUVs, which genuinely mix passenger-car and truck-adjacent tire types.</p>
@@ -487,7 +500,7 @@ function resourcesContentEN(){
             </div>
           </details>
 
-          <details class="acc vehicle-acc" id="rank-truck">
+          <details class="acc vehicle-acc" id="rank-truck"${accOpenAttr('rank-truck', false)}>
             <summary><span class="summary-txt">Truck</span><span class="count-tag">body-on-frame, LT-rated</span></summary>
             <div class="acc-body">
               <p class="card-sub" style="margin-top:-4px;">Covers body-on-frame trucks and SUVs (F-150, Silverado, Ram, 4Runner, Wrangler, Land Cruiser, Suburban/Tahoe) — heavier-duty products built for real load capacity and off-road use, not the lighter crossover-tuned tires above.</p>
@@ -597,7 +610,7 @@ function resourcesContentEN(){
       </div>
     </details>
 
-    <details class="res-section sec-shops">
+    <details class="res-section sec-shops" id="res-shops"${accOpenAttr('res-shops', false)}>
       <summary><h2>Shops</h2><span class="res-chevron">&#9660;</span></summary>
       <div class="res-section-body">
       <p class="card-sub" style="margin-bottom:2px;">Trusted local shops — Ottawa, ON region.</p>
@@ -608,7 +621,7 @@ function resourcesContentEN(){
       </div>
     </details>
 
-    <details class="res-section sec-other">
+    <details class="res-section sec-other" id="res-other"${accOpenAttr('res-other', false)}>
       <summary><h2>Other Resources</h2><span class="res-chevron">&#9660;</span></summary>
       <div class="res-section-body">
       <p class="card-sub" style="margin-bottom:2px;">Video and testing channels.</p>
@@ -618,7 +631,7 @@ function resourcesContentEN(){
       </div>
     </details>
 
-    <details class="res-section sec-parts">
+    <details class="res-section sec-parts" id="res-parts"${accOpenAttr('res-parts', false)}>
       <summary><h2>Aftermarket Parts</h2><span class="res-chevron">&#9660;</span></summary>
       <div class="res-section-body">
       <p class="card-sub">Many of these are the actual OEM suppliers behind the badge — same parts, without the dealership markup.</p>
@@ -679,7 +692,7 @@ function resourcesContentEN(){
       </div>
     </details>
 
-    <details class="res-section sec-oil">
+    <details class="res-section sec-oil" id="res-oil"${accOpenAttr('res-oil', false)}>
       <summary><h2>Motor Oil &amp; Transmission Fluid</h2><span class="res-chevron">&#9660;</span></summary>
       <div class="res-section-body">
       <p class="card-sub">Trusted lubricant brands, grouped by what they're actually known for.</p>
@@ -704,7 +717,7 @@ function resourcesContentEN(){
       </div>
     </details>
 
-    <details class="res-section sec-rust">
+    <details class="res-section sec-rust" id="res-rust"${accOpenAttr('res-rust', false)}>
       <summary><h2>Undercoating &amp; Rustproofing</h2><span class="res-chevron">&#9660;</span></summary>
       <div class="res-section-body">
       <p class="card-sub">Oil/wax-based rustproofing vs. rubberized undercoating vs. doing nothing, plus recommended products and local shops.</p>
@@ -744,12 +757,12 @@ function resourcesContentFR(){
   return `
     <p style="font-family:var(--font-mono); font-size:11.5px; color:var(--text-dim2); margin:0 0 20px;"><b style="color:var(--text);">Dernière mise à jour :</b> 19 août 2026</p>
 
-    <details class="res-section sec-tires" id="res-tires">
+    <details class="res-section sec-tires" id="res-tires"${accOpenAttr('res-tires', false)}>
       <summary><h2>Pneus</h2><span class="res-chevron">&#9660;</span></summary>
       <div class="res-section-body">
       <p class="card-sub">Sources de données, classements de marques par catégorie et choix milieu de gamme fiables.</p>
 
-      <details class="acc">
+      <details class="acc" id="acc-data"${accOpenAttr('acc-data', false)}>
         <summary><span class="summary-txt">Données et avis sur les pneus</span><span class="count-tag">4 sources principales + liste</span></summary>
         <div class="acc-body">
           <div class="res-item sec-tires"><a href="https://www.tyrereviews.com/" target="_blank" rel="noopener">Tyre Reviews</a><p>Excellente base de données sur les pneus, avec de nombreuses ressources : essais documentés, fiches techniques et comparaisons de performance — économique vs premium.</p></div>
@@ -772,7 +785,7 @@ function resourcesContentFR(){
         </div>
       </details>
 
-      <details class="acc">
+      <details class="acc" id="acc-guide"${accOpenAttr('acc-guide', false)}>
         <summary><span class="summary-txt">De quel type de pneu avez-vous vraiment besoin?</span><span class="count-tag">à lire avant les classements</span></summary>
         <div class="acc-body">
           <p class="card-sub" style="margin-top:-4px;">Un véritable guide sur ce que chaque catégorie de cette page signifie vraiment et à qui elle profite réellement — pas un classement, organisé par type de véhicule tout comme les classements ci-dessous.</p>
@@ -785,7 +798,7 @@ function resourcesContentFR(){
 
           <div class="item rf1"><div class="item-top"><div class="item-name">Pneus increvables / Run-Flat (général)</div></div><p class="note">Un flanc renforcé permet au pneu de soutenir le poids du véhicule sur une courte distance (habituellement ~80 km à un maximum de 80 km/h) après une perte totale de pression, évitant un changement de pneu sur le bord de la route. Le choix rétrécit véritablement à mesure que le poids du véhicule augmente : les voitures de tourisme ont la gamme run-flat la plus étendue (équipement d'origine standard sur la plupart des BMW et Mini), les options run-flat pour VUS existent mais sont nettement plus limitées — certaines gammes de pneus n'offrent tout simplement pas de version run-flat de leur produit VUS — et les camions n'ont essentiellement aucune catégorie run-flat grand public, puisque la rigidité de flanc supplémentaire nécessaire pour soutenir un tel poids nuirait à la flexibilité dont les camions ont besoin pour le remorquage et le hors route. Si votre véhicule est sorti d'usine avec des pneus run-flat, restez avec des run-flat — mélanger un pneu run-flat et un pneu conventionnel sur le même essieu n'est pas recommandé.</p></div>
 
-          <details class="sub theme-guide" open>
+          <details class="sub theme-guide" id="guide-pc"${accOpenAttr('guide-pc', true)}>
             <summary><span class="summary-txt">Voiture de tourisme</span></summary>
             <div class="sub-body">
               <div class="item sd1"><div class="item-top"><div class="item-name">Tourisme Standard</div></div><p class="note">Pour qui : les conducteurs soucieux du budget qui veulent simplement se rendre d'un point A à un point B de façon fiable. Compétent mais sans éclat dans chaque catégorie — le compromis pour le prix le plus bas de la famille tourisme. Meilleur rapport bénéfice-prix si la performance ne compte pas et que seul le transport prévisible et sûr importe. Généralement la profondeur de bande de roulement neuve la plus profonde de tous les paliers tourisme — habituellement 10-12/32 po, donc la plus longue durée de vie avant remplacement.</p></div>
@@ -801,7 +814,7 @@ function resourcesContentFR(){
             </div>
           </details>
 
-          <details class="sub theme-guide">
+          <details class="sub theme-guide" id="guide-suv"${accOpenAttr('guide-suv', false)}>
             <summary><span class="summary-txt">VUS / Multisegment</span></summary>
             <div class="sub-body">
               <div class="callout gold">Les VUS mélangent véritablement les deux mondes : les catégories Voiture de tourisme ci-dessus (Grand Tourisme, Performance, Performance Quatre-Saisons, Tout-Temps, Hiver) s'appliquent directement aux VUS aussi, en dimensions VUS/multisegment — elles ne sont pas exclusives aux berlines. Les deux catégories ci-dessous sont celles qui sont véritablement propres aux VUS.</div>
@@ -810,7 +823,7 @@ function resourcesContentFR(){
             </div>
           </details>
 
-          <details class="sub theme-guide">
+          <details class="sub theme-guide" id="guide-truck"${accOpenAttr('guide-truck', false)}>
             <summary><span class="summary-txt">Camion (châssis séparé)</span></summary>
             <div class="sub-body">
               <div class="item at1"><div class="item-top"><div class="item-name">Tout-terrain (LT)</div></div><p class="note">Pour qui : les propriétaires de camions qui vont véritablement hors route régulièrement — gravier, terre, roche, boue — et acceptent d'échanger un peu de silence routier et d'économie de carburant contre cette capacité. Ce n'est pas un pneu d'hiver, même avec le symbole 3PMSF sur le flanc — voir l'encadré démystificateur ci-dessous, car c'est l'une des méprises les plus courantes et les plus dangereuses sur la route.</p></div>
@@ -826,7 +839,7 @@ function resourcesContentFR(){
         </div>
       </details>
 
-      <details class="acc" id="acc-rankings">
+      <details class="acc" id="acc-rankings"${accOpenAttr('acc-rankings', false)}>
         <summary><span class="summary-txt">Meilleures marques de pneus — par catégorie</span><span class="count-tag">selon les essais de Tyre Reviews et Tire Rack</span></summary>
         <div class="acc-body">
           <p class="card-sub" style="margin-top:-4px;">Organisé par type de véhicule, puisqu'une voiture de tourisme, un VUS multisegment et un camion à châssis séparé ne magasinent rarement dans le même éventail de pneus. Le Top 10 composite et les Marques à éviter demeurent neutres, puisque la force des marques là-bas n'est pas propre à une seule plateforme.</p>
@@ -848,7 +861,7 @@ function resourcesContentFR(){
             </div>
           </details>
 
-          <details class="acc vehicle-acc" id="rank-pc">
+          <details class="acc vehicle-acc" id="rank-pc"${accOpenAttr('rank-pc', false)}>
             <summary><span class="summary-txt">Voiture de tourisme</span><span class="count-tag">berlines, coupés</span></summary>
             <div class="acc-body">
 
@@ -975,7 +988,7 @@ function resourcesContentFR(){
             </div>
           </details>
 
-          <details class="acc vehicle-acc" id="rank-suv">
+          <details class="acc vehicle-acc" id="rank-suv"${accOpenAttr('rank-suv', false)}>
             <summary><span class="summary-txt">VUS / Multisegment</span><span class="count-tag">VUS, fourgonnettes</span></summary>
             <div class="acc-body">
               <p class="card-sub" style="margin-top:-4px;">Les VUS à châssis séparé (4Runner, Wrangler, Land Cruiser, Suburban/Tahoe) partagent le marché des pneus avec les camions — voir la section Camion à la place. Ceci couvre les multisegments et VUS intermédiaires, qui mélangent véritablement les types de pneus de voiture de tourisme et de camion.</p>
@@ -1033,7 +1046,7 @@ function resourcesContentFR(){
             </div>
           </details>
 
-          <details class="acc vehicle-acc" id="rank-truck">
+          <details class="acc vehicle-acc" id="rank-truck"${accOpenAttr('rank-truck', false)}>
             <summary><span class="summary-txt">Camion</span><span class="count-tag">châssis séparé, homologué LT</span></summary>
             <div class="acc-body">
               <p class="card-sub" style="margin-top:-4px;">Couvre les camions et VUS à châssis séparé (F-150, Silverado, Ram, 4Runner, Wrangler, Land Cruiser, Suburban/Tahoe) — des produits plus robustes conçus pour une véritable capacité de charge et un usage hors route, pas les pneus plus légers axés multisegment ci-dessus.</p>
@@ -1143,7 +1156,7 @@ function resourcesContentFR(){
       </div>
     </details>
 
-    <details class="res-section sec-shops">
+    <details class="res-section sec-shops" id="res-shops"${accOpenAttr('res-shops', false)}>
       <summary><h2>Ateliers</h2><span class="res-chevron">&#9660;</span></summary>
       <div class="res-section-body">
       <p class="card-sub" style="margin-bottom:2px;">Ateliers locaux de confiance — région d'Ottawa (Ont.).</p>
@@ -1154,7 +1167,7 @@ function resourcesContentFR(){
       </div>
     </details>
 
-    <details class="res-section sec-other">
+    <details class="res-section sec-other" id="res-other"${accOpenAttr('res-other', false)}>
       <summary><h2>Autres ressources</h2><span class="res-chevron">&#9660;</span></summary>
       <div class="res-section-body">
       <p class="card-sub" style="margin-bottom:2px;">Chaînes vidéo et d'essais.</p>
@@ -1164,7 +1177,7 @@ function resourcesContentFR(){
       </div>
     </details>
 
-    <details class="res-section sec-parts">
+    <details class="res-section sec-parts" id="res-parts"${accOpenAttr('res-parts', false)}>
       <summary><h2>Pièces de rechange</h2><span class="res-chevron">&#9660;</span></summary>
       <div class="res-section-body">
       <p class="card-sub">Plusieurs sont en fait les fournisseurs OEM derrière l'écusson — les mêmes pièces, sans la marge du concessionnaire.</p>
@@ -1225,7 +1238,7 @@ function resourcesContentFR(){
       </div>
     </details>
 
-    <details class="res-section sec-oil">
+    <details class="res-section sec-oil" id="res-oil"${accOpenAttr('res-oil', false)}>
       <summary><h2>Huile moteur et liquide de transmission</h2><span class="res-chevron">&#9660;</span></summary>
       <div class="res-section-body">
       <p class="card-sub">Marques de lubrifiants fiables, regroupées selon leur véritable réputation.</p>
@@ -1250,7 +1263,7 @@ function resourcesContentFR(){
       </div>
     </details>
 
-    <details class="res-section sec-rust">
+    <details class="res-section sec-rust" id="res-rust"${accOpenAttr('res-rust', false)}>
       <summary><h2>Antirouille et protection du dessous de caisse</h2><span class="res-chevron">&#9660;</span></summary>
       <div class="res-section-body">
       <p class="card-sub">Produits à base d'huile/cire vs revêtement caoutchouté vs ne rien faire, ainsi que des produits recommandés et des ateliers locaux.</p>
@@ -1304,6 +1317,13 @@ function render(){
     `;
   }
 }
+
+appEl.addEventListener("toggle", (e) => {
+  const el = e.target;
+  if(el.tagName === "DETAILS" && el.id){
+    try{ localStorage.setItem("gearlog_acc_" + el.id, el.open ? "1" : "0"); }catch(err){}
+  }
+}, true);
 
 appEl.addEventListener("click", (e) => {
   if(e.target.classList && e.target.classList.contains("modal-overlay")){

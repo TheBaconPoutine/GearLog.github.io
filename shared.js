@@ -2,7 +2,7 @@ const I18N = {
   en: {
     brandTagline: "know what's next, before it's overdue",
     madeWithClaude: "Built with Claude AI",
-    nav: {tracker: "Service Tracker", resources: "Resources", changelog: "Changelog"},
+    nav: {tracker: "Service Tracker", resources: "Resources", help: "Help", about: "About", account: "Account"},
     trackerTabs: {setup: "Vehicle Info", status: "Status & Services", history: "History"},
     langButton: "🇫🇷 Français",
     banner: {
@@ -195,51 +195,50 @@ const I18N = {
     changelogTitle: "What's new",
     changelogDismiss: "Got it, dismiss",
     changelog: [
-      {version: 7, items: [
+      {version: 2, items: [
+        "Split GearLog into separate pages (Service Tracker, Resources, Help, About, Account) sharing one design system, instead of one very large file \u2014 easier to maintain and less likely to break.",
+        "Added a collapsible hamburger-style navigation menu to keep the header clean.",
+        "Vehicle setup is now a guided, step-by-step flow \u2014 each section has its own \u201CSave & Continue\u201D, and the next section only appears once the previous one is done.",
+        "Status & Services and History tabs stay hidden until a maintenance list actually exists for that vehicle.",
+        "Replaced browser pop-up alerts with in-app toast notifications for confirmations like \u201CList created\u201D or \u201CChanges saved.\u201D",
+        "Resources page rebuilt around vehicle type (Passenger Car / SUV / Truck) with dozens of new tire categories \u2014 Mid-Range tiers, Run-Flat, Heavy Duty and Hybrid/Trail Highway, and more \u2014 plus every measurement converted to metric.",
+        "Added an interactive Tire Finder quiz that recommends a specific tire category based on your driving, budget, and climate.",
+        "Collapsible sections throughout Resources now remember whether you left them open or closed, instead of resetting on every visit.",
+        "Added this About page with an AI Disclaimer and a Data Usage disclaimer, plus a Help page with mobile install instructions.",
         "Page-level navigation (Service Tracker / Resources / Changelog) and section tabs (Vehicle Info / Status & Services / History) now look clearly different \u2014 amber pill buttons for pages, a blue segmented bar for sections \u2014 instead of blending together.",
         "Backup & Transfer now only appears on the Status & Services and History tabs, and is collapsible.",
         "Vehicle Info tab reorganized: Vehicle Setup now explains it affects the Status & Services page; Vehicle Information now explains it's for your own records only and has no effect on calculations.",
         "\u201CNo Prior Service History\u201D is now a selectable toggle \u2014 it only applies (with a confirmation popup) when you create or update the maintenance list, instead of acting immediately.",
         "The Resources page is now fully built into the app itself \u2014 no external embed \u2014 with tire brand rankings, trusted shops, aftermarket parts, and motor oil brands, all bilingual.",
       ]},
-      {version: 6, items: [
-        "\u201CVehicle & Setup\u201D tab renamed to \u201CVehicle Info\u201D.",
-        "The maintenance-list button moved to the bottom of the Vehicle Info tab and is now called \u201CCreate Maintenance List\u201D \u2014 it switches to \u201CUpdate Maintenance List\u201D once a list already exists.",
-        "Added this Changelog page, plus mobile app icons (favicon, home-screen icon, manifest) for GitHub Pages installs.",
-        "The \u201Cdon't lose your data\u201D warning now shows every time the app opens, not just once.",
-        "The What's New notice is now a popup that only appears when there's something new since you last saw it.",
-      ]},
-      {version: 5, items: [
-        "Reworked button colours so each one is clearly distinguishable at rest, with a filled, brighter state on hover/tap instead of all looking similarly washed out.",
-        "\u201CMark done today\u201D is now a brighter blue button.",
-        "Added a first-use popup explaining that all data is local-only, plus a much more visible warning in Backup & Transfer.",
-        "Added fault-tolerance to rendering, so a corrupted item shows a recovery option instead of silently freezing the page.",
-      ]},
-      {version: 4, items: [
-        "Action buttons are now colour-coded (build, reset, assume, reminders, export/import) for quicker scanning.",
-        "\u201COptional Add-On Services\u201D and \u201CAdd Custom Service Item\u201D are now one combined section.",
-        "\u201CAdd to calendar\u201D is now called \u201CCreate Reminder\u201D.",
-        "Service History entries can be tagged Service or Repair, with a Show filter (All / Services / Repairs).",
-        "The language switch is now flag-themed (France for French, UK for English).",
-        "Fixed \u201CAssume No Prior Service History\u201D so it reliably applies and confirms what changed.",
-      ]},
-      {version: 3, items: [
-        "\u201CAssume No Prior Service History\u201D now uses the vehicle's model year instead of a separate purchase date.",
-        "Vehicle Setup now comes before Vehicle Information, so the service list exists before you use Assume.",
-        "Last Service KM/Date now require pressing \u201CUpdate\u201D to save, preventing accidental typo saves.",
-        "\u201CMark done today\u201D is now a proper button.",
-      ]},
-      {version: 2, items: [
+      {version: 1, items: [
+        "Fixed mobile layout issues (scrollable history table, responsive forms).",
+        "Added a \u201CDue\u201D status tier between Due Soon and Overdue, with a grace window before something counts as overdue.",
         "Added support for multiple vehicles, each with its own service list and history.",
         "Full French Canadian translation with a language switch.",
         "Added JSON backup/import to transfer all data between devices.",
         "Added a Resources page for an embeddable list of trusted shops and parts.",
         "Added Timing Belt and Power Steering Fluid as optional services.",
         "Added a banner explaining the severe-condition maintenance schedule.",
-      ]},
-      {version: 1, items: [
-        "Fixed mobile layout issues (scrollable history table, responsive forms).",
-        "Added a \u201CDue\u201D status tier between Due Soon and Overdue, with a grace window before something counts as overdue.",
+        "\u201CAssume No Prior Service History\u201D now uses the vehicle's model year instead of a separate purchase date.",
+        "Vehicle Setup now comes before Vehicle Information, so the service list exists before you use Assume.",
+        "Last Service KM/Date now require pressing \u201CUpdate\u201D to save, preventing accidental typo saves.",
+        "\u201CMark done today\u201D is now a proper button.",
+        "Action buttons are now colour-coded (build, reset, assume, reminders, export/import) for quicker scanning.",
+        "\u201COptional Add-On Services\u201D and \u201CAdd Custom Service Item\u201D are now one combined section.",
+        "\u201CAdd to calendar\u201D is now called \u201CCreate Reminder\u201D.",
+        "Service History entries can be tagged Service or Repair, with a Show filter (All / Services / Repairs).",
+        "The language switch is now flag-themed (France for French, UK for English).",
+        "Fixed \u201CAssume No Prior Service History\u201D so it reliably applies and confirms what changed.",
+        "Reworked button colours so each one is clearly distinguishable at rest, with a filled, brighter state on hover/tap instead of all looking similarly washed out.",
+        "\u201CMark done today\u201D is now a brighter blue button.",
+        "Added a first-use popup explaining that all data is local-only, plus a much more visible warning in Backup & Transfer.",
+        "Added fault-tolerance to rendering, so a corrupted item shows a recovery option instead of silently freezing the page.",
+        "\u201CVehicle & Setup\u201D tab renamed to \u201CVehicle Info\u201D.",
+        "The maintenance-list button moved to the bottom of the Vehicle Info tab and is now called \u201CCreate Maintenance List\u201D \u2014 it switches to \u201CUpdate Maintenance List\u201D once a list already exists.",
+        "Added a Changelog page, plus mobile app icons (favicon, home-screen icon, manifest) for GitHub Pages installs.",
+        "The \u201Cdon't lose your data\u201D warning now shows every time the app opens, not just once.",
+        "The What's New notice is now a popup that only appears when there's something new since you last saw it.",
       ]},
     ],
     itemNames: {
@@ -256,11 +255,57 @@ const I18N = {
     },
     icsSummary: (name) => `${name} — Service Due`,
     icsDescription: "Estimated due date from GearLog based on your mileage and driving pace.",
+    help: {
+      title: "Help",
+      installTitle: "How to Install the Web App on Mobile",
+      installIntro: "GearLog works best added to your home screen — it opens full-screen like a normal app, with no browser address bar, and your saved data stays exactly where it is.",
+      androidLabel: "Android",
+      iosLabel: "iOS (iPhone / iPad)",
+    },
+    about: {
+      title: "About",
+      aiTitle: "AI Disclaimer",
+      aiBody: [
+        "GearLog was built using Claude, Anthropic's AI assistant, for 100% of the code — every function, layout, and interaction in this app was written by AI based on direction and feedback from the developer.",
+        "The app itself started as a personal spreadsheet with maintenance intervals and formulas already worked out; AI helped convert that spreadsheet into this interactive web app.",
+        "Research throughout the app was AI-assisted, with correction and review done by the developer. A good portion of the underlying research — service intervals, the parts list, trusted local shops, undercoating/rustproofing, and parts of the tire content — was research already done independently before AI was involved, with AI helping verify, expand, and fact-check it further from there.",
+        "Most of the actual writing and phrasing across the app was done by AI.",
+      ],
+      dataTitle: "Data Usage",
+      dataBody: [
+        "Your vehicle data exists for one reason: to save your own maintenance information so you can access it. It is not used for anything else, and it is not shared with anyone.",
+        "Right now, everything you enter stays in your browser's local storage on your own device — nothing is sent to a server. If accounts are added in the future, the same principle holds: your data is yours, used only to make it available to you, never sold, analyzed, or shared with third parties.",
+      ],
+      changelogTitle: "Changelog",
+    },
+    account: {
+      title: "Account",
+      notLoggedInWarning: "You're not signed in. Your vehicle data is only saved in this browser, on this device — if you lose access to it (new phone, cleared browser data, etc.), that data is gone unless you've exported a backup. Use Export/Import on the Service Tracker page to move your data manually until you sign in.",
+      loginTitle: "Log In",
+      signupTitle: "Create an Account",
+      loggedInGreeting: (name) => `Welcome back, ${name}`,
+      fields: {
+        name: "Name", email: "Email", password: "Password", confirmPassword: "Confirm Password", currentPassword: "Current Password",
+      },
+      loginBtn: "Log In", signupBtn: "Sign Up", saveBtn: "Save Changes", logoutBtn: "Log Out",
+      settingsTitle: "Account Settings",
+      changeNameTitle: "Change Name", changeEmailTitle: "Change Email", changePasswordTitle: "Change Password",
+      workingBtn: "Working…",
+      checkEmailTitle: "Check Your Email",
+      checkEmailBody: (email) => `We sent a confirmation link to ${email}. Click it, then come back here and log in.`,
+      fillAllFields: "Please fill in all fields.",
+      passwordMismatch: "Passwords don't match.",
+      nameSavedToast: "Name updated.",
+      emailChangeSentToast: "Confirmation link sent to your new email address — click it to finish the change.",
+      passwordChangedToast: "Password updated.",
+      loggedOutToast: "Logged out.",
+      currentEmailLabel: "Current email:",
+    },
   },
   fr: {
     brandTagline: "sachez ce qui s'en vient, avant que ce soit en retard",
     madeWithClaude: "Créé avec Claude AI",
-    nav: {tracker: "Suivi d'entretien", resources: "Ressources", changelog: "Historique des mises à jour"},
+    nav: {tracker: "Suivi d'entretien", resources: "Ressources", help: "Aide", about: "À propos", account: "Compte"},
     trackerTabs: {setup: "Info du véhicule", status: "État et entretien", history: "Historique"},
     langButton: "🇬🇧 English",
     banner: {
@@ -453,51 +498,50 @@ const I18N = {
     changelogTitle: "Quoi de neuf",
     changelogDismiss: "Compris, fermer",
     changelog: [
-      {version: 7, items: [
+      {version: 2, items: [
+        "Séparation de GearLog en pages distinctes (Suivi d'entretien, Ressources, Aide, À propos, Compte) partageant un seul système de conception, au lieu d'un très gros fichier — plus facile à maintenir et moins susceptible de se briser.",
+        "Ajout d'un menu de navigation repliable de type hamburger pour garder l'en-tête épuré.",
+        "La configuration du véhicule est maintenant un parcours guidé étape par étape — chaque section a son propre bouton « Enregistrer et continuer », et la section suivante n'apparaît qu'une fois la précédente terminée.",
+        "Les onglets État et entretien et Historique restent cachés tant qu'aucune liste d'entretien n'existe pour ce véhicule.",
+        "Remplacement des fenêtres contextuelles du navigateur par des notifications intégrées à l'application pour les confirmations comme « Liste créée » ou « Modifications enregistrées ».",
+        "La page Ressources a été reconstruite autour du type de véhicule (Voiture de tourisme / VUS / Camion) avec des dizaines de nouvelles catégories de pneus — segments milieu de gamme, Run-Flat, Route robuste et hybride/sentier, et plus encore — en plus de convertir toutes les mesures au système métrique.",
+        "Ajout d'un questionnaire interactif de recherche de pneu qui recommande une catégorie précise selon votre conduite, votre budget et votre climat.",
+        "Les sections repliables partout dans Ressources se souviennent maintenant si vous les aviez laissées ouvertes ou fermées, au lieu de réinitialiser à chaque visite.",
+        "Ajout de cette page À propos avec un avis sur l'utilisation de l'IA et un avis sur l'utilisation des données, ainsi qu'une page Aide avec des instructions d'installation mobile.",
         "La navigation de niveau page (Suivi d'entretien / Ressources / Historique des mises à jour) et les onglets de section (Info du véhicule / État et entretien / Historique) ont maintenant un style clairement distinct — boutons amande pour les pages, barre segmentée bleue pour les sections.",
         "Sauvegarde et transfert n'apparaît maintenant que dans les onglets État et entretien et Historique, et est repliable.",
         "L'onglet Info du véhicule a été réorganisé : Configuration du véhicule précise maintenant qu'elle affecte la page État et entretien; Renseignements sur le véhicule précise qu'ils servent uniquement à vos dossiers et n'ont aucun effet sur les calculs.",
         "« Aucun historique d'entretien connu » est maintenant une case à sélectionner — elle ne s'applique (avec une fenêtre de confirmation) que lors de la création ou mise à jour de la liste d'entretien, au lieu d'agir immédiatement.",
         "La page Ressources est maintenant entièrement intégrée à l'application — plus d'intégration externe — avec classements de marques de pneus, ateliers de confiance, pièces de rechange et marques d'huile moteur, le tout bilingue.",
       ]},
-      {version: 6, items: [
-        "L'onglet « Véhicule et configuration » est renommé « Info du véhicule ».",
-        "Le bouton de liste d'entretien a été déplacé au bas de l'onglet Info du véhicule et s'appelle maintenant « Créer la liste d'entretien » — il devient « Mettre à jour la liste d'entretien » une fois qu'une liste existe déjà.",
-        "Ajout de cette page Historique des mises à jour, ainsi que des icônes d'application mobile (favicon, icône d'écran d'accueil, manifeste) pour l'installation via GitHub Pages.",
-        "L'avertissement « ne perdez pas vos données » s'affiche maintenant à chaque ouverture de l'application, pas seulement une fois.",
-        "L'avis Quoi de neuf est maintenant une fenêtre contextuelle qui n'apparaît que lorsqu'il y a du nouveau depuis votre dernière visite.",
-      ]},
-      {version: 5, items: [
-        "Refonte des couleurs des boutons pour que chacune soit clairement distincte au repos, avec un état rempli et plus lumineux au survol/toucher.",
-        "« Marquer comme fait aujourd'hui » est maintenant un bouton bleu plus lumineux.",
-        "Ajout d'une fenêtre contextuelle à la première utilisation expliquant que toutes les données sont locales, ainsi qu'un avertissement beaucoup plus visible dans Sauvegarde et transfert.",
-        "Ajout d'une tolérance aux pannes à l'affichage, pour qu'un élément corrompu montre une option de récupération plutôt que de figer la page silencieusement.",
-      ]},
-      {version: 4, items: [
-        "Les boutons d'action sont maintenant à code de couleur (créer, réinitialiser, présumer, rappels, exporter/importer).",
-        "« Services facultatifs » et « Ajouter un élément personnalisé » sont maintenant une seule section combinée.",
-        "« Ajouter au calendrier » s'appelle maintenant « Créer un rappel ».",
-        "Les entrées de l'historique peuvent être étiquetées Entretien ou Réparation, avec un filtre Afficher (Tout / Entretiens / Réparations).",
-        "Le bouton de langue est maintenant thématique (France pour le français, Royaume-Uni pour l'anglais).",
-        "Correction de « Aucun historique d'entretien connu » pour qu'il s'applique de façon fiable et confirme les changements.",
-      ]},
-      {version: 3, items: [
-        "« Aucun historique d'entretien connu » utilise maintenant l'année du véhicule plutôt qu'une date d'achat distincte.",
-        "La configuration du véhicule apparaît maintenant avant les renseignements du véhicule.",
-        "Le kilométrage et la date du dernier entretien nécessitent maintenant de cliquer sur « Mettre à jour » pour être enregistrés.",
-        "« Marquer comme fait aujourd'hui » est maintenant un vrai bouton.",
-      ]},
-      {version: 2, items: [
+      {version: 1, items: [
+        "Correction de problèmes d'affichage mobile (tableau d'historique déroulant, formulaires adaptatifs).",
+        "Ajout d'un niveau « Dû » entre Bientôt dû et En retard, avec une marge de tolérance avant d'être considéré en retard.",
         "Ajout de la prise en charge de plusieurs véhicules, chacun avec sa propre liste d'entretien et son historique.",
         "Traduction complète en français canadien avec un bouton de changement de langue.",
         "Ajout de l'exportation/importation JSON pour transférer toutes les données entre appareils.",
         "Ajout d'une page Ressources pour une liste intégrable d'ateliers et de pièces fiables.",
         "Ajout de la courroie de distribution et du liquide de direction assistée comme services facultatifs.",
         "Ajout d'une bannière expliquant l'horaire d'entretien en conditions sévères.",
-      ]},
-      {version: 1, items: [
-        "Correction de problèmes d'affichage mobile (tableau d'historique déroulant, formulaires adaptatifs).",
-        "Ajout d'un niveau « Dû » entre Bientôt dû et En retard, avec une marge de tolérance avant d'être considéré en retard.",
+        "« Aucun historique d'entretien connu » utilise maintenant l'année du véhicule plutôt qu'une date d'achat distincte.",
+        "La configuration du véhicule apparaît maintenant avant les renseignements du véhicule.",
+        "Le kilométrage et la date du dernier entretien nécessitent maintenant de cliquer sur « Mettre à jour » pour être enregistrés.",
+        "« Marquer comme fait aujourd'hui » est maintenant un vrai bouton.",
+        "Les boutons d'action sont maintenant à code de couleur (créer, réinitialiser, présumer, rappels, exporter/importer).",
+        "« Services facultatifs » et « Ajouter un élément personnalisé » sont maintenant une seule section combinée.",
+        "« Ajouter au calendrier » s'appelle maintenant « Créer un rappel ».",
+        "Les entrées de l'historique peuvent être étiquetées Entretien ou Réparation, avec un filtre Afficher (Tout / Entretiens / Réparations).",
+        "Le bouton de langue est maintenant thématique (France pour le français, Royaume-Uni pour l'anglais).",
+        "Correction de « Aucun historique d'entretien connu » pour qu'il s'applique de façon fiable et confirme les changements.",
+        "Refonte des couleurs des boutons pour que chacune soit clairement distincte au repos, avec un état rempli et plus lumineux au survol/toucher.",
+        "« Marquer comme fait aujourd'hui » est maintenant un bouton bleu plus lumineux.",
+        "Ajout d'une fenêtre contextuelle à la première utilisation expliquant que toutes les données sont locales, ainsi qu'un avertissement beaucoup plus visible dans Sauvegarde et transfert.",
+        "Ajout d'une tolérance aux pannes à l'affichage, pour qu'un élément corrompu montre une option de récupération plutôt que de figer la page silencieusement.",
+        "L'onglet « Véhicule et configuration » est renommé « Info du véhicule ».",
+        "Le bouton de liste d'entretien a été déplacé au bas de l'onglet Info du véhicule et s'appelle maintenant « Créer la liste d'entretien » — il devient « Mettre à jour la liste d'entretien » une fois qu'une liste existe déjà.",
+        "Ajout d'une page Historique des mises à jour, ainsi que des icônes d'application mobile (favicon, icône d'écran d'accueil, manifeste) pour l'installation via GitHub Pages.",
+        "L'avertissement « ne perdez pas vos données » s'affiche maintenant à chaque ouverture de l'application, pas seulement une fois.",
+        "L'avis Quoi de neuf est maintenant une fenêtre contextuelle qui n'apparaît que lorsqu'il y a du nouveau depuis votre dernière visite.",
       ]},
     ],
     itemNames: {
@@ -514,6 +558,52 @@ const I18N = {
     },
     icsSummary: (name) => `${name} — Entretien à faire`,
     icsDescription: "Date d'échéance estimée par GearLog selon votre kilométrage et votre rythme de conduite.",
+    help: {
+      title: "Aide",
+      installTitle: "Comment installer l'application web sur mobile",
+      installIntro: "GearLog fonctionne mieux ajouté à votre écran d'accueil — elle s'ouvre en plein écran comme une application normale, sans barre d'adresse du navigateur, et vos données enregistrées restent exactement où elles sont.",
+      androidLabel: "Android",
+      iosLabel: "iOS (iPhone / iPad)",
+    },
+    about: {
+      title: "À propos",
+      aiTitle: "Avis sur l'utilisation de l'IA",
+      aiBody: [
+        "GearLog a été construit avec Claude, l'assistant IA d'Anthropic, pour 100 % du code — chaque fonction, mise en page et interaction de cette application a été écrite par l'IA selon les directives et commentaires du développeur.",
+        "L'application elle-même a débuté comme un chiffrier personnel avec des intervalles d'entretien et des formules déjà établis; l'IA a aidé à convertir ce chiffrier en cette application web interactive.",
+        "La recherche à travers l'application a été assistée par l'IA, avec correction et révision faites par le développeur. Une bonne partie de la recherche sous-jacente — intervalles d'entretien, liste de pièces, ateliers locaux de confiance, antirouille/protection sous-carrosserie, et certaines parties du contenu sur les pneus — était une recherche déjà effectuée de façon indépendante avant l'implication de l'IA, celle-ci ayant ensuite aidé à la vérifier, l'élargir et la valider davantage.",
+        "La majeure partie de la rédaction et du phrasé à travers l'application a été faite par l'IA.",
+      ],
+      dataTitle: "Utilisation des données",
+      dataBody: [
+        "Vos données de véhicule existent pour une seule raison : enregistrer vos propres renseignements d'entretien afin que vous puissiez y accéder. Elles ne sont utilisées à aucune autre fin, et ne sont partagées avec personne.",
+        "En ce moment, tout ce que vous entrez reste dans le stockage local de votre navigateur, sur votre propre appareil — rien n'est envoyé à un serveur. Si des comptes sont ajoutés éventuellement, le même principe s'applique : vos données vous appartiennent, utilisées uniquement pour vous les rendre accessibles, jamais vendues, analysées ou partagées avec des tiers.",
+      ],
+      changelogTitle: "Historique des mises à jour",
+    },
+    account: {
+      title: "Compte",
+      notLoggedInWarning: "Vous n'êtes pas connecté. Vos données de véhicule ne sont enregistrées que dans ce navigateur, sur cet appareil — si vous y perdez accès (nouveau téléphone, données de navigateur effacées, etc.), ces données sont perdues à moins d'avoir exporté une sauvegarde. Utilisez Exporter/Importer sur la page Suivi d'entretien pour déplacer vos données manuellement jusqu'à ce que vous soyez connecté.",
+      loginTitle: "Connexion",
+      signupTitle: "Créer un compte",
+      loggedInGreeting: (name) => `Content de vous revoir, ${name}`,
+      fields: {
+        name: "Nom", email: "Courriel", password: "Mot de passe", confirmPassword: "Confirmer le mot de passe", currentPassword: "Mot de passe actuel",
+      },
+      loginBtn: "Connexion", signupBtn: "S'inscrire", saveBtn: "Enregistrer les modifications", logoutBtn: "Déconnexion",
+      settingsTitle: "Paramètres du compte",
+      changeNameTitle: "Changer le nom", changeEmailTitle: "Changer le courriel", changePasswordTitle: "Changer le mot de passe",
+      workingBtn: "En cours…",
+      checkEmailTitle: "Vérifiez votre courriel",
+      checkEmailBody: (email) => `Nous avons envoyé un lien de confirmation à ${email}. Cliquez dessus, puis revenez ici pour vous connecter.`,
+      fillAllFields: "Veuillez remplir tous les champs.",
+      passwordMismatch: "Les mots de passe ne correspondent pas.",
+      nameSavedToast: "Nom mis à jour.",
+      emailChangeSentToast: "Lien de confirmation envoyé à votre nouvelle adresse courriel — cliquez dessus pour terminer le changement.",
+      passwordChangedToast: "Mot de passe mis à jour.",
+      loggedOutToast: "Déconnecté.",
+      currentEmailLabel: "Courriel actuel :",
+    },
   },
 };
 
@@ -599,6 +689,171 @@ function loadState(){
 
 function saveState(){
   localStorage.setItem(STORE_KEY, JSON.stringify(state));
+  queueRemoteSave();
+}
+
+/* =====================================================================
+   SUPABASE — AUTH & CLOUD SYNC
+   Publishable key is safe to embed client-side by design; Row Level
+   Security on the Supabase side is what actually restricts access to
+   each user's own data, not secrecy of this key.
+===================================================================== */
+const SUPABASE_URL = "https://bkdmsqofpmswqratbkyd.supabase.co";
+const SUPABASE_ANON_KEY = "sb_publishable_GpMqa2ume4YRaBu_6Eu0pQ_FZsAw7vm";
+const sbClient = (typeof window.supabase !== "undefined")
+  ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+  : null;
+
+let currentUser = null;      // { id, email } once logged in and confirmed, else null
+let currentProfile = null;   // { username } once loaded, else null
+let authReady = false;       // true once the initial session check has completed
+let syncStatus = "idle";     // "idle" | "saving" | "saved" | "error" — for optional UI feedback
+let remoteSaveTimer = null;
+
+function queueRemoteSave(){
+  if(!sbClient || !currentUser) return;
+  clearTimeout(remoteSaveTimer);
+  remoteSaveTimer = setTimeout(pushRemoteState, 1200); // debounce so rapid edits don't spam the network
+}
+
+async function pushRemoteState(){
+  if(!sbClient || !currentUser) return;
+  syncStatus = "saving";
+  try{
+    const { error } = await sbClient
+      .from("gearlog_data")
+      .upsert({ user_id: currentUser.id, data: state, updated_at: new Date().toISOString() }, { onConflict: "user_id" });
+    syncStatus = error ? "error" : "saved";
+    if(error) console.error("GearLog cloud save error:", error);
+  }catch(err){
+    syncStatus = "error";
+    console.error("GearLog cloud save error:", err);
+  }
+}
+
+async function pullRemoteState(){
+  if(!sbClient || !currentUser) return null;
+  try{
+    const { data, error } = await sbClient
+      .from("gearlog_data")
+      .select("data")
+      .eq("user_id", currentUser.id)
+      .maybeSingle();
+    if(error){ console.error("GearLog cloud load error:", error); return null; }
+    return data ? data.data : null;
+  }catch(err){
+    console.error("GearLog cloud load error:", err);
+    return null;
+  }
+}
+
+async function loadProfile(){
+  if(!sbClient || !currentUser) { currentProfile = null; return; }
+  try{
+    const { data, error } = await sbClient
+      .from("profiles")
+      .select("username")
+      .eq("user_id", currentUser.id)
+      .maybeSingle();
+    if(error){ console.error("GearLog profile load error:", error); return; }
+    if(!data){
+      // First login after signup — create the profile row now that auth.uid() exists.
+      await sbClient.from("profiles").insert({ user_id: currentUser.id, username: null });
+      currentProfile = { username: null };
+    } else {
+      currentProfile = data;
+    }
+  }catch(err){
+    console.error("GearLog profile load error:", err);
+  }
+}
+
+function hasMeaningfulLocalData(){
+  const v = Object.values(state.vehicles || {});
+  return v.some(vehicle => Object.keys(vehicle.items || {}).length > 0);
+}
+
+async function handleAuthenticatedSession(){
+  const remote = await pullRemoteState();
+  await loadProfile();
+  if(remote){
+    // Remote data exists — it becomes the source of truth for this account.
+    state = remote;
+    localStorage.setItem(STORE_KEY, JSON.stringify(state));
+  } else if(hasMeaningfulLocalData()){
+    // First login on this device with no cloud data yet, but real local data exists — upload it as the starting point.
+    await pushRemoteState();
+  }
+  if(typeof render === "function") render();
+}
+
+async function initAuth(){
+  if(!sbClient){ authReady = true; return; }
+  try{
+    const { data: { session } } = await sbClient.auth.getSession();
+    if(session && session.user){
+      currentUser = session.user;
+      await handleAuthenticatedSession();
+    }
+  }catch(err){
+    console.error("GearLog auth init error:", err);
+  }
+  authReady = true;
+  if(typeof render === "function") render();
+}
+
+initAuth();
+if(sbClient){
+  sbClient.auth.onAuthStateChange((event, session) => {
+    const wasLoggedIn = !!currentUser;
+    currentUser = (session && session.user) ? session.user : null;
+    if(currentUser && !wasLoggedIn){
+      handleAuthenticatedSession();
+    } else if(!currentUser){
+      currentProfile = null;
+      if(typeof render === "function") render();
+    }
+  });
+}
+
+async function authSignUp(email, password){
+  if(!sbClient) return { error: "Supabase isn't connected." };
+  const { data, error } = await sbClient.auth.signUp({ email, password });
+  return { data, error };
+}
+
+async function authLogIn(email, password){
+  if(!sbClient) return { error: "Supabase isn't connected." };
+  const { data, error } = await sbClient.auth.signInWithPassword({ email, password });
+  return { data, error };
+}
+
+async function authLogOut(){
+  if(!sbClient) return;
+  await sbClient.auth.signOut();
+}
+
+async function authUpdateName(name){
+  if(!sbClient || !currentUser) return { error: "Not signed in." };
+  const { error } = await sbClient.from("profiles").update({ username: name, updated_at: new Date().toISOString() }).eq("user_id", currentUser.id);
+  if(!error) currentProfile = { ...currentProfile, username: name };
+  return { error };
+}
+
+async function authUpdateEmail(newEmail){
+  if(!sbClient || !currentUser) return { error: "Not signed in." };
+  const { error } = await sbClient.auth.updateUser({ email: newEmail });
+  return { error };
+}
+
+async function authUpdatePassword(currentPassword, newPassword){
+  if(!sbClient || !currentUser) return { error: "Not signed in." };
+  // Re-verify the current password before allowing a change, since an already-open
+  // session doesn't otherwise require re-entering it.
+  const { error: reauthError } = await sbClient.auth.signInWithPassword({ email: currentUser.email, password: currentPassword });
+  if(reauthError) return { error: "Current password is incorrect." };
+  const { error } = await sbClient.auth.updateUser({ password: newPassword });
+  return { error };
 }
 
 
@@ -706,6 +961,9 @@ function changelogModalHTML(){
 function headerHTML(){
   const vehicle = av();
   const mileage = vehicle.currentMileage ? Number(vehicle.currentMileage).toLocaleString() : "—";
+  const greeting = currentUser
+    ? `<div class="user-greeting">${t("account.loggedInGreeting")(currentProfile && currentProfile.username ? currentProfile.username : currentUser.email.split("@")[0])}</div>`
+    : "";
   return `
     <header class="top">
       <div class="brand">
@@ -714,6 +972,7 @@ function headerHTML(){
         <div class="made-with">${t("madeWithClaude")}</div>
       </div>
       <div class="header-right">
+        ${greeting}
         <div class="odo-clock">${vehicle.name} · <b>${mileage}</b> km &nbsp;·&nbsp; ${fmtDate(parseISO(vehicle.currentDate) || new Date())}</div>
         <button class="lang-btn ${state.language === "en" ? "theme-fr" : "theme-uk"}" type="button" data-action="toggle-language">${t("langButton")}</button>
       </div>
@@ -721,16 +980,39 @@ function headerHTML(){
   `;
 }
 
+let navMenuOpen = false;
+
 function navHTML(){
   const page = window.CURRENT_PAGE;
+  const link = (key, file) => `<a class="nav-tab ${page === key ? "active" : ""}" href="${file}">${t("nav." + key)}</a>`;
   return `
-    <nav class="main-nav">
-      <a class="nav-tab ${page === "tracker" ? "active" : ""}" href="index.html">${t("nav.tracker")}</a>
-      <a class="nav-tab ${page === "resources" ? "active" : ""}" href="resources.html">${t("nav.resources")}</a>
-      <a class="nav-tab ${page === "changelog" ? "active" : ""}" href="changelog.html">${t("nav.changelog")}</a>
-    </nav>
+    <div class="nav-bar">
+      <button class="nav-hamburger ${navMenuOpen ? "open" : ""}" type="button" data-action="toggle-nav-menu" aria-label="Menu" aria-expanded="${navMenuOpen ? "true" : "false"}">
+        <span></span><span></span><span></span>
+      </button>
+      <nav class="main-nav ${navMenuOpen ? "open" : ""}">
+        ${link("tracker", "index.html")}
+        ${link("resources", "resources.html")}
+        ${link("help", "help.html")}
+        ${link("about", "about.html")}
+        ${link("account", "account.html")}
+      </nav>
+    </div>
   `;
 }
+
+appEl.addEventListener("click", (e) => {
+  const hamburgerEl = e.target.closest('[data-action="toggle-nav-menu"]');
+  if(hamburgerEl){
+    navMenuOpen = !navMenuOpen;
+    render();
+    return;
+  }
+  // Close the menu automatically if a nav link inside it was clicked (before the page navigates away)
+  if(navMenuOpen && e.target.closest(".main-nav a")){
+    navMenuOpen = false;
+  }
+}, true);
 
 function confirmModalHTML(){
   if(!pendingConfirm) return "";

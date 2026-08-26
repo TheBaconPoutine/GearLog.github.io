@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GearLog — Account</title>
+<link rel="icon" type="image/png" href="favicon.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#F2A93B">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="shared.css">
+</head>
+<body>
+<div class="wrap"><div id="app"></div></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="shared.js"></script>
+<script>
+window.CURRENT_PAGE = "account";
+
+let acctUi = { loginError: null, signupError: null, signupSentTo: null, nameMsg: null, emailMsg: null, passwordMsg: null, busy: false };
+
+function fieldVal(id){
+  const el = document.getElementById(id);
+  return el ? el.value.trim() : "";
+}
+
+function accountPageHTML(){
+  if(!authReady){
+    return `<section class="card"><p class="card-sub">Loading…</p></section>`;
+  }
+
+  if(!currentUser){
+    const signupNotice = acctUi.signupSentTo
+      ? `<div class="preview-banner"><b>${t("account.checkEmailTitle")}</b><br>${t("account.checkEmailBody")(acctUi.signupSentTo)}</div>`
+      : "";
+    return `
+      <div class="warn-banner"><b>⚠</b> ${t("account.notLoggedInWarning")}</div>
+      ${signupNotice}
+
+      <div class="account-forms">
+        <section class="card">
+          <h2>${t("account.loginTitle")}</h2>
+          ${acctUi.loginError ? `<p style="color:var(--red-text,#D4574B); font-size:12.5px; margin:-4px 0 10px;">${acctUi.loginError}</p>` : ""}
+          <div style="display:flex; flex-direction:column; gap:12px;">
+            <label class="field">${t("account.fields.email")}
+              <input type="email" id="login-email" ${acctUi.busy ? "disabled" : ""}>
+            </label>
+            <label class="field">${t("account.fields.password")}
+              <input type="password" id="login-password" ${acctUi.busy ? "disabled" : ""}>
+            </label>
+          </div>
+          <div class="actions-row" style="margin-top:16px;">
+            <button class="btn c-blue" type="button" data-action="do-login" ${acctUi.busy ? "disabled" : ""}>${acctUi.busy ? t("account.workingBtn") : t("account.loginBtn")}</button>
+          </div>
+        </section>
+
+        <section class="card">
+          <h2>${t("account.signupTitle")}</h2>
+          ${acctUi.signupError ? `<p style="color:var(--red-text,#D4574B); font-size:12.5px; margin:-4px 0 10px;">${acctUi.signupError}</p>` : ""}
+          <div style="display:flex; flex-direction:column; gap:12px;">
+            <label class="field">${t("account.fields.email")}
+              <input type="email" id="signup-email" ${acctUi.busy ? "disabled" : ""}>
+            </label>
+            <label class="field">${t("account.fields.password")}
+              <input type="password" id="signup-password" ${acctUi.busy ? "disabled" : ""}>
+            </label>
+            <label class="field">${t("account.fields.confirmPassword")}
+              <input type="password" id="signup-confirm" ${acctUi.busy ? "disabled" : ""}>
+            </label>
+          </div>
+          <div class="actions-row" style="margin-top:16px;">
+            <button class="btn c-green" type="button" data-action="do-signup" ${acctUi.busy ? "disabled" : ""}>${acctUi.busy ? t("account.workingBtn") : t("account.signupBtn")}</button>
+          </div>
+        </section>
+      </div>
+    `;
+  }
+
+  // Logged in
+  const displayName = currentProfile && currentProfile.username ? currentProfile.username : "";
+  return `
+    <section class="card">
+      <h2>${t("account.settingsTitle")}</h2>
+      <p class="card-sub">${t("account.currentEmailLabel")} ${currentUser.email}</p>
+
+      <div style="margin-top:18px;">
+        <p style="font-family:var(--font-display); font-weight:600; font-size:13px; color:var(--amber); text-transform:uppercase; letter-spacing:0.5px; margin-bottom:10px;">${t("account.changeNameTitle")}</p>
+        ${acctUi.nameMsg ? `<p style="font-size:12.5px; color:var(--text-dim); margin:-4px 0 10px;">${acctUi.nameMsg}</p>` : ""}
+        <label class="field">${t("account.fields.name")}
+          <input type="text" id="name-input" value="${displayName}" ${acctUi.busy ? "disabled" : ""}>
+        </label>
+        <div class="actions-row" style="margin-top:12px;">
+          <button class="btn secondary" type="button" data-action="do-update-name" ${acctUi.busy ? "disabled" : ""}>${acctUi.busy ? t("account.workingBtn") : t("account.saveBtn")}</button>
+        </div>
+      </div>
+
+      <div style="margin-top:24px;">
+        <p style="font-family:var(--font-display); font-weight:600; font-size:13px; color:var(--amber); text-transform:uppercase; letter-spacing:0.5px; margin-bottom:10px;">${t("account.changeEmailTitle")}</p>
+        ${acctUi.emailMsg ? `<p style="font-size:12.5px; color:var(--text-dim); margin:-4px 0 10px;">${acctUi.emailMsg}</p>` : ""}
+        <label class="field">${t("account.fields.email")}
+          <input type="email" id="email-input" placeholder="${currentUser.email}" ${acctUi.busy ? "disabled" : ""}>
+        </label>
+        <div class="actions-row" style="margin-top:12px;">
+          <button class="btn secondary" type="button" data-action="do-update-email" ${acctUi.busy ? "disabled" : ""}>${acctUi.busy ? t("account.workingBtn") : t("account.saveBtn")}</button>
+        </div>
+      </div>
+
+      <div style="margin-top:24px;">
+        <p style="font-family:var(--font-display); font-weight:600; font-size:13px; color:var(--amber); text-transform:uppercase; letter-spacing:0.5px; margin-bottom:10px;">${t("account.changePasswordTitle")}</p>
+        ${acctUi.passwordMsg ? `<p style="font-size:12.5px; color:var(--text-dim); margin:-4px 0 10px;">${acctUi.passwordMsg}</p>` : ""}
+        <label class="field" style="margin-bottom:12px;">${t("account.fields.currentPassword")}
+          <input type="password" id="current-password-input" ${acctUi.busy ? "disabled" : ""}>
+        </label>
+        <label class="field" style="margin-bottom:12px;">${t("account.fields.password")}
+          <input type="password" id="new-password-input" ${acctUi.busy ? "disabled" : ""}>
+        </label>
+        <label class="field">${t("account.fields.confirmPassword")}
+          <input type="password" id="new-password-confirm" ${acctUi.busy ? "disabled" : ""}>
+        </label>
+        <div class="actions-row" style="margin-top:12px;">
+          <button class="btn secondary" type="button" data-action="do-update-password" ${acctUi.busy ? "disabled" : ""}>${acctUi.busy ? t("account.workingBtn") : t("account.saveBtn")}</button>
+        </div>
+      </div>
+
+      <div class="actions-row" style="margin-top:28px; border-top:1px solid var(--hairline); padding-top:18px;">
+        <button class="btn secondary c-red" type="button" data-action="do-logout" ${acctUi.busy ? "disabled" : ""}>${t("account.logoutBtn")}</button>
+      </div>
+    </section>
+  `;
+}
+
+function render(){
+  try{
+    document.documentElement.lang = state.language;
+    let html = headerHTML() + navHTML();
+    html += accountPageHTML();
+    html += footerHTML() + changelogModalHTML() + confirmModalHTML() + toastHTML();
+    appEl.innerHTML = html;
+  }catch(err){
+    console.error("GearLog render error:", err);
+    appEl.innerHTML = `
+      <div style="padding:60px 20px; text-align:center; font-family:sans-serif; color:#EDEAE3;">
+        <p style="color:#D4574B; font-size:15px;">Something went wrong displaying GearLog.</p>
+        <p style="color:#9096A0; font-size:13px; max-width:420px; margin:8px auto 20px;">This is usually caused by leftover data from an older version. Clearing saved data will fix it — export a backup first if you can.</p>
+        <button type="button" onclick="localStorage.removeItem('gearlog_state_v2'); localStorage.removeItem('gearlog_state_v1'); location.reload();" style="padding:12px 20px; background:#D4574B; color:#2A0C09; border:none; border-radius:6px; cursor:pointer; font-weight:600;">Clear saved data & reload</button>
+      </div>
+    `;
+  }
+}
+
+appEl.addEventListener("click", (e) => {
+  if(e.target.classList && e.target.classList.contains("modal-overlay")){
+    const overlayAction = e.target.getAttribute("data-dismiss-action");
+    if(overlayAction === "dismiss-changelog"){
+      state.lastSeenChangelogVersion = t("changelog")[0].version;
+      saveState(); render();
+    }
+    return;
+  }
+
+  const el = e.target.closest("[data-action]");
+  if(!el) return;
+  const action = el.getAttribute("data-action");
+
+  switch(action){
+    case "dismiss-changelog":
+      state.lastSeenChangelogVersion = t("changelog")[0].version;
+      saveState(); render();
+      break;
+
+    case "toggle-language":
+      state.language = state.language === "en" ? "fr" : "en";
+      saveState(); render();
+      break;
+
+    case "do-login": {
+      const email = fieldVal("login-email");
+      const password = fieldVal("login-password");
+      if(!email || !password){ acctUi.loginError = t("account.fillAllFields"); render(); break; }
+      acctUi.busy = true; acctUi.loginError = null; render();
+      authLogIn(email, password).then(({ error }) => {
+        acctUi.busy = false;
+        if(error){ acctUi.loginError = error.message || String(error); render(); return; }
+        // onAuthStateChange picks up the new session and re-renders once data is synced.
+      });
+      break;
+    }
+
+    case "do-signup": {
+      const email = fieldVal("signup-email");
+      const password = fieldVal("signup-password");
+      const confirm = fieldVal("signup-confirm");
+      if(!email || !password || !confirm){ acctUi.signupError = t("account.fillAllFields"); render(); break; }
+      if(password !== confirm){ acctUi.signupError = t("account.passwordMismatch"); render(); break; }
+      acctUi.busy = true; acctUi.signupError = null; render();
+      authSignUp(email, password).then(({ error }) => {
+        acctUi.busy = false;
+        if(error){ acctUi.signupError = error.message || String(error); render(); return; }
+        acctUi.signupSentTo = email;
+        render();
+      });
+      break;
+    }
+
+    case "do-logout":
+      authLogOut().then(() => { showToast(t("account.loggedOutToast")); });
+      break;
+
+    case "do-update-name": {
+      const name = fieldVal("name-input");
+      acctUi.busy = true; render();
+      authUpdateName(name || null).then(({ error }) => {
+        acctUi.busy = false;
+        if(error){ acctUi.nameMsg = error.message || String(error); render(); return; }
+        acctUi.nameMsg = null;
+        render();
+        showToast(t("account.nameSavedToast"));
+      });
+      break;
+    }
+
+    case "do-update-email": {
+      const email = fieldVal("email-input");
+      if(!email){ acctUi.emailMsg = t("account.fillAllFields"); render(); break; }
+      acctUi.busy = true; render();
+      authUpdateEmail(email).then(({ error }) => {
+        acctUi.busy = false;
+        if(error){ acctUi.emailMsg = error.message || String(error); render(); return; }
+        acctUi.emailMsg = t("account.emailChangeSentToast");
+        render();
+      });
+      break;
+    }
+
+    case "do-update-password": {
+      const current = fieldVal("current-password-input");
+      const next = fieldVal("new-password-input");
+      const confirm = fieldVal("new-password-confirm");
+      if(!current || !next || !confirm){ acctUi.passwordMsg = t("account.fillAllFields"); render(); break; }
+      if(next !== confirm){ acctUi.passwordMsg = t("account.passwordMismatch"); render(); break; }
+      acctUi.busy = true; render();
+      authUpdatePassword(current, next).then(({ error }) => {
+        acctUi.busy = false;
+        if(error){ acctUi.passwordMsg = error.message || String(error); render(); return; }
+        acctUi.passwordMsg = null;
+        render();
+        showToast(t("account.passwordChangedToast"));
+      });
+      break;
+    }
+  }
+});
+
+render();
+</script>
+</body>
+</html>

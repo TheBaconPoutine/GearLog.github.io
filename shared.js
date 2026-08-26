@@ -2,7 +2,7 @@ const I18N = {
   en: {
     brandTagline: "know what's next, before it's overdue",
     madeWithClaude: "Built with Claude AI",
-    nav: {tracker: "Service Tracker", resources: "Resources", help: "Help", about: "About", account: "Account"},
+    nav: {tracker: "Service Tracker", resources: "Resources", share: "Share & Download", about: "About", account: "Account"},
     trackerTabs: {setup: "Vehicle Info", status: "Status & Services", history: "History"},
     langButton: "🇫🇷 Français",
     banner: {
@@ -256,11 +256,15 @@ const I18N = {
     icsSummary: (name) => `${name} — Service Due`,
     icsDescription: "Estimated due date from GearLog based on your mileage and driving pace.",
     help: {
-      title: "Help",
+      title: "Share & Download",
       installTitle: "How to Install the Web App on Mobile",
       installIntro: "GearLog works best added to your home screen — it opens full-screen like a normal app, with no browser address bar, and your saved data stays exactly where it is.",
       androidLabel: "Android",
       iosLabel: "iOS (iPhone / iPad)",
+      shareTitle: "Share GearLog",
+      shareIntro: "Know someone who'd find this useful? Send them the link below — no account needed to browse the Resources page, and setting up their own vehicle takes a couple of minutes.",
+      copyLinkBtn: "Copy Link",
+      linkCopiedToast: "Link copied.",
     },
     about: {
       title: "About",
@@ -300,12 +304,29 @@ const I18N = {
       passwordChangedToast: "Password updated.",
       loggedOutToast: "Logged out.",
       currentEmailLabel: "Current email:",
+      forgotPasswordLink: "Forgot password?",
+      resetPasswordTitle: "Reset Password",
+      resetPasswordIntro: "Enter your email and we'll send you a link to set a new password.",
+      sendResetLinkBtn: "Send Reset Link",
+      resetLinkSentTitle: "Check Your Email",
+      resetLinkSentBody: (email) => `We sent a password reset link to ${email}. Click it to set a new password.`,
+      backToLoginBtn: "Back to Log In",
+      setNewPasswordTitle: "Set a New Password",
+      setNewPasswordIntro: "Enter a new password for your account.",
+      setPasswordBtn: "Set Password",
+      passwordSetSuccessTitle: "Password Updated",
+      passwordSetSuccessBody: "You're all set and signed in with your new password.",
+      invalidResetLink: "This reset link is invalid or has expired — request a new one from the Account page.",
+      confirmedTitle: "Email Confirmed!",
+      confirmedBodyLoggedIn: "You're all set and signed in — your data will sync to this account from now on.",
+      confirmedBodyLoggedOut: "Your email is confirmed. Head to the Account page to log in.",
+      goToAccountBtn: "Go to Account",
     },
   },
   fr: {
     brandTagline: "sachez ce qui s'en vient, avant que ce soit en retard",
     madeWithClaude: "Créé avec Claude AI",
-    nav: {tracker: "Suivi d'entretien", resources: "Ressources", help: "Aide", about: "À propos", account: "Compte"},
+    nav: {tracker: "Suivi d'entretien", resources: "Ressources", share: "Partager et télécharger", about: "À propos", account: "Compte"},
     trackerTabs: {setup: "Info du véhicule", status: "État et entretien", history: "Historique"},
     langButton: "🇬🇧 English",
     banner: {
@@ -559,11 +580,15 @@ const I18N = {
     icsSummary: (name) => `${name} — Entretien à faire`,
     icsDescription: "Date d'échéance estimée par GearLog selon votre kilométrage et votre rythme de conduite.",
     help: {
-      title: "Aide",
+      title: "Partager et télécharger",
       installTitle: "Comment installer l'application web sur mobile",
       installIntro: "GearLog fonctionne mieux ajouté à votre écran d'accueil — elle s'ouvre en plein écran comme une application normale, sans barre d'adresse du navigateur, et vos données enregistrées restent exactement où elles sont.",
       androidLabel: "Android",
       iosLabel: "iOS (iPhone / iPad)",
+      shareTitle: "Partager GearLog",
+      shareIntro: "Vous connaissez quelqu'un à qui ceci pourrait être utile? Envoyez-lui le lien ci-dessous — aucun compte n'est requis pour parcourir la page Ressources, et configurer son propre véhicule prend seulement quelques minutes.",
+      copyLinkBtn: "Copier le lien",
+      linkCopiedToast: "Lien copié.",
     },
     about: {
       title: "À propos",
@@ -603,6 +628,23 @@ const I18N = {
       passwordChangedToast: "Mot de passe mis à jour.",
       loggedOutToast: "Déconnecté.",
       currentEmailLabel: "Courriel actuel :",
+      forgotPasswordLink: "Mot de passe oublié?",
+      resetPasswordTitle: "Réinitialiser le mot de passe",
+      resetPasswordIntro: "Entrez votre courriel et nous vous enverrons un lien pour définir un nouveau mot de passe.",
+      sendResetLinkBtn: "Envoyer le lien",
+      resetLinkSentTitle: "Vérifiez votre courriel",
+      resetLinkSentBody: (email) => `Nous avons envoyé un lien de réinitialisation à ${email}. Cliquez dessus pour définir un nouveau mot de passe.`,
+      backToLoginBtn: "Retour à la connexion",
+      setNewPasswordTitle: "Définir un nouveau mot de passe",
+      setNewPasswordIntro: "Entrez un nouveau mot de passe pour votre compte.",
+      setPasswordBtn: "Définir le mot de passe",
+      passwordSetSuccessTitle: "Mot de passe mis à jour",
+      passwordSetSuccessBody: "Tout est prêt et vous êtes connecté avec votre nouveau mot de passe.",
+      invalidResetLink: "Ce lien de réinitialisation est invalide ou a expiré — demandez-en un nouveau depuis la page Compte.",
+      confirmedTitle: "Courriel confirmé!",
+      confirmedBodyLoggedIn: "Tout est prêt et vous êtes connecté — vos données se synchroniseront avec ce compte à partir de maintenant.",
+      confirmedBodyLoggedOut: "Votre courriel est confirmé. Rendez-vous sur la page Compte pour vous connecter.",
+      goToAccountBtn: "Aller au compte",
     },
   },
 };
@@ -805,6 +847,14 @@ async function initAuth(){
 initAuth();
 if(sbClient){
   sbClient.auth.onAuthStateChange((event, session) => {
+    if(event === "PASSWORD_RECOVERY"){
+      // Arrived via a "reset password" email link — this session exists only to let
+      // the visitor set a new password, not as a normal logged-in state yet.
+      isPasswordRecovery = true;
+      currentUser = (session && session.user) ? session.user : null;
+      if(typeof render === "function") render();
+      return;
+    }
     const wasLoggedIn = !!currentUser;
     currentUser = (session && session.user) ? session.user : null;
     if(currentUser && !wasLoggedIn){
@@ -818,7 +868,8 @@ if(sbClient){
 
 async function authSignUp(email, password){
   if(!sbClient) return { error: "Supabase isn't connected." };
-  const { data, error } = await sbClient.auth.signUp({ email, password });
+  const redirectTo = new URL("confirmed.html", window.location.href).href;
+  const { data, error } = await sbClient.auth.signUp({ email, password, options: { emailRedirectTo: redirectTo } });
   return { data, error };
 }
 
@@ -853,6 +904,25 @@ async function authUpdatePassword(currentPassword, newPassword){
   const { error: reauthError } = await sbClient.auth.signInWithPassword({ email: currentUser.email, password: currentPassword });
   if(reauthError) return { error: "Current password is incorrect." };
   const { error } = await sbClient.auth.updateUser({ password: newPassword });
+  return { error };
+}
+
+let isPasswordRecovery = false; // true once we detect the visitor arrived via a "reset password" email link
+
+async function authRequestPasswordReset(email){
+  if(!sbClient) return { error: "Supabase isn't connected." };
+  const redirectTo = new URL("reset-password.html", window.location.href).href;
+  const { error } = await sbClient.auth.resetPasswordForEmail(email, { redirectTo });
+  return { error };
+}
+
+async function authSetNewPassword(newPassword){
+  if(!sbClient) return { error: "Supabase isn't connected." };
+  const { error } = await sbClient.auth.updateUser({ password: newPassword });
+  if(!error){
+    isPasswordRecovery = false;
+    await handleAuthenticatedSession();
+  }
   return { error };
 }
 
@@ -993,7 +1063,7 @@ function navHTML(){
       <nav class="main-nav ${navMenuOpen ? "open" : ""}">
         ${link("tracker", "index.html")}
         ${link("resources", "resources.html")}
-        ${link("help", "help.html")}
+        ${link("share", "share.html")}
         ${link("about", "about.html")}
         ${link("account", "account.html")}
       </nav>

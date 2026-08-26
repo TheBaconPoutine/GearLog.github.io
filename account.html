@@ -20,7 +20,7 @@
 <script>
 window.CURRENT_PAGE = "account";
 
-let acctUi = { loginError: null, signupError: null, signupSentTo: null, nameMsg: null, emailMsg: null, passwordMsg: null, busy: false };
+let acctUi = { loginError: null, signupError: null, signupSentTo: null, nameMsg: null, emailMsg: null, passwordMsg: null, busy: false, showForgotPassword: false, resetLinkSentTo: null, forgotError: null };
 
 function fieldVal(id){
   const el = document.getElementById(id);
@@ -33,28 +33,59 @@ function accountPageHTML(){
   }
 
   if(!currentUser){
-    const signupNotice = acctUi.signupSentTo
+    const signupNotice = (acctUi.signupSentTo && !acctUi.showForgotPassword && !acctUi.resetLinkSentTo)
       ? `<div class="preview-banner"><b>${t("account.checkEmailTitle")}</b><br>${t("account.checkEmailBody")(acctUi.signupSentTo)}</div>`
       : "";
+
+    let loginCardBody;
+    if(acctUi.resetLinkSentTo){
+      loginCardBody = `
+        <div class="preview-banner"><b>${t("account.resetLinkSentTitle")}</b><br>${t("account.resetLinkSentBody")(acctUi.resetLinkSentTo)}</div>
+        <div class="actions-row" style="margin-top:16px;">
+          <button class="btn secondary" type="button" data-action="show-login">${t("account.backToLoginBtn")}</button>
+        </div>
+      `;
+    } else if(acctUi.showForgotPassword){
+      loginCardBody = `
+        <h2>${t("account.resetPasswordTitle")}</h2>
+        <p class="card-sub">${t("account.resetPasswordIntro")}</p>
+        ${acctUi.forgotError ? `<p style="color:var(--red-text,#D4574B); font-size:12.5px; margin:-4px 0 10px;">${acctUi.forgotError}</p>` : ""}
+        <label class="field">${t("account.fields.email")}
+          <input type="email" id="forgot-email" ${acctUi.busy ? "disabled" : ""}>
+        </label>
+        <div class="actions-row" style="margin-top:16px;">
+          <button class="btn secondary" type="button" data-action="show-login" ${acctUi.busy ? "disabled" : ""}>${t("account.backToLoginBtn")}</button>
+          <button class="btn c-blue" type="button" data-action="do-forgot-password" ${acctUi.busy ? "disabled" : ""}>${acctUi.busy ? t("account.workingBtn") : t("account.sendResetLinkBtn")}</button>
+        </div>
+      `;
+    } else {
+      loginCardBody = `
+        <h2>${t("account.loginTitle")}</h2>
+        ${acctUi.loginError ? `<p style="color:var(--red-text,#D4574B); font-size:12.5px; margin:-4px 0 10px;">${acctUi.loginError}</p>` : ""}
+        <div style="display:flex; flex-direction:column; gap:12px;">
+          <label class="field">${t("account.fields.email")}
+            <input type="email" id="login-email" ${acctUi.busy ? "disabled" : ""}>
+          </label>
+          <label class="field">${t("account.fields.password")}
+            <input type="password" id="login-password" ${acctUi.busy ? "disabled" : ""}>
+          </label>
+        </div>
+        <div class="actions-row" style="margin-top:12px; justify-content:flex-end;">
+          <button class="btn-link" type="button" data-action="show-forgot-password" ${acctUi.busy ? "disabled" : ""}>${t("account.forgotPasswordLink")}</button>
+        </div>
+        <div class="actions-row" style="margin-top:12px;">
+          <button class="btn c-blue" type="button" data-action="do-login" ${acctUi.busy ? "disabled" : ""}>${acctUi.busy ? t("account.workingBtn") : t("account.loginBtn")}</button>
+        </div>
+      `;
+    }
+
     return `
       <div class="warn-banner"><b>⚠</b> ${t("account.notLoggedInWarning")}</div>
       ${signupNotice}
 
       <div class="account-forms">
         <section class="card">
-          <h2>${t("account.loginTitle")}</h2>
-          ${acctUi.loginError ? `<p style="color:var(--red-text,#D4574B); font-size:12.5px; margin:-4px 0 10px;">${acctUi.loginError}</p>` : ""}
-          <div style="display:flex; flex-direction:column; gap:12px;">
-            <label class="field">${t("account.fields.email")}
-              <input type="email" id="login-email" ${acctUi.busy ? "disabled" : ""}>
-            </label>
-            <label class="field">${t("account.fields.password")}
-              <input type="password" id="login-password" ${acctUi.busy ? "disabled" : ""}>
-            </label>
-          </div>
-          <div class="actions-row" style="margin-top:16px;">
-            <button class="btn c-blue" type="button" data-action="do-login" ${acctUi.busy ? "disabled" : ""}>${acctUi.busy ? t("account.workingBtn") : t("account.loginBtn")}</button>
-          </div>
+          ${loginCardBody}
         </section>
 
         <section class="card">
@@ -79,7 +110,13 @@ function accountPageHTML(){
     `;
   }
 
-  // Logged in
+  // Logged in — clear any leftover state from the logged-out view (e.g. "check your
+  // email" from signup) so it can't resurface later after a subsequent log out.
+  if(acctUi.signupSentTo || acctUi.loginError || acctUi.signupError){
+    acctUi.signupSentTo = null;
+    acctUi.loginError = null;
+    acctUi.signupError = null;
+  }
   const displayName = currentProfile && currentProfile.username ? currentProfile.username : "";
   return `
     <section class="card">
@@ -176,6 +213,34 @@ appEl.addEventListener("click", (e) => {
       saveState(); render();
       break;
 
+    case "show-forgot-password":
+      acctUi.showForgotPassword = true;
+      acctUi.forgotError = null;
+      acctUi.signupSentTo = null;
+      render();
+      break;
+
+    case "show-login":
+      acctUi.showForgotPassword = false;
+      acctUi.resetLinkSentTo = null;
+      acctUi.forgotError = null;
+      render();
+      break;
+
+    case "do-forgot-password": {
+      const email = fieldVal("forgot-email");
+      if(!email){ acctUi.forgotError = t("account.fillAllFields"); render(); break; }
+      acctUi.busy = true; acctUi.forgotError = null; render();
+      authRequestPasswordReset(email).then(({ error }) => {
+        acctUi.busy = false;
+        if(error){ acctUi.forgotError = error.message || String(error); render(); return; }
+        acctUi.showForgotPassword = false;
+        acctUi.resetLinkSentTo = email;
+        render();
+      });
+      break;
+    }
+
     case "do-login": {
       const email = fieldVal("login-email");
       const password = fieldVal("login-password");
@@ -206,7 +271,10 @@ appEl.addEventListener("click", (e) => {
     }
 
     case "do-logout":
-      authLogOut().then(() => { showToast(t("account.loggedOutToast")); });
+      authLogOut().then(() => {
+        acctUi = { loginError: null, signupError: null, signupSentTo: null, nameMsg: null, emailMsg: null, passwordMsg: null, busy: false, showForgotPassword: false, resetLinkSentTo: null, forgotError: null };
+        showToast(t("account.loggedOutToast"));
+      });
       break;
 
     case "do-update-name": {

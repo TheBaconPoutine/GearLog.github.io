@@ -266,6 +266,11 @@
   .item-top{display:flex; justify-content:space-between; align-items:flex-start; gap: 12px; flex-wrap:wrap;}
   .item-name{font-family: var(--font-display); font-weight:600; font-size: 16.5px; overflow-wrap: anywhere;}
   .status-pill{font-family: var(--font-mono); font-size:11px; text-transform:uppercase; letter-spacing:0.5px; padding: 3px 9px; border-radius: 20px; white-space:nowrap;}
+  .optional-badge{
+    display:inline-block; font-family: var(--font-mono); font-size:10.5px; text-transform:uppercase; letter-spacing:0.4px;
+    padding: 3px 8px; border-radius: 20px; margin-top:6px;
+    background: rgba(242,169,59,0.14); color: var(--amber); border:1px solid rgba(242,169,59,0.35);
+  }
   .status-pill.status-ok{background: rgba(111,174,122,0.15); color: var(--green);}
   .status-pill.status-soon{background: rgba(242,169,59,0.15); color: var(--amber);}
   .status-pill.status-due{background: rgba(224,118,58,0.18); color: var(--orange);}

@@ -40,6 +40,7 @@ const CATALOG = {
   hybrid_battery_filter: {km:24000,  months:18},
   timing_belt:           {km:112000, months:72},
   power_steering_fluid:  {km:64000,  months:48},
+  undercoating:          {km:999000, months:12},
 };
 const NOTE_KEYS = {
   trans_flush: "pickOneTransmission",
@@ -47,6 +48,7 @@ const NOTE_KEYS = {
   front_diff: "frontDiffNote",
 };
 const OPTIONAL_ADDON_IDS = ["timing_belt", "power_steering_fluid"];
+const RECOMMENDED_OPTIONAL_IDS = ["brake_service", "cabin_air_filter", "undercoating"];
 
 function buildItemIds(drivetrain, transmission){
   let ids = ["engine_oil"];
@@ -57,7 +59,7 @@ function buildItemIds(drivetrain, transmission){
   } else {
     ids.push("trans_flush", "trans_df", "brake_fluid");
   }
-  ids.push("engine_coolant", "engine_air_filter", "cabin_air_filter", "spark_plugs", "brake_service");
+  ids.push("engine_coolant", "engine_air_filter", "spark_plugs");
   if(drivetrain === "RWD"){
     ids.push("rear_diff");
   }
@@ -93,8 +95,17 @@ let activeTab = {};     // itemKey -> "last" | "intervals"
 let detailsOpen = {};   // itemKey -> true/false
 let historySort = {field: "date", dir: "desc"};
 let historyFilter = "all"; // "all" | "service" | "repair"
-let dataWarningDismissedThisSession = sessionStorage.getItem("gearlog_data_warning_dismissed") === "1"; // persists for this browser tab session — survives navigating between pages, resets when the tab/window is closed
+let dataWarningDismissedThisSession = sessionStorage.getItem("gearlog_data_warning_dismissed") === "1"; // persists for this browser tab session — survives navigating between pages, resets when the tab/window is closed, or when you sign out
 let pendingCondition = {}; // vehicleId -> "severe" | "normal", transient selection awaiting confirmation
+
+function addRecommendedOptionalServices(vehicle){
+  RECOMMENDED_OPTIONAL_IDS.forEach(id => {
+    if(!vehicle.items[id]){
+      const cat = CATALOG[id];
+      vehicle.items[id] = {km: cat.km, months: cat.months, lastKm: null, lastDate: null, optional: true};
+    }
+  });
+}
 
 function ensureItemsForCurrentPreset(vehicle){
   const ids = buildItemIds(vehicle.drivetrain, vehicle.transmission);
@@ -407,6 +418,8 @@ function backupCardHTML(){
 
 
 function dataWarningModalHTML(){
+  if(!authReady) return ""; // wait until we know whether there's an active signed-in session
+  if(currentUser) return ""; // signed in — data is synced, this warning no longer applies
   if(dataWarningDismissedThisSession) return "";
   return `
     <div class="modal-overlay" data-dismiss-action="dismiss-data-warning">
@@ -456,12 +469,23 @@ function itemsSectionHTML(){
     `;
   }).join("");
 
+  const optionalOn = !!v.optionalServicesEnabled;
+
   return `
     <div id="itemsHeader"><h2>${t("itemsSection.title")}</h2></div>
     <div id="itemsList">${itemsHTML}</div>
 
     <section class="card">
       <h2>${t("addons.title")}</h2>
+
+      <div class="assume-toggle ${optionalOn ? "on" : ""}" data-action="toggle-optional-services" role="button" tabindex="0" style="margin-bottom:18px;">
+        <div class="assume-toggle-check">${optionalOn ? "✓" : ""}</div>
+        <div>
+          <div class="assume-toggle-label">${t("addons.optionalToggleLabel")}</div>
+          <div class="assume-toggle-hint">${optionalOn ? t("addons.optionalToggleHintOn") : t("addons.optionalToggleHintOff")}</div>
+        </div>
+      </div>
+
       <div class="addon-row">${addonButtons}</div>
       <div class="history-form cols-4" style="margin-top:18px;">
         <label>${t("customItem.name")}<input type="text" id="customItemName" placeholder="e.g. Timing chain, walnut blasting..."></label>
@@ -469,6 +493,10 @@ function itemsSectionHTML(){
         <label>${t("customItem.months")}<input type="number" id="customItemMonths" min="0"></label>
         <label>&nbsp;<button class="btn secondary" type="button" data-action="add-custom-item">${t("customItem.add")}</button></label>
       </div>
+      <label style="display:flex; align-items:center; gap:8px; margin-top:12px; font-size:12.5px; color:var(--text-dim2); cursor:pointer;">
+        <input type="checkbox" id="customItemOptional" style="width:auto;">
+        ${t("customItem.markOptional")}
+      </label>
     </section>
   `;
 }
@@ -519,6 +547,7 @@ function itemCardHTML(vehicle, key){
         <div class="item-name">${name}</div>
         ${result ? `<div class="status-pill ${meta.cls}">${meta.label}</div>` : ""}
       </div>
+      ${item.optional ? `<div class="optional-badge">${item.custom ? t("item.optionalBadge") : t("item.optionalRecommendedBadge")}</div>` : ""}
       ${note ? `<div style="font-size:11.5px; color:var(--text-dim2); margin-top:4px;">${note}</div>` : ""}
       ${readoutHTML}
       <details class="edit" data-key="${key}" ${isOpen ? "open" : ""}>
@@ -952,6 +981,19 @@ appEl.addEventListener("click", (e) => {
       saveState(); render();
       break;
 
+    case "toggle-optional-services": {
+      const turningOn = !vehicle.optionalServicesEnabled;
+      vehicle.optionalServicesEnabled = turningOn;
+      if(turningOn){
+        addRecommendedOptionalServices(vehicle);
+        saveState(); render();
+        showToast(t("addons.optionalAddedToast"));
+      } else {
+        saveState(); render();
+      }
+      break;
+    }
+
     case "select-condition":
       pendingCondition[state.activeVehicleId] = key;
       render();
@@ -1084,10 +1126,11 @@ appEl.addEventListener("click", (e) => {
       const nameInput = document.getElementById("customItemName");
       const kmInput = document.getElementById("customItemKm");
       const monthsInput = document.getElementById("customItemMonths");
+      const optionalInput = document.getElementById("customItemOptional");
       const name = nameInput.value.trim(), km = kmInput.value, months = monthsInput.value;
       if(!name || !km || !months){ alert(t("customItem.alert")); break; }
       const newKey = "custom_" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
-      vehicle.items[newKey] = {km: Number(km), months: Number(months), lastKm: null, lastDate: null, custom: true, customName: name};
+      vehicle.items[newKey] = {km: Number(km), months: Number(months), lastKm: null, lastDate: null, custom: true, customName: name, optional: !!(optionalInput && optionalInput.checked)};
       saveState(); render();
       break;
     }

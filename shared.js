@@ -147,10 +147,15 @@ const I18N = {
       timingBelt: "+ Timing Belt",
       powerSteering: "+ Power Steering Fluid",
       added: "Added",
+      optionalToggleLabel: "Enable Optional Services",
+      optionalToggleHintOn: "Brake service, cabin air filter, and undercoating are included below.",
+      optionalToggleHintOff: "Turn on to add brake service, cabin air filter, and undercoating to your tracked list.",
+      optionalAddedToast: "Optional services added to your list.",
     },
     customItem: {
       title: "Add Custom Service Item",
       name: "Item Name", km: "Interval (KM)", months: "Interval (Months)", add: "+ Add Item",
+      markOptional: "Mark as optional",
       alert: "Give the item a name, an interval in KM, and an interval in months.",
     },
     item: {
@@ -171,6 +176,8 @@ const I18N = {
       removeItem: "Remove item",
       removeConfirm: (name) => `Remove "${name}" from your service list? (Its history entries are kept.)`,
       needMileageAlert: "Enter your current mileage above first, so 'done today' has a KM value to record.",
+      optionalRecommendedBadge: "Optional — but recommended",
+      optionalBadge: "Optional",
       emptyState: 'No service list yet — choose your drivetrain and transmission above, then hit "Build Service List".',
     },
     statusMeta: {ok: "OK", soon: "Due Soon", due: "Due", over: "Overdue"},
@@ -196,6 +203,16 @@ const I18N = {
     changelogDismiss: "Got it, dismiss",
     changelog: [
       {version: 2, items: [
+        "Added \u201CForgot password?\u201D to the login form, with its own email link and a dedicated page to set a new password.",
+        "Fixed the Tire Finder quiz so answers like grip, quiet cabin, fuel economy, and tread life are weighted against each other instead of one answer (like \u201Cmax performance\u201D) silently overriding the rest \u2014 also added a tread life question.",
+        "Corrected the Performance All-Season description: it extends the usable season below a Summer UHP tire's cutoff, but still isn't a winter tire and doesn't eliminate the seasonal swap.",
+        "Fixed a bug where logging in and back out could leave a stale \u201Ccheck your email\u201D notice showing on the Account page.",
+        "The \u201Cyour data isn't saved\u201D reminder now only shows while you're signed out, and reappears on every visit until you sign in \u2014 no longer just once per browser session.",
+        "Added real account sign-up and login, with your data syncing automatically across devices once you're signed in \u2014 GearLog still works fully without an account, saved locally on that device only.",
+        "Account page now supports changing your name, email, and password, plus a full \u201Cforgot password\u201D flow with its own email link.",
+        "Added dedicated pages for email confirmation and password reset, so those links land somewhere useful instead of a dead end.",
+        "Navigation is now a fixed sidebar on desktop and stays a hamburger menu on mobile, instead of one fixed layout for every screen size.",
+        "\u201CHelp\u201D renamed to \u201CShare & Download\u201D, with a copyable link to send the app to someone else added above the install instructions.",
         "Split GearLog into separate pages (Service Tracker, Resources, Help, About, Account) sharing one design system, instead of one very large file \u2014 easier to maintain and less likely to break.",
         "Added a collapsible hamburger-style navigation menu to keep the header clean.",
         "Vehicle setup is now a guided, step-by-step flow \u2014 each section has its own \u201CSave & Continue\u201D, and the next section only appears once the previous one is done.",
@@ -248,6 +265,7 @@ const I18N = {
       spark_plugs: "Spark Plugs", brake_service: "Brake Service", rear_diff: "Rear Differential Oil",
       front_diff: "Front Differential Oil", transfer_case: "Transfer Case Fluid", inverter_coolant: "Inverter Coolant",
       hybrid_battery_filter: "Hybrid Battery Air Filter Inspect", timing_belt: "Timing Belt", power_steering_fluid: "Power Steering Fluid",
+      undercoating: "Undercoating / Rustproofing",
     },
     notes: {
       pickOneTransmission: "Choose this OR the other transmission service, not both",
@@ -278,7 +296,9 @@ const I18N = {
       dataTitle: "Data Usage",
       dataBody: [
         "Your vehicle data exists for one reason: to save your own maintenance information so you can access it. It is not used for anything else, and it is not shared with anyone.",
-        "Right now, everything you enter stays in your browser's local storage on your own device — nothing is sent to a server. If accounts are added in the future, the same principle holds: your data is yours, used only to make it available to you, never sold, analyzed, or shared with third parties.",
+        "If you're not signed in, everything you enter stays in your browser's local storage on your own device — nothing is sent to a server.",
+        "If you're signed in, your data also syncs to a private database so you can access it across your devices. That data is locked to your account specifically — access controls on the database itself mean nobody but you can read or write it, not other users and not anyone browsing the site. It's never sold, analyzed, or shared with third parties.",
+        "Your email address is used only for signing in and password recovery — never for marketing, and never shared with anyone.",
       ],
       changelogTitle: "Changelog",
     },
@@ -471,10 +491,15 @@ const I18N = {
       timingBelt: "+ Courroie de distribution",
       powerSteering: "+ Liquide de direction assistée",
       added: "Ajouté",
+      optionalToggleLabel: "Activer les services facultatifs",
+      optionalToggleHintOn: "L'entretien des freins, le filtre à air d'habitacle et l'antirouille sont inclus ci-dessous.",
+      optionalToggleHintOff: "Activez pour ajouter l'entretien des freins, le filtre à air d'habitacle et l'antirouille à votre liste suivie.",
+      optionalAddedToast: "Services facultatifs ajoutés à votre liste.",
     },
     customItem: {
       title: "Ajouter un élément d'entretien personnalisé",
       name: "Nom de l'élément", km: "Intervalle (KM)", months: "Intervalle (mois)", add: "+ Ajouter",
+      markOptional: "Marquer comme facultatif",
       alert: "Donnez un nom à l'élément, ainsi qu'un intervalle en KM et en mois.",
     },
     item: {
@@ -495,6 +520,8 @@ const I18N = {
       removeItem: "Retirer cet élément",
       removeConfirm: (name) => `Retirer « ${name} » de votre liste d'entretien? (Son historique sera conservé.)`,
       needMileageAlert: "Entrez d'abord votre kilométrage actuel ci-dessus, afin que « fait aujourd'hui » ait une valeur en KM à enregistrer.",
+      optionalRecommendedBadge: "Facultatif — mais recommandé",
+      optionalBadge: "Facultatif",
       emptyState: "Aucune liste d'entretien pour l'instant — choisissez votre rouage d'entraînement et votre boîte de vitesses ci-dessus, puis cliquez sur « Créer la liste d'entretien ».",
     },
     statusMeta: {ok: "À jour", soon: "Bientôt dû", due: "Dû", over: "En retard"},
@@ -520,6 +547,16 @@ const I18N = {
     changelogDismiss: "Compris, fermer",
     changelog: [
       {version: 2, items: [
+        "Ajout de « Mot de passe oublié? » au formulaire de connexion, avec son propre lien courriel et une page dédiée pour définir un nouveau mot de passe.",
+        "Correction du questionnaire de recherche de pneu pour que des réponses comme l'adhérence, le silence, l'économie de carburant et la durée de vie soient pesées les unes contre les autres, au lieu qu'une seule réponse (comme « performance maximale ») annule silencieusement les autres — ajout aussi d'une question sur la durée de vie de la bande de roulement.",
+        "Correction de la description Performance Quatre-Saisons : elle prolonge la saison utilisable sous le seuil d'un pneu UHP été, mais reste un pneu qui n'est pas un pneu d'hiver et n'élimine pas le changement saisonnier.",
+        "Correction d'un bogue où se connecter puis se déconnecter pouvait laisser un avis « vérifiez votre courriel » périmé affiché sur la page Compte.",
+        "Le rappel « vos données ne sont pas enregistrées » ne s'affiche maintenant que lorsque vous êtes déconnecté, et réapparaît à chaque visite jusqu'à ce que vous soyez connecté — plus seulement une fois par session de navigateur.",
+        "Ajout de la véritable inscription et connexion de compte, avec vos données synchronisées automatiquement entre appareils une fois connecté — GearLog fonctionne toujours pleinement sans compte, enregistré localement sur cet appareil seulement.",
+        "La page Compte prend maintenant en charge le changement de nom, de courriel et de mot de passe, en plus d'un parcours complet « mot de passe oublié » avec son propre lien courriel.",
+        "Ajout de pages dédiées pour la confirmation de courriel et la réinitialisation de mot de passe, pour que ces liens mènent quelque part d'utile plutôt qu'à une impasse.",
+        "La navigation est maintenant une barre latérale fixe sur ordinateur et reste un menu hamburger sur mobile, au lieu d'une seule mise en page fixe pour toutes les tailles d'écran.",
+        "« Aide » renommée « Partager et télécharger », avec un lien copiable pour envoyer l'application à quelqu'un d'autre ajouté au-dessus des instructions d'installation.",
         "Séparation de GearLog en pages distinctes (Suivi d'entretien, Ressources, Aide, À propos, Compte) partageant un seul système de conception, au lieu d'un très gros fichier — plus facile à maintenir et moins susceptible de se briser.",
         "Ajout d'un menu de navigation repliable de type hamburger pour garder l'en-tête épuré.",
         "La configuration du véhicule est maintenant un parcours guidé étape par étape — chaque section a son propre bouton « Enregistrer et continuer », et la section suivante n'apparaît qu'une fois la précédente terminée.",
@@ -572,6 +609,7 @@ const I18N = {
       spark_plugs: "Bougies d'allumage", brake_service: "Entretien des freins", rear_diff: "Huile du différentiel arrière",
       front_diff: "Huile du différentiel avant", transfer_case: "Liquide de la boîte de transfert", inverter_coolant: "Liquide de refroidissement de l'onduleur",
       hybrid_battery_filter: "Inspection du filtre à air de la batterie hybride", timing_belt: "Courroie de distribution", power_steering_fluid: "Liquide de direction assistée",
+      undercoating: "Antirouille / protection sous-carrosserie",
     },
     notes: {
       pickOneTransmission: "Choisissez ceci OU l'autre entretien de transmission, pas les deux",
@@ -602,7 +640,9 @@ const I18N = {
       dataTitle: "Utilisation des données",
       dataBody: [
         "Vos données de véhicule existent pour une seule raison : enregistrer vos propres renseignements d'entretien afin que vous puissiez y accéder. Elles ne sont utilisées à aucune autre fin, et ne sont partagées avec personne.",
-        "En ce moment, tout ce que vous entrez reste dans le stockage local de votre navigateur, sur votre propre appareil — rien n'est envoyé à un serveur. Si des comptes sont ajoutés éventuellement, le même principe s'applique : vos données vous appartiennent, utilisées uniquement pour vous les rendre accessibles, jamais vendues, analysées ou partagées avec des tiers.",
+        "Si vous n'êtes pas connecté, tout ce que vous entrez reste dans le stockage local de votre navigateur, sur votre propre appareil — rien n'est envoyé à un serveur.",
+        "Si vous êtes connecté, vos données se synchronisent aussi avec une base de données privée afin que vous puissiez y accéder depuis tous vos appareils. Ces données sont verrouillées à votre compte spécifiquement — des contrôles d'accès sur la base de données elle-même font en sorte que personne d'autre que vous ne peut les lire ou les modifier, ni les autres utilisateurs, ni quiconque parcourant le site. Elles ne sont jamais vendues, analysées ou partagées avec des tiers.",
+        "Votre adresse courriel n'est utilisée que pour la connexion et la récupération de mot de passe — jamais pour du marketing, et jamais partagée avec qui que ce soit.",
       ],
       changelogTitle: "Historique des mises à jour",
     },
@@ -678,6 +718,7 @@ function defaultVehicle(name){
     currentMileage: null, currentDate: todayISO(), avgMonthlyKm: null,
     year: "", make: "", model: "", vin: "", assumeNoPriorHistory: false, drivingCondition: "severe",
     setupConfirmed: { basics: false, info: false, conditions: false },
+    optionalServicesEnabled: false,
     items: {}, history: [],
   };
 }
@@ -882,6 +923,9 @@ async function authLogIn(email, password){
 async function authLogOut(){
   if(!sbClient) return;
   await sbClient.auth.signOut();
+  // Now signed out — the "your data isn't saved" reminder is relevant again, so let it
+  // show once more this session rather than staying suppressed from before you signed in.
+  try{ sessionStorage.removeItem("gearlog_data_warning_dismissed"); }catch(err){}
 }
 
 async function authUpdateName(name){
@@ -952,6 +996,16 @@ Object.values(state.vehicles).forEach(v => {
     const alreadySetUp = Object.keys(v.items).length > 0;
     v.setupConfirmed = { basics: alreadySetUp, info: alreadySetUp, conditions: alreadySetUp };
   }
+  if(v.optionalServicesEnabled == null) v.optionalServicesEnabled = false;
+  // Brake service and cabin air filter used to be tracked automatically for every vehicle
+  // and are now opt-in. Anyone who already had them tracked keeps them (and the toggle
+  // reflects that), rather than silently losing that history.
+  ["brake_service", "cabin_air_filter"].forEach(key => {
+    if(v.items[key] && v.items[key].optional == null){
+      v.items[key].optional = true;
+      v.optionalServicesEnabled = true;
+    }
+  });
 });
 
 function av(){ return state.vehicles[state.activeVehicleId]; }

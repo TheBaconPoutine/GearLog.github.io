@@ -213,10 +213,14 @@ function trackerTabContentHTML(){
       const v = av();
       const sc = v.setupConfirmed;
       const hasItems = Object.keys(v.items).length > 0;
+      if(hasItems){
+        // Already set up — show every section at once for free editing, no gating.
+        return setupCardHTML() + vehicleInfoCardHTML() + drivingConditionCardHTML() + buildListCardHTML();
+      }
       let html = setupCardHTML();
       if(sc.basics) html += vehicleInfoCardHTML();
       if(sc.info) html += drivingConditionCardHTML();
-      if(sc.conditions || hasItems) html += buildListCardHTML();
+      if(sc.conditions) html += buildListCardHTML();
       return html;
     }
   }
@@ -245,32 +249,33 @@ function vehicleTabsHTML(){
 
 function vehicleInfoCardHTML(){
   const v = av();
+  const hasItems = Object.keys(v.items).length > 0;
   return `
-    <section class="card">
+    <section class="card" id="setup-info-card">
       <h2>${t("vehicleInfo.title")}</h2>
       <p style="font-size:12.5px; color:var(--text-dim2); margin:-6px 0 16px; line-height:1.5;">${t("vehicleInfo.description")}</p>
 
       <div class="year-highlight">
         <label class="field"><span style="display:flex; align-items:center;">${t("vehicleInfo.year")}<span class="status-pill">${t("vehicleInfo.yearBadge")}</span></span>
-          <input type="text" data-field="year" value="${v.year || ""}" placeholder="2016">
+          <input type="text" data-field="year" value="${v.year || ""}" placeholder="2016" ${!hasItems ? "required" : ""}>
           <span class="hint">${t("vehicleInfo.yearHint")}</span>
         </label>
       </div>
 
       <div class="grid-3" style="margin-top:16px;">
         <label class="field">${t("vehicleInfo.make")}
-          <input type="text" data-field="make" value="${v.make || ""}" placeholder="Mazda">
+          <input type="text" data-field="make" value="${v.make || ""}" placeholder="Mazda" ${!hasItems ? "required" : ""}>
         </label>
         <label class="field">${t("vehicleInfo.model")}
-          <input type="text" data-field="model" value="${v.model || ""}" placeholder="Mazda3">
+          <input type="text" data-field="model" value="${v.model || ""}" placeholder="Mazda3" ${!hasItems ? "required" : ""}>
         </label>
-        <label class="field">${t("vehicleInfo.vin")}
+        <label class="field">${t("vehicleInfo.vin")} <span style="color:var(--text-dim2); font-weight:400;">(${t("vehicleInfo.optionalLabel")})</span>
           <input type="text" data-field="vin" value="${v.vin || ""}">
         </label>
       </div>
 
       <div class="actions-row" style="margin-top:18px;">
-        <button class="btn c-blue" type="button" data-action="save-info-step">${t("setup.saveContinueBtn")}</button>
+        <button class="btn c-blue" type="button" data-action="save-info-step">${hasItems ? t("setup.saveBtn") : t("setup.saveContinueBtn")}</button>
       </div>
     </section>
   `;
@@ -279,8 +284,10 @@ function vehicleInfoCardHTML(){
 function setupCardHTML(){
   const v = av();
   const assumeOn = !!v.assumeNoPriorHistory;
+  const optionalOn = !!v.optionalServicesEnabled;
+  const hasItems = Object.keys(v.items).length > 0;
   return `
-    <section class="card">
+    <section class="card" id="setup-basics-card">
       <h2>${t("setup.title")}</h2>
       <p style="font-size:12.5px; color:var(--text-dim2); margin:-6px 0 16px; line-height:1.5;">${t("setup.description")}</p>
       <div class="grid-2">
@@ -308,8 +315,16 @@ function setupCardHTML(){
         </div>
       </div>
 
+      <div class="assume-toggle ${optionalOn ? "on" : ""}" data-action="toggle-optional-services" role="button" tabindex="0" style="margin-top:10px;">
+        <div class="assume-toggle-check">${optionalOn ? "✓" : ""}</div>
+        <div>
+          <div class="assume-toggle-label">${t("addons.optionalToggleLabel")}</div>
+          <div class="assume-toggle-hint">${optionalOn ? t("addons.optionalToggleHintOn") : t("addons.optionalToggleHintOff")}</div>
+        </div>
+      </div>
+
       <div class="actions-row" style="margin-top:18px;">
-        <button class="btn c-blue" type="button" data-action="save-basics-step">${t("setup.saveContinueBtn")}</button>
+        <button class="btn c-blue" type="button" data-action="save-basics-step">${hasItems ? t("setup.saveBtn") : t("setup.saveContinueBtn")}</button>
       </div>
     </section>
   `;
@@ -323,7 +338,7 @@ function drivingConditionCardHTML(){
   const showButton = hasPendingChange || stillOnboarding;
   const btnLabel = hasPendingChange ? t("setup.confirmChangesBtn") : t("setup.continueBtn");
   return `
-    <section class="card">
+    <section class="card" id="setup-conditions-card">
       <h2>${t("setup.conditionTitle")}</h2>
       <p style="font-size:12.5px; color:var(--text-dim2); margin:-6px 0 16px; line-height:1.5;">${t("setup.conditionDescription")}</p>
       <div class="condition-choice">
@@ -349,7 +364,7 @@ function buildListCardHTML(){
   const v = av();
   const hasItems = Object.keys(v.items).length > 0;
   return `
-    <section class="card">
+    <section class="card" id="setup-buildlist-card">
       <h2>${t("setup.buildListTitle")}</h2>
       <p style="font-size:12.5px; color:var(--text-dim2); margin:-6px 0 16px; line-height:1.5;">${t("setup.buildListDescription")}</p>
       <div class="actions-row">
@@ -469,23 +484,12 @@ function itemsSectionHTML(){
     `;
   }).join("");
 
-  const optionalOn = !!v.optionalServicesEnabled;
-
   return `
     <div id="itemsHeader"><h2>${t("itemsSection.title")}</h2></div>
     <div id="itemsList">${itemsHTML}</div>
 
     <section class="card">
       <h2>${t("addons.title")}</h2>
-
-      <div class="assume-toggle ${optionalOn ? "on" : ""}" data-action="toggle-optional-services" role="button" tabindex="0" style="margin-bottom:18px;">
-        <div class="assume-toggle-check">${optionalOn ? "✓" : ""}</div>
-        <div>
-          <div class="assume-toggle-label">${t("addons.optionalToggleLabel")}</div>
-          <div class="assume-toggle-hint">${optionalOn ? t("addons.optionalToggleHintOn") : t("addons.optionalToggleHintOff")}</div>
-        </div>
-      </div>
-
       <div class="addon-row">${addonButtons}</div>
       <div class="history-form cols-4" style="margin-top:18px;">
         <label>${t("customItem.name")}<input type="text" id="customItemName" placeholder="e.g. Timing chain, walnut blasting..."></label>
@@ -937,6 +941,7 @@ appEl.addEventListener("click", (e) => {
       }
 
       ensureItemsForCurrentPreset(vehicle);
+      if(vehicle.optionalServicesEnabled) addRecommendedOptionalServices(vehicle);
       const count = Object.keys(vehicle.items).length;
 
       let assumedDate = null;
@@ -954,6 +959,7 @@ appEl.addEventListener("click", (e) => {
       vehicle.setupConfirmed.info = true;
       vehicle.setupConfirmed.conditions = true;
 
+      state.trackerTab = "status";
       saveState(); render();
 
       if(assumedDate){
@@ -964,35 +970,47 @@ appEl.addEventListener("click", (e) => {
       break;
     }
 
-    case "save-basics-step":
+    case "save-basics-step": {
+      const hasItems = Object.keys(vehicle.items).length > 0;
       vehicle.setupConfirmed.basics = true;
       saveState(); render();
       showToast(t("setup.basicsSavedToast"));
+      if(!hasItems) setTimeout(() => document.getElementById("setup-info-card")?.scrollIntoView({behavior: "smooth", block: "start"}), 50);
       break;
+    }
 
-    case "save-info-step":
+    case "save-info-step": {
+      const hasItems = Object.keys(vehicle.items).length > 0;
+      if(!hasItems){
+        // Re-read directly from the DOM: the "change" event only fires on blur, so a value
+        // just typed without tabbing away might not be on `vehicle` yet.
+        const yearEl = appEl.querySelector('input[data-field="year"]');
+        const makeEl = appEl.querySelector('input[data-field="make"]');
+        const modelEl = appEl.querySelector('input[data-field="model"]');
+        if(yearEl) vehicle.year = yearEl.value;
+        if(makeEl) vehicle.make = makeEl.value;
+        if(modelEl) vehicle.model = modelEl.value;
+        if(!vehicle.year.trim() || !vehicle.make.trim() || !vehicle.model.trim()){
+          alert(t("vehicleInfo.requiredAlert"));
+          break;
+        }
+      }
       vehicle.setupConfirmed.info = true;
       saveState(); render();
       showToast(t("setup.infoSavedToast"));
+      if(!hasItems) setTimeout(() => document.getElementById("setup-conditions-card")?.scrollIntoView({behavior: "smooth", block: "start"}), 50);
       break;
+    }
 
     case "toggle-assume-no-history":
       vehicle.assumeNoPriorHistory = !vehicle.assumeNoPriorHistory;
       saveState(); render();
       break;
 
-    case "toggle-optional-services": {
-      const turningOn = !vehicle.optionalServicesEnabled;
-      vehicle.optionalServicesEnabled = turningOn;
-      if(turningOn){
-        addRecommendedOptionalServices(vehicle);
-        saveState(); render();
-        showToast(t("addons.optionalAddedToast"));
-      } else {
-        saveState(); render();
-      }
+    case "toggle-optional-services":
+      vehicle.optionalServicesEnabled = !vehicle.optionalServicesEnabled;
+      saveState(); render();
       break;
-    }
 
     case "select-condition":
       pendingCondition[state.activeVehicleId] = key;
@@ -1000,6 +1018,7 @@ appEl.addEventListener("click", (e) => {
       break;
 
     case "confirm-conditions-step": {
+      const hasItems = Object.keys(vehicle.items).length > 0;
       const pending = pendingCondition[state.activeVehicleId];
       let toastMsg = t("setup.conditionsSavedToast");
       if(pending && pending !== vehicle.drivingCondition){
@@ -1018,6 +1037,7 @@ appEl.addEventListener("click", (e) => {
       vehicle.setupConfirmed.conditions = true;
       saveState(); render();
       showToast(toastMsg);
+      if(!hasItems) setTimeout(() => document.getElementById("setup-buildlist-card")?.scrollIntoView({behavior: "smooth", block: "start"}), 50);
       break;
     }
 

@@ -44,6 +44,7 @@ const I18N = {
         ? `Switched to Normal driving conditions — intervals roughly doubled for ${count} service item(s).`
         : `Switched to Severe driving conditions — intervals roughly halved for ${count} service item(s).`,
       saveContinueBtn: "Save & Continue",
+      saveBtn: "Save",
       continueBtn: "Continue",
       basicsSavedToast: "Vehicle basics saved.",
       infoSavedToast: "Vehicle info saved.",
@@ -141,6 +142,8 @@ const I18N = {
       year: "Year", make: "Make", model: "Model", vin: "VIN",
       yearBadge: "Affects calculations",
       yearHint: "Used by \"No Prior Service History\" in Vehicle Setup to estimate when unknown services last happened.",
+      optionalLabel: "optional",
+      requiredAlert: "Enter year, make, and model before continuing — VIN is the only optional field here.",
     },
     addons: {
       title: "Add a Service Item",
@@ -388,6 +391,7 @@ const I18N = {
         ? `Passage aux conditions de conduite normales — intervalles à peu près doublés pour ${count} élément(s) d'entretien.`
         : `Passage aux conditions de conduite sévères — intervalles à peu près réduits de moitié pour ${count} élément(s) d'entretien.`,
       saveContinueBtn: "Enregistrer et continuer",
+      saveBtn: "Enregistrer",
       continueBtn: "Continuer",
       basicsSavedToast: "Informations de base enregistrées.",
       infoSavedToast: "Renseignements du véhicule enregistrés.",
@@ -485,6 +489,8 @@ const I18N = {
       year: "Année", make: "Marque", model: "Modèle", vin: "NIV",
       yearBadge: "Affecte les calculs",
       yearHint: "Utilisée par « Aucun historique d'entretien connu » dans Configuration du véhicule pour estimer quand les entretiens inconnus ont eu lieu.",
+      optionalLabel: "facultatif",
+      requiredAlert: "Entrez l'année, la marque et le modèle avant de continuer — le NIV est le seul champ facultatif ici.",
     },
     addons: {
       title: "Ajouter un élément d'entretien",

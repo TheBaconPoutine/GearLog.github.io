@@ -1126,8 +1126,8 @@ function changelogModalHTML(){
 function headerHTML(){
   const vehicle = av();
   const mileage = vehicle.currentMileage ? Number(vehicle.currentMileage).toLocaleString() : "—";
-  const greeting = currentUser
-    ? `<div class="user-greeting">${t("account.loggedInGreeting")(currentProfile && currentProfile.username ? currentProfile.username : currentUser.email.split("@")[0])}</div>`
+  const greeting = (currentUser && currentProfile)
+    ? `<div class="user-greeting">${t("account.loggedInGreeting")(currentProfile.username ? currentProfile.username : currentUser.email.split("@")[0])}</div>`
     : "";
   return `
     <header class="top">

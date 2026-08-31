@@ -861,8 +861,16 @@ async function loadProfile(){
     if(error){ console.error("GearLog profile load error:", error); return; }
     if(!data){
       // First login after signup — create the profile row now that auth.uid() exists.
-      await sbClient.from("profiles").insert({ user_id: currentUser.id, username: null });
-      currentProfile = { username: null };
+      const { error: insertError } = await sbClient.from("profiles").insert({ user_id: currentUser.id, username: null });
+      if(insertError){
+        console.error("GearLog profile insert error:", insertError);
+        // Someone/something else may have already created the row (race) — check again
+        // rather than assuming it's blank.
+        const { data: retryData } = await sbClient.from("profiles").select("username").eq("user_id", currentUser.id).maybeSingle();
+        currentProfile = retryData || { username: null };
+      } else {
+        currentProfile = { username: null };
+      }
     } else {
       currentProfile = data;
     }
@@ -961,7 +969,7 @@ async function authLogOut(){
 
 async function authUpdateName(name){
   if(!sbClient || !currentUser) return { error: "Not signed in." };
-  const { error } = await sbClient.from("profiles").update({ username: name, updated_at: new Date().toISOString() }).eq("user_id", currentUser.id);
+  const { error } = await sbClient.from("profiles").upsert({ user_id: currentUser.id, username: name, updated_at: new Date().toISOString() }, { onConflict: "user_id" });
   if(!error) currentProfile = { ...currentProfile, username: name };
   return { error };
 }

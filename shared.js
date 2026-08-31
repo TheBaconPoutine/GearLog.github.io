@@ -33,6 +33,7 @@ const I18N = {
       assumeToggleHintOn: "Selected — every service item will be set to 0 KM on January 1 of the vehicle's model year when you create or update the list below.",
       assumeToggleHintOff: "Don't know this vehicle's service history? Select this, and GearLog will assume nothing was done, starting from January 1 of the model year (set in Vehicle Information).",
       needYearAlert: "Enter the vehicle's Year in Vehicle Information first — GearLog needs it to assume services \"started\" on January 1 of that year.",
+      buildingListLoading: "Building your maintenance list…",
       conditionTitle: "Driving Conditions",
       conditionDescription: "This determines how often service items are due. Severe conditions cover most Canadian driving: cold winters, stop-and-go traffic, extended idling, dusty or gravel roads, frequent short trips, and towing — this is the default, and matches the banner above. Normal conditions are mainly highway or mild-climate commuting without those factors, which allows most services to go roughly twice as long between visits.",
       conditionSevereLabel: "Severe",
@@ -206,6 +207,12 @@ const I18N = {
     changelogDismiss: "Got it, dismiss",
     changelog: [
       {version: 2, items: [
+        "Replaced browser pop-up alerts (like \u201Cmissing fields\u201D on Vehicle Setup) with in-app notifications, so every message now looks and feels like part of GearLog instead of a native browser dialog.",
+        "The desktop sidebar navigation now spans the full height of the screen flush against the top-left corner, instead of floating as a small box with gaps around it.",
+        "Fixed the desktop layout being visibly left-biased instead of properly centred in the remaining space next to the sidebar.",
+        "Creating or updating your maintenance list now scrolls you to the top of the Status & Services page, instead of dropping you in the middle of it.",
+        "Added a brief loading transition when creating or updating your maintenance list, so it's clear you've been taken to a new page rather than nothing happening.",
+        "Fixed the background tint fading out on longer pages like Resources, making them look noticeably darker than shorter pages \u2014 it's now consistent across every page regardless of length.",
         "Added \u201CForgot password?\u201D to the login form, with its own email link and a dedicated page to set a new password.",
         "Fixed the Tire Finder quiz so answers like grip, quiet cabin, fuel economy, and tread life are weighted against each other instead of one answer (like \u201Cmax performance\u201D) silently overriding the rest \u2014 also added a tread life question.",
         "Corrected the Performance All-Season description: it extends the usable season below a Summer UHP tire's cutoff, but still isn't a winter tire and doesn't eliminate the seasonal swap.",
@@ -380,6 +387,7 @@ const I18N = {
       assumeToggleHintOn: "Sélectionné — chaque élément d'entretien sera fixé à 0 KM au 1er janvier de l'année du véhicule lors de la création ou mise à jour de la liste ci-dessous.",
       assumeToggleHintOff: "Vous ne connaissez pas l'historique d'entretien de ce véhicule? Sélectionnez ceci, et GearLog présumera qu'aucun entretien n'a été fait, à partir du 1er janvier de l'année du modèle (définie dans Renseignements sur le véhicule).",
       needYearAlert: "Entrez d'abord l'année du véhicule dans Renseignements sur le véhicule — GearLog en a besoin pour présumer que les entretiens ont « commencé » le 1er janvier de cette année-là.",
+      buildingListLoading: "Création de votre liste d'entretien…",
       conditionTitle: "Conditions de conduite",
       conditionDescription: "Ceci détermine à quelle fréquence les éléments d'entretien sont dus. Les conditions sévères couvrent la plupart des conduites canadiennes : hivers froids, circulation arrêt-départ, ralenti prolongé, routes poussiéreuses ou de gravier, trajets courts fréquents et remorquage — c'est la valeur par défaut, et elle correspond à la bannière ci-dessus. Les conditions normales correspondent surtout à la conduite autoroutière ou en climat doux sans ces facteurs, ce qui permet à la plupart des entretiens de durer environ deux fois plus longtemps entre les visites.",
       conditionSevereLabel: "Sévères",
@@ -553,6 +561,12 @@ const I18N = {
     changelogDismiss: "Compris, fermer",
     changelog: [
       {version: 2, items: [
+        "Remplacement des alertes contextuelles du navigateur (comme « champs manquants » dans Configuration du véhicule) par des notifications intégrées à l'application, pour que chaque message ait maintenant l'apparence d'une partie de GearLog plutôt qu'une boîte de dialogue native du navigateur.",
+        "La navigation latérale sur ordinateur occupe maintenant toute la hauteur de l'écran, collée au coin supérieur gauche, au lieu de flotter comme une petite boîte entourée d'espace.",
+        "Correction de la mise en page sur ordinateur qui était visiblement décalée vers la gauche au lieu d'être correctement centrée dans l'espace restant à côté de la barre latérale.",
+        "Créer ou mettre à jour votre liste d'entretien fait maintenant défiler vers le haut de la page État et entretien, au lieu de vous laisser au milieu de celle-ci.",
+        "Ajout d'une brève transition de chargement lors de la création ou mise à jour de votre liste d'entretien, pour qu'il soit clair que vous avez été amené vers une nouvelle page plutôt que rien ne se passe.",
+        "Correction de la teinte d'arrière-plan qui s'estompait sur les pages plus longues comme Ressources, les rendant nettement plus sombres que les pages plus courtes — elle est maintenant uniforme sur toutes les pages, peu importe leur longueur.",
         "Ajout de « Mot de passe oublié? » au formulaire de connexion, avec son propre lien courriel et une page dédiée pour définir un nouveau mot de passe.",
         "Correction du questionnaire de recherche de pneu pour que des réponses comme l'adhérence, le silence, l'économie de carburant et la durée de vie soient pesées les unes contre les autres, au lieu qu'une seule réponse (comme « performance maximale ») annule silencieusement les autres — ajout aussi d'une question sur la durée de vie de la bande de roulement.",
         "Correction de la description Performance Quatre-Saisons : elle prolonge la saison utilisable sous le seuil d'un pneu UHP été, mais reste un pneu qui n'est pas un pneu d'hiver et n'élimine pas le changement saisonnier.",
@@ -1020,16 +1034,18 @@ function av(){ return state.vehicles[state.activeVehicleId]; }
 let pendingConfirm = null; // {message, action, key, extra} — drives a custom confirm modal instead of window.confirm()
 
 let activeToast = null; // string message, transient
+let activeToastType = "success"; // "success" | "error"
 let toastTimer = null;
-function showToast(message){
+function showToast(message, type){
   activeToast = message;
+  activeToastType = type || "success";
   render();
   clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => { activeToast = null; render(); }, 3000);
+  toastTimer = setTimeout(() => { activeToast = null; render(); }, type === "error" ? 4500 : 3000);
 }
 function toastHTML(){
   if(!activeToast) return "";
-  return `<div class="toast" role="status">${activeToast}</div>`;
+  return `<div class="toast ${activeToastType === "error" ? "toast-error" : ""}" role="status">${activeToast}</div>`;
 }
 
 

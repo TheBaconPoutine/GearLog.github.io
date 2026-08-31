@@ -97,6 +97,7 @@ let historySort = {field: "date", dir: "desc"};
 let historyFilter = "all"; // "all" | "service" | "repair"
 let dataWarningDismissedThisSession = sessionStorage.getItem("gearlog_data_warning_dismissed") === "1"; // persists for this browser tab session — survives navigating between pages, resets when the tab/window is closed, or when you sign out
 let pendingCondition = {}; // vehicleId -> "severe" | "normal", transient selection awaiting confirmation
+let listBuildLoading = false; // purely cosmetic brief loading state shown while creating/updating the service list
 
 function addRecommendedOptionalServices(vehicle){
   RECOMMENDED_OPTIONAL_IDS.forEach(id => {
@@ -721,7 +722,7 @@ function performImport(file){
       render();
       showToast(t("backup.importSuccess"));
     }catch(err){
-      alert(t("backup.importError"));
+      showToast(t("backup.importError"), "error");
     }
   };
   reader.readAsText(file);
@@ -800,14 +801,24 @@ function downloadHistoryCSV(vehicle){
 /* =====================================================================
    EVENT WIRING (delegated on #app)
 ===================================================================== */
+function loadingScreenHTML(){
+  return `
+    <section class="card" style="text-align:center; padding:70px 24px;">
+      <div class="spinner"></div>
+      <p style="margin-top:18px; color:var(--text-dim2); font-size:13.5px;">${t("setup.buildingListLoading")}</p>
+    </section>
+  `;
+}
+
 function render(){
   try{
     document.documentElement.lang = state.language;
-    if(Object.keys(av().items).length === 0 && state.trackerTab !== "setup"){
+    if(Object.keys(av().items).length === 0 && state.trackerTab !== "setup" && !listBuildLoading){
       state.trackerTab = "setup";
     }
     let html = headerHTML() + navHTML();
-    html += vehicleTabsHTML() + trackerSubNavHTML() + trackerTabContentHTML();
+    html += vehicleTabsHTML() + trackerSubNavHTML();
+    html += listBuildLoading ? loadingScreenHTML() : trackerTabContentHTML();
     html += footerHTML() + changelogModalHTML() + dataWarningModalHTML() + confirmModalHTML() + toastHTML();
     appEl.innerHTML = html;
   }catch(err){
@@ -923,7 +934,7 @@ appEl.addEventListener("click", (e) => {
     }
     case "delete-vehicle": {
       if(Object.keys(state.vehicles).length <= 1){
-        alert(t("vehicles.deleteLastBlocked"));
+        showToast(t("vehicles.deleteLastBlocked"), "error");
         break;
       }
       requestConfirm(t("vehicles.deleteConfirm")(state.vehicles[key].name), "delete-vehicle", key);
@@ -937,36 +948,43 @@ appEl.addEventListener("click", (e) => {
         const yearInputEl = appEl.querySelector('input[data-field="year"]');
         if(yearInputEl) vehicle.year = yearInputEl.value;
         const year = parseInt(vehicle.year, 10);
-        if(!year || year < 1900 || year > 2100){ alert(t("setup.needYearAlert")); break; }
+        if(!year || year < 1900 || year > 2100){ showToast(t("setup.needYearAlert"), "error"); break; }
       }
 
-      ensureItemsForCurrentPreset(vehicle);
-      if(vehicle.optionalServicesEnabled) addRecommendedOptionalServices(vehicle);
-      const count = Object.keys(vehicle.items).length;
+      listBuildLoading = true;
+      render();
 
-      let assumedDate = null;
-      if(vehicle.assumeNoPriorHistory){
-        const year = parseInt(vehicle.year, 10);
-        assumedDate = `${year}-01-01`;
-        Object.keys(vehicle.items).forEach(k => {
-          vehicle.items[k].lastKm = 0;
-          vehicle.items[k].lastDate = assumedDate;
-        });
-        vehicle.assumeNoPriorHistory = false;
-      }
+      setTimeout(() => {
+        ensureItemsForCurrentPreset(vehicle);
+        if(vehicle.optionalServicesEnabled) addRecommendedOptionalServices(vehicle);
+        const count = Object.keys(vehicle.items).length;
 
-      vehicle.setupConfirmed.basics = true;
-      vehicle.setupConfirmed.info = true;
-      vehicle.setupConfirmed.conditions = true;
+        let assumedDate = null;
+        if(vehicle.assumeNoPriorHistory){
+          const year = parseInt(vehicle.year, 10);
+          assumedDate = `${year}-01-01`;
+          Object.keys(vehicle.items).forEach(k => {
+            vehicle.items[k].lastKm = 0;
+            vehicle.items[k].lastDate = assumedDate;
+          });
+          vehicle.assumeNoPriorHistory = false;
+        }
 
-      state.trackerTab = "status";
-      saveState(); render();
+        vehicle.setupConfirmed.basics = true;
+        vehicle.setupConfirmed.info = true;
+        vehicle.setupConfirmed.conditions = true;
 
-      if(assumedDate){
-        showToast(hadItemsBefore ? t("setup.updateSuccessWithAssume")(count, assumedDate) : t("setup.createSuccessWithAssume")(count, assumedDate));
-      } else {
-        showToast(hadItemsBefore ? t("setup.updateSuccess")(count) : t("setup.createSuccess")(count));
-      }
+        listBuildLoading = false;
+        state.trackerTab = "status";
+        saveState(); render();
+        window.scrollTo({top: 0, behavior: "instant"});
+
+        if(assumedDate){
+          showToast(hadItemsBefore ? t("setup.updateSuccessWithAssume")(count, assumedDate) : t("setup.createSuccessWithAssume")(count, assumedDate));
+        } else {
+          showToast(hadItemsBefore ? t("setup.updateSuccess")(count) : t("setup.createSuccess")(count));
+        }
+      }, 700);
       break;
     }
 
@@ -991,7 +1009,7 @@ appEl.addEventListener("click", (e) => {
         if(makeEl) vehicle.make = makeEl.value;
         if(modelEl) vehicle.model = modelEl.value;
         if(!vehicle.year.trim() || !vehicle.make.trim() || !vehicle.model.trim()){
-          alert(t("vehicleInfo.requiredAlert"));
+          showToast(t("vehicleInfo.requiredAlert"), "error");
           break;
         }
       }
@@ -1063,7 +1081,7 @@ appEl.addEventListener("click", (e) => {
         const result = computeItem(vehicle, item);
         if(result) events.push({name: itemDisplayName(k, item), date: result.projectedDate});
       });
-      if(events.length === 0){ alert(t("item.enterPrompt")); break; }
+      if(events.length === 0){ showToast(t("item.enterPrompt"), "error"); break; }
       downloadICS(events);
       break;
     }
@@ -1107,7 +1125,7 @@ appEl.addEventListener("click", (e) => {
 
     case "done-today": {
       const mileage = Number(vehicle.currentMileage);
-      if(!mileage){ alert(t("item.needMileageAlert")); break; }
+      if(!mileage){ showToast(t("item.needMileageAlert"), "error"); break; }
       const item = vehicle.items[key];
       item.lastKm = mileage;
       item.lastDate = vehicle.currentDate || todayISO();
@@ -1148,7 +1166,7 @@ appEl.addEventListener("click", (e) => {
       const monthsInput = document.getElementById("customItemMonths");
       const optionalInput = document.getElementById("customItemOptional");
       const name = nameInput.value.trim(), km = kmInput.value, months = monthsInput.value;
-      if(!name || !km || !months){ alert(t("customItem.alert")); break; }
+      if(!name || !km || !months){ showToast(t("customItem.alert"), "error"); break; }
       const newKey = "custom_" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
       vehicle.items[newKey] = {km: Number(km), months: Number(months), lastKm: null, lastDate: null, custom: true, customName: name, optional: !!(optionalInput && optionalInput.checked)};
       saveState(); render();
@@ -1161,7 +1179,7 @@ appEl.addEventListener("click", (e) => {
       const date = document.getElementById("histDate").value;
       const notes = document.getElementById("histNotes").value.trim();
       const type = document.getElementById("histType").value;
-      if(!name || !date){ alert(t("history.alertNeedNameDate")); break; }
+      if(!name || !date){ showToast(t("history.alertNeedNameDate"), "error"); break; }
       addHistoryEntry(vehicle, {name, km: km || null, date, notes, source: "manual", type});
       render();
       break;
@@ -1176,7 +1194,7 @@ appEl.addEventListener("click", (e) => {
       saveState(); render();
       break;
     case "export-history-csv":
-      if(vehicle.history.length === 0){ alert(t("history.alertNoEntries")); break; }
+      if(vehicle.history.length === 0){ showToast(t("history.alertNoEntries"), "error"); break; }
       downloadHistoryCSV(vehicle);
       break;
   }

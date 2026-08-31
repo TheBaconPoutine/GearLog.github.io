@@ -2,6 +2,8 @@
   "name": "GearLog",
   "short_name": "GearLog",
   "start_url": ".",
+  "scope": ".",
+  "id": "gearlog-app",
   "display": "standalone",
   "background_color": "#16181B",
   "theme_color": "#F2A93B",

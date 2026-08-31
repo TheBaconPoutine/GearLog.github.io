@@ -871,20 +871,31 @@ async function loadProfile(){
   }
 }
 
+function stateHasMeaningfulData(s){
+  const v = Object.values((s && s.vehicles) || {});
+  return v.some(vehicle =>
+    Object.keys(vehicle.items || {}).length > 0 ||
+    (vehicle.history && vehicle.history.length > 0) ||
+    !!(vehicle.year || vehicle.make || vehicle.model || vehicle.vin)
+  );
+}
+
 function hasMeaningfulLocalData(){
-  const v = Object.values(state.vehicles || {});
-  return v.some(vehicle => Object.keys(vehicle.items || {}).length > 0);
+  return stateHasMeaningfulData(state);
 }
 
 async function handleAuthenticatedSession(){
   const remote = await pullRemoteState();
   await loadProfile();
-  if(remote){
-    // Remote data exists — it becomes the source of truth for this account.
+  const remoteHasData = stateHasMeaningfulData(remote);
+  const localHasData = hasMeaningfulLocalData();
+  if(remoteHasData){
+    // Remote already has real data — it becomes the source of truth for this account.
     state = remote;
     localStorage.setItem(STORE_KEY, JSON.stringify(state));
-  } else if(hasMeaningfulLocalData()){
-    // First login on this device with no cloud data yet, but real local data exists — upload it as the starting point.
+  } else if(localHasData){
+    // Remote is empty or missing (first login, or an earlier blank sync) but this device
+    // has real local progress — upload it rather than letting an empty remote win.
     await pushRemoteState();
   }
   if(typeof render === "function") render();

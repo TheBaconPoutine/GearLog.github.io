@@ -237,6 +237,8 @@ appEl.addEventListener("click", (e) => {
         acctUi.showForgotPassword = false;
         acctUi.resetLinkSentTo = email;
         render();
+      }).catch((err) => {
+        acctUi.busy = false; acctUi.forgotError = (err && err.message) || String(err); render();
       });
       break;
     }
@@ -250,6 +252,8 @@ appEl.addEventListener("click", (e) => {
         acctUi.busy = false;
         if(error){ acctUi.loginError = error.message || String(error); render(); return; }
         // onAuthStateChange picks up the new session and re-renders once data is synced.
+      }).catch((err) => {
+        acctUi.busy = false; acctUi.loginError = (err && err.message) || String(err); render();
       });
       break;
     }
@@ -266,6 +270,8 @@ appEl.addEventListener("click", (e) => {
         if(error){ acctUi.signupError = error.message || String(error); render(); return; }
         acctUi.signupSentTo = email;
         render();
+      }).catch((err) => {
+        acctUi.busy = false; acctUi.signupError = (err && err.message) || String(err); render();
       });
       break;
     }
@@ -286,6 +292,8 @@ appEl.addEventListener("click", (e) => {
         acctUi.nameMsg = null;
         render();
         showToast(t("account.nameSavedToast"));
+      }).catch((err) => {
+        acctUi.busy = false; acctUi.nameMsg = (err && err.message) || String(err); render();
       });
       break;
     }
@@ -299,6 +307,8 @@ appEl.addEventListener("click", (e) => {
         if(error){ acctUi.emailMsg = error.message || String(error); render(); return; }
         acctUi.emailMsg = t("account.emailChangeSentToast");
         render();
+      }).catch((err) => {
+        acctUi.busy = false; acctUi.emailMsg = (err && err.message) || String(err); render();
       });
       break;
     }
@@ -316,6 +326,8 @@ appEl.addEventListener("click", (e) => {
         acctUi.passwordMsg = null;
         render();
         showToast(t("account.passwordChangedToast"));
+      }).catch((err) => {
+        acctUi.busy = false; acctUi.passwordMsg = (err && err.message) || String(err); render();
       });
       break;
     }

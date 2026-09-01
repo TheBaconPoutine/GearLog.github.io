@@ -122,10 +122,16 @@ function ensureItemsForCurrentPreset(vehicle){
       lastDate: existing?.lastDate ?? null,
     };
   });
-  // Preserve custom items and optional add-ons the user added themselves.
+  // Preserve custom items and other optional add-ons the user added themselves.
+  // Recommended optional services (brake service, cabin air filter, undercoating) are the
+  // exception — they're controlled by the "Enable Optional Services" toggle, so if it's off,
+  // rebuilding the list should actually drop them rather than keep them around forever.
   Object.keys(vehicle.items).forEach(key => {
     const it = vehicle.items[key];
-    if(!idSet.has(key) && (it.custom || it.optional)){
+    if(idSet.has(key)) return;
+    if(RECOMMENDED_OPTIONAL_IDS.includes(key)){
+      if(vehicle.optionalServicesEnabled) newItems[key] = it;
+    } else if(it.custom || it.optional){
       newItems[key] = it;
     }
   });
@@ -278,10 +284,6 @@ function vehicleInfoCardHTML(){
       <div class="actions-row" style="margin-top:18px;">
         <button class="btn c-blue" type="button" data-action="save-info-step">${hasItems ? t("setup.saveBtn") : t("setup.saveContinueBtn")}</button>
       </div>
-
-      <div style="margin-top:28px; padding-top:18px; border-top:1px solid var(--hairline);">
-        <button class="btn secondary c-red" type="button" data-action="delete-vehicle" data-key="${state.activeVehicleId}">${t("vehicleInfo.deleteVehicleBtn")}</button>
-      </div>
     </section>
   `;
 }
@@ -375,6 +377,11 @@ function buildListCardHTML(){
       <div class="actions-row">
         <button class="btn c-green" type="button" data-action="build-list">${hasItems ? t("setup.updateList") : t("setup.buildList")}</button>
       </div>
+      ${hasItems ? `
+        <div style="margin-top:28px; padding-top:18px; border-top:1px solid var(--hairline);">
+          <button class="btn secondary c-red" type="button" data-action="delete-vehicle" data-key="${state.activeVehicleId}">${t("vehicleInfo.deleteVehicleBtn")}</button>
+        </div>
+      ` : ""}
     </section>
   `;
 }
@@ -480,23 +487,53 @@ function dashboardHTML(){
   const computed = keys.map(key => {
     const item = v.items[key];
     const result = computeItem(v, item);
-    return result ? { key, name: itemDisplayName(key, item), ...result } : null;
+    return result ? { key, name: itemDisplayName(key, item), item, ...result } : null;
   }).filter(Boolean);
 
   if(computed.length === 0 && !getSeasonalTireReminder()) return "";
 
-  computed.sort((a, b) => a.daysRemaining - b.daysRemaining);
-  const upcoming = computed.slice(0, 3);
+  const statusRank = { ok: 0, soon: 1, due: 2, over: 3 };
+  let overallStatus = "ok";
+  let overCount = 0, dueCount = 0, soonCount = 0;
+  computed.forEach(c => {
+    if(c.status === "over") overCount++;
+    else if(c.status === "due") dueCount++;
+    else if(c.status === "soon") soonCount++;
+    if(statusRank[c.status] > statusRank[overallStatus]) overallStatus = c.status;
+  });
+  const overallMeta = {
+    ok: { cls: "status-ok", label: t("dashboard.overallGood") },
+    soon: { cls: "status-soon", label: t("dashboard.overallSoon")(soonCount) },
+    due: { cls: "status-due", label: t("dashboard.overallDue")(dueCount) },
+    over: { cls: "status-over", label: t("dashboard.overallOverdue")(overCount) },
+  }[overallStatus];
+
+  // "Coming up next" surfaces anything not fully OK — soon, due, or overdue — not just a fixed top few.
+  const upcoming = computed.filter(c => c.status !== "ok").sort((a, b) => a.daysRemaining - b.daysRemaining);
 
   const upcomingHTML = upcoming.length > 0 ? `
     <p class="dash-label">${t("dashboard.upcomingLabel")}</p>
-    ${upcoming.map(u => `
-      <div class="dash-row">
-        <span class="dash-item-name">${u.name}</span>
-        <span class="status-pill status-${u.status}">${t("statusMeta." + u.status)}</span>
-        <span class="dash-item-detail">${u.daysRemaining < 0 ? t("dashboard.overdueBy")(Math.abs(Math.round(u.daysRemaining))) : t("dashboard.dueInDays")(Math.round(u.daysRemaining))}</span>
-      </div>
-    `).join("")}
+    <div class="dash-scroll">
+      ${upcoming.map(u => {
+        const lastKmStr = u.item.lastKm != null ? Math.round(u.item.lastKm).toLocaleString() : "—";
+        const lastDateStr = u.item.lastDate ? fmtDate(parseISO(u.item.lastDate)) : "—";
+        const nextKmStr = Math.round(u.nextDueKm).toLocaleString();
+        const nextDateStr = fmtDate(u.projectedDate);
+        const isOverdue = u.status === "over";
+        const kmAbs = Math.round(Math.abs(u.kmRemaining)).toLocaleString();
+        const daysAbs = Math.round(Math.abs(u.daysRemaining));
+        return `
+          <div class="dash-row">
+            <div class="dash-row-top">
+              <span class="dash-item-name">${u.name}</span>
+              <span class="status-pill status-${u.status}">${t("statusMeta." + u.status)}</span>
+            </div>
+            <div class="dash-item-line">${t("dashboard.lastServiceLine")(lastKmStr, lastDateStr)}</div>
+            <div class="dash-item-line">${isOverdue ? t("dashboard.nextServiceLineOverdue")(nextKmStr, nextDateStr, kmAbs, daysAbs) : t("dashboard.nextServiceLine")(nextKmStr, nextDateStr, kmAbs, daysAbs)}</div>
+          </div>
+        `;
+      }).join("")}
+    </div>
   ` : `<p class="dash-empty">${t("dashboard.allGood")}</p>`;
 
   const seasonal = getSeasonalTireReminder();
@@ -505,6 +542,7 @@ function dashboardHTML(){
   return `
     <section class="card dash-card">
       <h2>${t("dashboard.title")}</h2>
+      <div class="status-pill ${overallMeta.cls} dash-overall">${overallMeta.label}</div>
       ${seasonalHTML}
       ${upcomingHTML}
     </section>
@@ -541,8 +579,10 @@ function itemsSectionHTML(){
     `;
   }).join("");
 
+  const itemsSectionOpen = detailsOpen["__itemsSection"] === true;
+
   return `
-    <details class="card items-collapse">
+    <details class="card items-collapse" data-key="__itemsSection" ${itemsSectionOpen ? "open" : ""}>
       <summary><h2 style="display:inline;">${t("itemsSection.title")}</h2></summary>
       <div id="itemsList" style="margin-top:16px;">${itemsHTML}</div>
     </details>

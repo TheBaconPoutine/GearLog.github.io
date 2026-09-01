@@ -141,8 +141,13 @@ const I18N = {
       title: "Dashboard",
       upcomingLabel: "Coming up next",
       allGood: "Everything's in good shape — nothing due soon.",
-      dueInDays: (days) => `due in ${days} day${days === 1 ? "" : "s"}`,
-      overdueBy: (days) => `overdue by ${days} day${days === 1 ? "" : "s"}`,
+      overallGood: "All good — nothing due soon",
+      overallSoon: (count) => `${count} item${count === 1 ? "" : "s"} coming up soon`,
+      overallDue: (count) => `${count} item${count === 1 ? "" : "s"} due now`,
+      overallOverdue: (count) => `${count} item${count === 1 ? "" : "s"} overdue`,
+      lastServiceLine: (km, date) => `Last service done at ${km} km on ${date}`,
+      nextServiceLine: (km, date, kmRemaining, days) => `Next service due at ${km} km on ${date} — in ${kmRemaining} km, ${days} day${days === 1 ? "" : "s"}`,
+      nextServiceLineOverdue: (km, date, kmRemaining, days) => `Next service was due at ${km} km on ${date} — overdue by ${kmRemaining} km, ${days} day${days === 1 ? "" : "s"}`,
       seasonalWinterToSummer: "It's swap season — most people switch from winter to summer tires between the beginning of April and end of May.",
       seasonalSummerToWinter: "It's swap season — most people switch from summer to winter tires between mid-October and mid-December.",
     },
@@ -505,8 +510,13 @@ const I18N = {
       title: "Tableau de bord",
       upcomingLabel: "À venir prochainement",
       allGood: "Tout est en bon état — rien n'est dû prochainement.",
-      dueInDays: (days) => `dû dans ${days} jour${days === 1 ? "" : "s"}`,
-      overdueBy: (days) => `en retard de ${days} jour${days === 1 ? "" : "s"}`,
+      overallGood: "Tout va bien — rien n'est dû prochainement",
+      overallSoon: (count) => `${count} élément${count === 1 ? "" : "s"} à venir prochainement`,
+      overallDue: (count) => `${count} élément${count === 1 ? "" : "s"} dû${count === 1 ? "" : "s"} maintenant`,
+      overallOverdue: (count) => `${count} élément${count === 1 ? "" : "s"} en retard`,
+      lastServiceLine: (km, date) => `Dernier entretien fait à ${km} km le ${date}`,
+      nextServiceLine: (km, date, kmRemaining, days) => `Prochain entretien dû à ${km} km le ${date} — dans ${kmRemaining} km, ${days} jour${days === 1 ? "" : "s"}`,
+      nextServiceLineOverdue: (km, date, kmRemaining, days) => `Le prochain entretien était dû à ${km} km le ${date} — en retard de ${kmRemaining} km, ${days} jour${days === 1 ? "" : "s"}`,
       seasonalWinterToSummer: "C'est la saison du changement — la plupart des gens passent des pneus d'hiver aux pneus d'été entre le début avril et la fin mai.",
       seasonalSummerToWinter: "C'est la saison du changement — la plupart des gens passent des pneus d'été aux pneus d'hiver entre la mi-octobre et la mi-décembre.",
     },
@@ -771,6 +781,7 @@ function defaultState(){
     activeVehicleId: "v1",
     vehicles: {v1: defaultVehicle("Vehicle 1")},
     lastSeenChangelogVersion: 0,
+    lastOpenedAt: null,
   };
 }
 
@@ -1042,6 +1053,7 @@ if(!state.language) state.language = "en";
 if(!state.currentPage) state.currentPage = "tracker";
 if(!state.trackerTab) state.trackerTab = "setup";
 if(state.lastSeenChangelogVersion == null) state.lastSeenChangelogVersion = 0;
+if(state.lastOpenedAt === undefined) state.lastOpenedAt = null;
 Object.values(state.vehicles).forEach(v => {
   if(!Array.isArray(v.history)) v.history = [];
   if(!v.items) v.items = {};
@@ -1122,6 +1134,16 @@ const appEl = document.getElementById("app");
 let appLoadingScreenActive = sessionStorage.getItem("gearlog_app_loaded_this_session") !== "1";
 if(appLoadingScreenActive){
   sessionStorage.setItem("gearlog_app_loaded_this_session", "1");
+  // Genuinely reopening the app (not just navigating between pages) — if it's been a
+  // few days since the last visit, make sure Current Status is what greets them.
+  const now = new Date();
+  const prevOpened = state.lastOpenedAt ? new Date(state.lastOpenedAt) : null;
+  const daysSince = prevOpened ? (now - prevOpened) / (1000 * 60 * 60 * 24) : Infinity;
+  if(daysSince >= 3){
+    state.trackerTab = "status";
+  }
+  state.lastOpenedAt = now.toISOString();
+  saveState();
 }
 
 function appLoadingScreenHTML(){

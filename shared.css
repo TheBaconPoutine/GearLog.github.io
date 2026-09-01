@@ -178,11 +178,14 @@
   details.items-collapse[open] summary::after{ transform: rotate(180deg); }
 
   .dash-card{ }
+  .dash-overall{font-size:13px; padding:7px 16px; margin-bottom:16px; display:inline-block;}
   .dash-label{font-family: var(--font-display); font-weight:600; font-size:12px; text-transform:uppercase; letter-spacing:0.5px; color: var(--text-dim2); margin:0 0 10px;}
-  .dash-row{display:flex; align-items:center; gap:10px; padding:9px 0; border-top:1px solid var(--hairline);}
-  .dash-row:first-of-type{border-top:none;}
+  .dash-scroll{max-height:340px; overflow-y:auto; padding-right:4px;}
+  .dash-row{padding:12px 0; border-top:1px solid var(--hairline);}
+  .dash-row:first-of-type{border-top:none; padding-top:2px;}
+  .dash-row-top{display:flex; align-items:center; gap:10px; margin-bottom:6px;}
   .dash-item-name{font-weight:600; font-size:13.5px; flex:1; min-width:0;}
-  .dash-item-detail{font-family: var(--font-mono); font-size:12px; color: var(--text-dim2); white-space:nowrap;}
+  .dash-item-line{font-family: var(--font-mono); font-size:11.5px; color: var(--text-dim2); line-height:1.6;}
   .dash-empty{color: var(--text-dim2); font-size:13px; margin:0;}
   .dash-seasonal{
     display:flex; align-items:center; gap:8px; background: rgba(242,169,59,0.10); border:1px solid var(--amber);
@@ -482,6 +485,17 @@
   details.sub .sub-body{padding: 4px 14px 14px;}
   details.sub .sub-body .item, details.sub .sub-body .res-item{margin: 8px 0 0;}
   details.sub .sub-body .item:first-child, details.sub .sub-body .res-item:first-child{margin-top:2px;}
+
+  details.sub.sub-featured{
+    margin-top:20px; margin-bottom:16px; border-width:2px; border-radius:12px;
+    box-shadow: 0 4px 14px rgba(0,0,0,0.18);
+  }
+  details.sub.sub-featured summary{
+    padding: 16px 18px; font-size:13.5px; letter-spacing:0.8px;
+  }
+  details.sub.sub-featured .sub-body{padding: 8px 18px 20px;}
+  details.sub.sub-featured .sub-body .item{padding:12px 0; margin-top:4px;}
+  details.sub.sub-featured .sub-body .item:not(:first-child){border-top:1px solid var(--hairline);}
 
   .item .rank-num{font-family: var(--font-mono); color: var(--text-dim2); font-weight:400; margin-right:8px; font-size:12.5px;}
   .item p.note{margin: 8px 0 0; font-size:13px; color: var(--text-dim); line-height:1.55;}

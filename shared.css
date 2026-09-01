@@ -172,6 +172,23 @@
   .add-vehicle-btn:hover{color: var(--amber); border-color: var(--amber-dim);}
 
   .card{background: var(--panel); border: 1px solid var(--hairline); border-radius: var(--radius); padding: 20px 22px; margin-bottom: 20px;}
+  details.items-collapse summary{ cursor:pointer; list-style:none; display:flex; align-items:center; justify-content:space-between; }
+  details.items-collapse summary::-webkit-details-marker{ display:none; }
+  details.items-collapse summary::after{ content:"▾"; color: var(--text-dim2); font-size:14px; transition: transform .15s ease; }
+  details.items-collapse[open] summary::after{ transform: rotate(180deg); }
+
+  .dash-card{ }
+  .dash-label{font-family: var(--font-display); font-weight:600; font-size:12px; text-transform:uppercase; letter-spacing:0.5px; color: var(--text-dim2); margin:0 0 10px;}
+  .dash-row{display:flex; align-items:center; gap:10px; padding:9px 0; border-top:1px solid var(--hairline);}
+  .dash-row:first-of-type{border-top:none;}
+  .dash-item-name{font-weight:600; font-size:13.5px; flex:1; min-width:0;}
+  .dash-item-detail{font-family: var(--font-mono); font-size:12px; color: var(--text-dim2); white-space:nowrap;}
+  .dash-empty{color: var(--text-dim2); font-size:13px; margin:0;}
+  .dash-seasonal{
+    display:flex; align-items:center; gap:8px; background: rgba(242,169,59,0.10); border:1px solid var(--amber);
+    border-radius: var(--radius); padding:12px 14px; font-size:13px; color: var(--text-dim); line-height:1.5; margin-bottom:16px;
+  }
+  .dash-seasonal b{color: var(--amber);}
 
   details.res-section{
     background: var(--panel); border: 1px solid var(--hairline); border-radius: var(--radius);
@@ -701,6 +718,18 @@
     border-radius:50%; animation: spin 0.8s linear infinite;
   }
   @keyframes spin{ to{ transform: rotate(360deg); } }
+
+  .app-loading-screen{
+    position:fixed; inset:0; z-index:500; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:22px;
+    background: var(--bg);
+  }
+  .app-loading-mark{ font-family: var(--font-display); font-weight:700; font-size:28px; letter-spacing:1px; color: var(--text); }
+  .app-loading-mark span{ color: var(--amber); }
+  .spinner-lg{
+    width:40px; height:40px;
+    border:3px solid var(--hairline); border-top-color: var(--amber);
+    border-radius:50%; animation: spin 0.8s linear infinite;
+  }
 
   .modal-overlay{
     position:fixed; inset:0; background:rgba(0,0,0,0.62); display:flex; align-items:center; justify-content:center;

@@ -137,6 +137,15 @@ const I18N = {
       proceed: "Confirm",
     },
     itemsSection: {title: "Service Items"},
+    dashboard: {
+      title: "Dashboard",
+      upcomingLabel: "Coming up next",
+      allGood: "Everything's in good shape — nothing due soon.",
+      dueInDays: (days) => `due in ${days} day${days === 1 ? "" : "s"}`,
+      overdueBy: (days) => `overdue by ${days} day${days === 1 ? "" : "s"}`,
+      seasonalWinterToSummer: "It's swap season — most people switch from winter to summer tires between the beginning of April and end of May.",
+      seasonalSummerToWinter: "It's swap season — most people switch from summer to winter tires between mid-October and mid-December.",
+    },
     vehicleInfo: {
       title: "Vehicle Information",
       description: "Make, Model, and VIN are for your own organization and records only — they don't affect calculations. Year is the exception: it's used by \"No Prior Service History\" in Vehicle Setup to estimate a starting point when service history is unknown.",
@@ -145,6 +154,7 @@ const I18N = {
       yearHint: "Used by \"No Prior Service History\" in Vehicle Setup to estimate when unknown services last happened.",
       optionalLabel: "optional",
       requiredAlert: "Enter year, make, and model before continuing — VIN is the only optional field here.",
+      deleteVehicleBtn: "Delete This Vehicle",
     },
     addons: {
       title: "Add a Service Item",
@@ -174,7 +184,7 @@ const I18N = {
       updateBtn: "Update",
       hintIntervals: "How often this service should be done — not the last time it happened.",
       enterPrompt: "Enter last service KM & date below to calculate.",
-      dueInDays: "Due In (Days)", dueInKm: "Due In (KM)", estDueDate: "Est. Due Date", viaKmPace: "via KM pace",
+      dueInDays: "Due In (Days)", dueInKm: "Due In (KM)", dueAtKm: "Due At (KM)", estDueDate: "Est. Due Date", viaKmPace: "via KM pace",
       markDoneToday: "Mark done today",
       addToCalendar: "Create Reminder",
       removeItem: "Remove item",
@@ -491,6 +501,15 @@ const I18N = {
       proceed: "Confirmer",
     },
     itemsSection: {title: "Éléments d'entretien"},
+    dashboard: {
+      title: "Tableau de bord",
+      upcomingLabel: "À venir prochainement",
+      allGood: "Tout est en bon état — rien n'est dû prochainement.",
+      dueInDays: (days) => `dû dans ${days} jour${days === 1 ? "" : "s"}`,
+      overdueBy: (days) => `en retard de ${days} jour${days === 1 ? "" : "s"}`,
+      seasonalWinterToSummer: "C'est la saison du changement — la plupart des gens passent des pneus d'hiver aux pneus d'été entre le début avril et la fin mai.",
+      seasonalSummerToWinter: "C'est la saison du changement — la plupart des gens passent des pneus d'été aux pneus d'hiver entre la mi-octobre et la mi-décembre.",
+    },
     vehicleInfo: {
       title: "Renseignements sur le véhicule",
       description: "Marque, Modèle et NIV servent uniquement à votre organisation et à vos dossiers — ils n'ont aucun effet sur les calculs. L'Année fait exception : elle est utilisée par « Aucun historique d'entretien connu » dans Configuration du véhicule pour estimer un point de départ lorsque l'historique est inconnu.",
@@ -499,6 +518,7 @@ const I18N = {
       yearHint: "Utilisée par « Aucun historique d'entretien connu » dans Configuration du véhicule pour estimer quand les entretiens inconnus ont eu lieu.",
       optionalLabel: "facultatif",
       requiredAlert: "Entrez l'année, la marque et le modèle avant de continuer — le NIV est le seul champ facultatif ici.",
+      deleteVehicleBtn: "Supprimer ce véhicule",
     },
     addons: {
       title: "Ajouter un élément d'entretien",
@@ -528,7 +548,7 @@ const I18N = {
       updateBtn: "Mettre à jour",
       hintIntervals: "À quelle fréquence ce service devrait être fait — pas la dernière fois qu'il a été fait.",
       enterPrompt: "Entrez le kilométrage et la date du dernier entretien ci-dessous pour calculer.",
-      dueInDays: "Échéance (jours)", dueInKm: "Échéance (KM)", estDueDate: "Date d'échéance estimée", viaKmPace: "selon le rythme de KM",
+      dueInDays: "Échéance (jours)", dueInKm: "Échéance (KM)", dueAtKm: "Échéance à (KM)", estDueDate: "Date d'échéance estimée", viaKmPace: "selon le rythme de KM",
       markDoneToday: "Marquer comme fait aujourd'hui",
       addToCalendar: "Créer un rappel",
       removeItem: "Retirer cet élément",
@@ -1095,6 +1115,38 @@ function fmtDate(d){
 ===================================================================== */
 
 const appEl = document.getElementById("app");
+
+// Shows a brief full-app loading screen only on a genuine first load this session (new tab/window,
+// or after closing it) — never when simply navigating between pages, since sessionStorage persists
+// across that navigation but resets when the tab/window closes.
+let appLoadingScreenActive = sessionStorage.getItem("gearlog_app_loaded_this_session") !== "1";
+if(appLoadingScreenActive){
+  sessionStorage.setItem("gearlog_app_loaded_this_session", "1");
+}
+
+function appLoadingScreenHTML(){
+  return `
+    <div class="app-loading-screen">
+      <div class="app-loading-mark">GEAR<span>LOG</span></div>
+      <div class="spinner-lg"></div>
+    </div>
+  `;
+}
+
+function hideAppLoadingScreen(){
+  appLoadingScreenActive = false;
+  if(typeof render === "function") render();
+}
+
+if(appLoadingScreenActive){
+  const minDelay = new Promise(resolve => setTimeout(resolve, 600));
+  const authKnown = new Promise(resolve => {
+    const check = () => { if(authReady) resolve(); else setTimeout(check, 50); };
+    check();
+  });
+  Promise.all([minDelay, authKnown]).then(hideAppLoadingScreen);
+}
+
 
 function changelogModalHTML(){
   const entries = t("changelog");

@@ -206,7 +206,7 @@ function trackerSubNavHTML(){
 function trackerTabContentHTML(){
   switch(state.trackerTab){
     case "status":
-      return backupCardHTML() + bannerHTML() + statusCardHTML() + staleBannerHTML() + itemsSectionHTML();
+      return backupCardHTML() + bannerHTML() + statusCardHTML() + staleBannerHTML() + dashboardHTML() + itemsSectionHTML();
     case "history":
       return backupCardHTML() + historyCardHTML();
     case "setup":
@@ -277,6 +277,10 @@ function vehicleInfoCardHTML(){
 
       <div class="actions-row" style="margin-top:18px;">
         <button class="btn c-blue" type="button" data-action="save-info-step">${hasItems ? t("setup.saveBtn") : t("setup.saveContinueBtn")}</button>
+      </div>
+
+      <div style="margin-top:28px; padding-top:18px; border-top:1px solid var(--hairline);">
+        <button class="btn secondary c-red" type="button" data-action="delete-vehicle" data-key="${state.activeVehicleId}">${t("vehicleInfo.deleteVehicleBtn")}</button>
       </div>
     </section>
   `;
@@ -455,6 +459,58 @@ function dataWarningModalHTML(){
   `;
 }
 
+function getSeasonalTireReminder(){
+  const today = new Date();
+  const month = today.getMonth() + 1; // 1-12
+  const day = today.getDate();
+
+  // Winter -> Summer swap window: April 1 through end of May
+  const inWinterToSummerWindow = (month === 4) || (month === 5);
+  // Summer -> Winter swap window: mid-October through mid-December
+  const inSummerToWinterWindow = (month === 10 && day >= 15) || (month === 11) || (month === 12 && day <= 15);
+
+  if(inWinterToSummerWindow) return t("dashboard.seasonalWinterToSummer");
+  if(inSummerToWinterWindow) return t("dashboard.seasonalSummerToWinter");
+  return null;
+}
+
+function dashboardHTML(){
+  const v = av();
+  const keys = Object.keys(v.items);
+  const computed = keys.map(key => {
+    const item = v.items[key];
+    const result = computeItem(v, item);
+    return result ? { key, name: itemDisplayName(key, item), ...result } : null;
+  }).filter(Boolean);
+
+  if(computed.length === 0 && !getSeasonalTireReminder()) return "";
+
+  computed.sort((a, b) => a.daysRemaining - b.daysRemaining);
+  const upcoming = computed.slice(0, 3);
+
+  const upcomingHTML = upcoming.length > 0 ? `
+    <p class="dash-label">${t("dashboard.upcomingLabel")}</p>
+    ${upcoming.map(u => `
+      <div class="dash-row">
+        <span class="dash-item-name">${u.name}</span>
+        <span class="status-pill status-${u.status}">${t("statusMeta." + u.status)}</span>
+        <span class="dash-item-detail">${u.daysRemaining < 0 ? t("dashboard.overdueBy")(Math.abs(Math.round(u.daysRemaining))) : t("dashboard.dueInDays")(Math.round(u.daysRemaining))}</span>
+      </div>
+    `).join("")}
+  ` : `<p class="dash-empty">${t("dashboard.allGood")}</p>`;
+
+  const seasonal = getSeasonalTireReminder();
+  const seasonalHTML = seasonal ? `<div class="dash-seasonal"><b>🔄</b> ${seasonal}</div>` : "";
+
+  return `
+    <section class="card dash-card">
+      <h2>${t("dashboard.title")}</h2>
+      ${seasonalHTML}
+      ${upcomingHTML}
+    </section>
+  `;
+}
+
 function itemsSectionHTML(){
   const v = av();
   const keys = Object.keys(v.items);
@@ -486,8 +542,10 @@ function itemsSectionHTML(){
   }).join("");
 
   return `
-    <div id="itemsHeader"><h2>${t("itemsSection.title")}</h2></div>
-    <div id="itemsList">${itemsHTML}</div>
+    <details class="card items-collapse">
+      <summary><h2 style="display:inline;">${t("itemsSection.title")}</h2></summary>
+      <div id="itemsList" style="margin-top:16px;">${itemsHTML}</div>
+    </details>
 
     <section class="card">
       <h2>${t("addons.title")}</h2>
@@ -533,6 +591,10 @@ function itemCardHTML(vehicle, key){
           ${digitsHTML(result.kmRemaining, "tone-"+status)}
         </div>
         <div class="odo-block">
+          <div class="odo-label">${t("item.dueAtKm")}</div>
+          <div style="font-family:var(--font-mono); font-size:15px; margin-top:6px;">${Math.round(result.nextDueKm).toLocaleString()}</div>
+        </div>
+        <div class="odo-block">
           <div class="odo-label">${t("item.estDueDate")}</div>
           <div style="font-family:var(--font-mono); font-size:15px; margin-top:6px;">${fmtDate(result.projectedDate)}</div>
         </div>
@@ -544,7 +606,7 @@ function itemCardHTML(vehicle, key){
 
   const tab = activeTab[key] || "last";
   const lastActive = tab === "last";
-  const isOpen = detailsOpen[key] !== undefined ? detailsOpen[key] : (item.lastKm == null || !item.lastDate);
+  const isOpen = detailsOpen[key] !== undefined ? detailsOpen[key] : false;
 
   return `
     <div class="item ${meta.cls}">
@@ -813,6 +875,7 @@ function loadingScreenHTML(){
 function render(){
   try{
     document.documentElement.lang = state.language;
+    if(appLoadingScreenActive){ appEl.innerHTML = appLoadingScreenHTML(); return; }
     if(Object.keys(av().items).length === 0 && state.trackerTab !== "setup" && !listBuildLoading){
       state.trackerTab = "setup";
     }

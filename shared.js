@@ -104,11 +104,12 @@ const I18N = {
       title: "Current Status",
       currentMileage: "Current Mileage (KM)",
       currentDate: "Current Date",
+      autoDateHint: "kept current automatically",
       avgMonthlyKm: "Average KM / Month",
       avgHint: "used to convert remaining KM into an estimated day count",
       recalc: "Recalculate",
-      exportAllIcs: "Export All Reminders (.ics)",
-      monthlyReminderIcs: "Add Monthly Mileage Reminder (.ics)",
+      exportAllIcs: "Create All Reminders",
+      monthlyReminderIcs: "Create Monthly Reminder Mileage",
       resetAll: "Reset This Vehicle",
       resetConfirm: "This clears all data for this vehicle. Continue?",
       staleBanner: "You haven't updated this vehicle's mileage or date in over a month — update them above for more accurate due dates.",
@@ -151,6 +152,8 @@ const I18N = {
       lastServiceLine: (km, date) => `Done at ${km} km on ${date}`,
       nextServiceLine: (km, date, kmRemaining, days) => `Due at ${km} km or ${date} — in ${kmRemaining} km, ${days} day${days === 1 ? "" : "s"}`,
       nextServiceLineOverdue: (km, date, kmRemaining, days) => `Was due at ${km} km or ${date} — overdue by ${kmRemaining} km, ${days} day${days === 1 ? "" : "s"}`,
+      nextServiceLineDateOnly: (date, days) => `Due on ${date} — in ${days} day${days === 1 ? "" : "s"}`,
+      nextServiceLineOverdueDateOnly: (date, days) => `Was due on ${date} — overdue by ${days} day${days === 1 ? "" : "s"}`,
       seasonalWinterToSummer: "It's swap season — most people switch from winter to summer tires between the beginning of April and end of May.",
       seasonalSummerToWinter: "It's swap season — most people switch from summer to winter tires between mid-October and mid-December.",
       markSwapDone: "Mark as completed",
@@ -478,11 +481,12 @@ const I18N = {
       title: "État actuel",
       currentMileage: "Kilométrage actuel (KM)",
       currentDate: "Date actuelle",
+      autoDateHint: "maintenue à jour automatiquement",
       avgMonthlyKm: "Moyenne de KM par mois",
       avgHint: "utilisé pour convertir les KM restants en un nombre de jours estimé",
       recalc: "Recalculer",
-      exportAllIcs: "Exporter tous les rappels (.ics)",
-      monthlyReminderIcs: "Ajouter un rappel mensuel de kilométrage (.ics)",
+      exportAllIcs: "Créer tous les rappels",
+      monthlyReminderIcs: "Créer le rappel mensuel de kilométrage",
       resetAll: "Réinitialiser ce véhicule",
       resetConfirm: "Ceci efface toutes les données de ce véhicule. Continuer?",
       staleBanner: "Vous n'avez pas mis à jour le kilométrage ou la date de ce véhicule depuis plus d'un mois — mettez-les à jour ci-dessus pour des échéances plus précises.",
@@ -525,6 +529,8 @@ const I18N = {
       lastServiceLine: (km, date) => `Fait à ${km} km le ${date}`,
       nextServiceLine: (km, date, kmRemaining, days) => `Dû à ${km} km ou le ${date} — dans ${kmRemaining} km, ${days} jour${days === 1 ? "" : "s"}`,
       nextServiceLineOverdue: (km, date, kmRemaining, days) => `Était dû à ${km} km ou le ${date} — en retard de ${kmRemaining} km, ${days} jour${days === 1 ? "" : "s"}`,
+      nextServiceLineDateOnly: (date, days) => `Dû le ${date} — dans ${days} jour${days === 1 ? "" : "s"}`,
+      nextServiceLineOverdueDateOnly: (date, days) => `Était dû le ${date} — en retard de ${days} jour${days === 1 ? "" : "s"}`,
       seasonalWinterToSummer: "C'est la saison du changement — la plupart des gens passent des pneus d'hiver aux pneus d'été entre le début avril et la fin mai.",
       seasonalSummerToWinter: "C'est la saison du changement — la plupart des gens passent des pneus d'été aux pneus d'hiver entre la mi-octobre et la mi-décembre.",
       markSwapDone: "Marquer comme complété",
@@ -1154,6 +1160,10 @@ if(appLoadingScreenActive){
   if(daysSince >= 3){
     state.trackerTab = "status";
   }
+  // Keep each vehicle's reference date current automatically, instead of requiring a
+  // manual update every time the app is reopened on a new day.
+  const today = todayISO();
+  Object.values(state.vehicles || {}).forEach(v => { v.currentDate = today; });
   state.lastOpenedAt = now.toISOString();
   saveState();
 }

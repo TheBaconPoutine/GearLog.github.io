@@ -40,7 +40,7 @@ const CATALOG = {
   hybrid_battery_filter: {km:24000,  months:18},
   timing_belt:           {km:112000, months:72},
   power_steering_fluid:  {km:64000,  months:48},
-  undercoating:          {km:999000, months:12},
+  undercoating:          {km:null,    months:12},
 };
 const NOTE_KEYS = {
   trans_flush: "pickOneTransmission",
@@ -156,32 +156,33 @@ function computeItem(vehicle, item){
 
   const lastKm = Number(item.lastKm);
   const lastDate = parseISO(item.lastDate);
+  const hasKmInterval = item.km != null;
 
-  const nextDueKm = lastKm + Number(item.km);
+  const nextDueKm = hasKmInterval ? lastKm + Number(item.km) : null;
   const nextDueDate = addMonths(lastDate, Number(item.months));
 
-  const kmRemaining = nextDueKm - currentMileage;
+  const kmRemaining = hasKmInterval ? nextDueKm - currentMileage : Infinity;
   const daysRemainingByDate = daysBetween(currentDate, nextDueDate);
 
   let daysRemainingByKm = Infinity;
-  if(avgMonthlyKm > 0){
+  if(hasKmInterval && avgMonthlyKm > 0){
     daysRemainingByKm = kmRemaining / (avgMonthlyKm / 30.44);
   }
 
-  const usingKm = daysRemainingByKm < daysRemainingByDate;
+  const usingKm = hasKmInterval && daysRemainingByKm < daysRemainingByDate;
   const daysRemaining = Math.round(Math.min(daysRemainingByDate, daysRemainingByKm));
   const projectedDate = addDays(currentDate, daysRemaining);
 
-  const isOverdue = kmRemaining < -THRESH.graceKm || daysRemaining < -THRESH.graceDays;
-  const isDue = !isOverdue && (kmRemaining <= THRESH.dueKm || daysRemaining <= THRESH.dueDays);
-  const isSoon = !isOverdue && !isDue && (kmRemaining <= THRESH.soonKm || daysRemaining <= THRESH.soonDays);
+  const isOverdue = (hasKmInterval && kmRemaining < -THRESH.graceKm) || daysRemaining < -THRESH.graceDays;
+  const isDue = !isOverdue && ((hasKmInterval && kmRemaining <= THRESH.dueKm) || daysRemaining <= THRESH.dueDays);
+  const isSoon = !isOverdue && !isDue && ((hasKmInterval && kmRemaining <= THRESH.soonKm) || daysRemaining <= THRESH.soonDays);
 
   let status = "ok";
   if(isOverdue) status = "over";
   else if(isDue) status = "due";
   else if(isSoon) status = "soon";
 
-  return {nextDueKm, nextDueDate, kmRemaining, daysRemaining, projectedDate, status, usingKm, hasAvg: avgMonthlyKm > 0};
+  return {nextDueKm, nextDueDate, kmRemaining, daysRemaining, projectedDate, status, usingKm, hasAvg: avgMonthlyKm > 0, hasKmInterval};
 }
 
 function digitsHTML(value, toneClass){
@@ -396,7 +397,8 @@ function statusCardHTML(){
           <input type="number" data-field="currentMileage" min="0" value="${v.currentMileage ?? ""}">
         </label>
         <label class="field">${t("status.currentDate")}
-          <input type="date" data-field="currentDate" value="${v.currentDate || todayISO()}">
+          <input type="date" data-field="currentDate" value="${v.currentDate || todayISO()}" readonly disabled style="opacity:0.65; cursor:default;">
+          <span class="hint">${t("status.autoDateHint")}</span>
         </label>
         <label class="field">${t("status.avgMonthlyKm")}
           <input type="number" data-field="avgMonthlyKm" min="0" value="${v.avgMonthlyKm ?? ""}">
@@ -543,18 +545,24 @@ function dashboardHTML(){
     <p class="dash-label">${t("dashboard.nextDueLabel")}</p>
     <div class="dash-scroll">
       ${dueSoon.map(u => {
-        const nextKmStr = Math.round(u.nextDueKm).toLocaleString();
         const nextDateStr = fmtDate(u.projectedDate);
         const isOverdue = u.status === "over";
-        const kmAbs = Math.round(Math.abs(u.kmRemaining)).toLocaleString();
         const daysAbs = Math.round(Math.abs(u.daysRemaining));
+        let line;
+        if(u.hasKmInterval){
+          const nextKmStr = Math.round(u.nextDueKm).toLocaleString();
+          const kmAbs = Math.round(Math.abs(u.kmRemaining)).toLocaleString();
+          line = isOverdue ? t("dashboard.nextServiceLineOverdue")(nextKmStr, nextDateStr, kmAbs, daysAbs) : t("dashboard.nextServiceLine")(nextKmStr, nextDateStr, kmAbs, daysAbs);
+        } else {
+          line = isOverdue ? t("dashboard.nextServiceLineOverdueDateOnly")(nextDateStr, daysAbs) : t("dashboard.nextServiceLineDateOnly")(nextDateStr, daysAbs);
+        }
         return `
-          <div class="dash-row">
+          <div class="dash-row dash-row-clickable" data-action="goto-item" data-key="${u.key}">
             <div class="dash-row-top">
               <span class="dash-item-name">${u.name}</span>
               <span class="status-pill status-${u.status}">${t("statusMeta." + u.status)}</span>
             </div>
-            <div class="dash-item-line">${isOverdue ? t("dashboard.nextServiceLineOverdue")(nextKmStr, nextDateStr, kmAbs, daysAbs) : t("dashboard.nextServiceLine")(nextKmStr, nextDateStr, kmAbs, daysAbs)}</div>
+            <div class="dash-item-line">${line}</div>
           </div>
         `;
       }).join("")}
@@ -564,10 +572,15 @@ function dashboardHTML(){
   return `
     <section class="card dash-card">
       <h2>${t("dashboard.title")}</h2>
-      <div class="dash-status-line">${t("dashboard.statusLinePrefix")} <span class="status-pill ${overallMeta.cls}">${overallMeta.label}</span></div>
+      <div class="dash-status-block ${overallMeta.cls}">
+        <div class="dash-status-prefix">${t("dashboard.statusLinePrefix")}</div>
+        <div class="dash-status-value">${overallMeta.label}</div>
+      </div>
       ${swapHTML}
-      ${previousHTML}
-      ${nextDueHTML}
+      <div class="dash-columns">
+        <div class="dash-col">${previousHTML}</div>
+        <div class="dash-col">${nextDueHTML}</div>
+      </div>
     </section>
   `;
 }
@@ -649,6 +662,7 @@ function itemCardHTML(vehicle, key){
           <div class="odo-label">${t("item.dueInDays")}${result.usingKm ? " · " + t("item.viaKmPace") : ""}</div>
           ${digitsHTML(result.daysRemaining, "tone-"+status)}
         </div>
+        ${result.hasKmInterval ? `
         <div class="odo-block">
           <div class="odo-label">${t("item.dueInKm")}</div>
           ${digitsHTML(result.kmRemaining, "tone-"+status)}
@@ -657,6 +671,7 @@ function itemCardHTML(vehicle, key){
           <div class="odo-label">${t("item.dueAtKm")}</div>
           <div style="font-family:var(--font-mono); font-size:15px; margin-top:6px;">${Math.round(result.nextDueKm).toLocaleString()}</div>
         </div>
+        ` : ""}
         <div class="odo-block">
           <div class="odo-label">${t("item.estDueDate")}</div>
           <div style="font-family:var(--font-mono); font-size:15px; margin-top:6px;">${fmtDate(result.projectedDate)}</div>
@@ -697,7 +712,7 @@ function itemCardHTML(vehicle, key){
           <p class="tab-panel-hint">${t("item.hintLast")}</p>
         ` : `
           <div class="edit-grid cols-2">
-            <label>${t("item.intervalKm")}<input type="number" data-key="${key}" data-field="km" value="${item.km}"></label>
+            <label>${t("item.intervalKm")}<input type="number" data-key="${key}" data-field="km" value="${item.km ?? ""}"></label>
             <label>${t("item.intervalMonths")}<input type="number" data-key="${key}" data-field="months" value="${item.months}"></label>
           </div>
           <p class="tab-panel-hint">${t("item.hintIntervals")}</p>
@@ -988,6 +1003,17 @@ appEl.addEventListener("click", (e) => {
   const vehicle = av();
 
   switch(action){
+    case "goto-item": {
+      detailsOpen["__itemsSection"] = true;
+      detailsOpen[key] = true;
+      render();
+      setTimeout(() => {
+        const target = document.querySelector(`.edit[data-key="${key}"]`);
+        if(target) target.scrollIntoView({ behavior: "smooth", block: "center" });
+      }, 50);
+      break;
+    }
+
     case "dismiss-data-warning":
       dataWarningDismissedThisSession = true;
       sessionStorage.setItem("gearlog_data_warning_dismissed", "1");

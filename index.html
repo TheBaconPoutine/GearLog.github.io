@@ -466,18 +466,16 @@ function dataWarningModalHTML(){
   `;
 }
 
-function getSeasonalTireReminder(){
+function getSeasonalSwapWindow(){
   const today = new Date();
   const month = today.getMonth() + 1; // 1-12
   const day = today.getDate();
+  const year = today.getFullYear();
 
   // Winter -> Summer swap window: April 1 through end of May
-  const inWinterToSummerWindow = (month === 4) || (month === 5);
+  if(month === 4 || month === 5) return { id: `${year}-summer`, direction: "toSummer" };
   // Summer -> Winter swap window: mid-October through mid-December
-  const inSummerToWinterWindow = (month === 10 && day >= 15) || (month === 11) || (month === 12 && day <= 15);
-
-  if(inWinterToSummerWindow) return t("dashboard.seasonalWinterToSummer");
-  if(inSummerToWinterWindow) return t("dashboard.seasonalSummerToWinter");
+  if((month === 10 && day >= 15) || month === 11 || (month === 12 && day <= 15)) return { id: `${year}-winter`, direction: "toWinter" };
   return null;
 }
 
@@ -490,7 +488,11 @@ function dashboardHTML(){
     return result ? { key, name: itemDisplayName(key, item), item, ...result } : null;
   }).filter(Boolean);
 
-  if(computed.length === 0 && !getSeasonalTireReminder()) return "";
+  const swapWindow = getSeasonalSwapWindow();
+  const swapAlreadyDone = swapWindow && v.tireSwapCompletedFor === swapWindow.id;
+  const showSwapBanner = swapWindow && !swapAlreadyDone;
+
+  if(computed.length === 0 && !showSwapBanner) return "";
 
   const statusRank = { ok: 0, soon: 1, due: 2, over: 3 };
   let overallStatus = "ok";
@@ -508,15 +510,39 @@ function dashboardHTML(){
     over: { cls: "status-over", label: t("dashboard.overallOverdue")(overCount) },
   }[overallStatus];
 
-  // "Coming up next" surfaces anything not fully OK — soon, due, or overdue — not just a fixed top few.
-  const upcoming = computed.filter(c => c.status !== "ok").sort((a, b) => a.daysRemaining - b.daysRemaining);
+  const swapHTML = showSwapBanner ? `
+    <div class="dash-seasonal">
+      <div><b>🔄</b> ${t("dashboard." + (swapWindow.direction === "toSummer" ? "seasonalWinterToSummer" : "seasonalSummerToWinter"))}</div>
+      <label class="dash-swap-check">
+        <input type="checkbox" data-action="mark-tire-swap-done" data-key="${swapWindow.id}">
+        ${t("dashboard.markSwapDone")}
+      </label>
+    </div>
+  ` : "";
 
-  const upcomingHTML = upcoming.length > 0 ? `
-    <p class="dash-label">${t("dashboard.upcomingLabel")}</p>
+  // Previous Service Done — every item with recorded history, most recent first.
+  const withHistory = computed.filter(c => c.item.lastKm != null && c.item.lastDate)
+    .sort((a, b) => (b.item.lastDate || "").localeCompare(a.item.lastDate || ""));
+  const previousHTML = withHistory.length > 0 ? `
+    <p class="dash-label">${t("dashboard.previousLabel")}</p>
     <div class="dash-scroll">
-      ${upcoming.map(u => {
-        const lastKmStr = u.item.lastKm != null ? Math.round(u.item.lastKm).toLocaleString() : "—";
-        const lastDateStr = u.item.lastDate ? fmtDate(parseISO(u.item.lastDate)) : "—";
+      ${withHistory.map(u => `
+        <div class="dash-row">
+          <div class="dash-row-top"><span class="dash-item-name">${u.name}</span></div>
+          <div class="dash-item-line">${t("dashboard.lastServiceLine")(Math.round(u.item.lastKm).toLocaleString(), fmtDate(parseISO(u.item.lastDate)))}</div>
+        </div>
+      `).join("")}
+    </div>
+  ` : "";
+
+  // Next Services Due — anything within 8,000 km or 6 months (≈180 days), soonest first.
+  const dueSoonThresholdKm = 8000, dueSoonThresholdDays = 180;
+  const dueSoon = computed.filter(c => c.kmRemaining <= dueSoonThresholdKm || c.daysRemaining <= dueSoonThresholdDays)
+    .sort((a, b) => a.daysRemaining - b.daysRemaining);
+  const nextDueHTML = dueSoon.length > 0 ? `
+    <p class="dash-label">${t("dashboard.nextDueLabel")}</p>
+    <div class="dash-scroll">
+      ${dueSoon.map(u => {
         const nextKmStr = Math.round(u.nextDueKm).toLocaleString();
         const nextDateStr = fmtDate(u.projectedDate);
         const isOverdue = u.status === "over";
@@ -528,7 +554,6 @@ function dashboardHTML(){
               <span class="dash-item-name">${u.name}</span>
               <span class="status-pill status-${u.status}">${t("statusMeta." + u.status)}</span>
             </div>
-            <div class="dash-item-line">${t("dashboard.lastServiceLine")(lastKmStr, lastDateStr)}</div>
             <div class="dash-item-line">${isOverdue ? t("dashboard.nextServiceLineOverdue")(nextKmStr, nextDateStr, kmAbs, daysAbs) : t("dashboard.nextServiceLine")(nextKmStr, nextDateStr, kmAbs, daysAbs)}</div>
           </div>
         `;
@@ -536,15 +561,13 @@ function dashboardHTML(){
     </div>
   ` : `<p class="dash-empty">${t("dashboard.allGood")}</p>`;
 
-  const seasonal = getSeasonalTireReminder();
-  const seasonalHTML = seasonal ? `<div class="dash-seasonal"><b>🔄</b> ${seasonal}</div>` : "";
-
   return `
     <section class="card dash-card">
       <h2>${t("dashboard.title")}</h2>
-      <div class="status-pill ${overallMeta.cls} dash-overall">${overallMeta.label}</div>
-      ${seasonalHTML}
-      ${upcomingHTML}
+      <div class="dash-status-line">${t("dashboard.statusLinePrefix")} <span class="status-pill ${overallMeta.cls}">${overallMeta.label}</span></div>
+      ${swapHTML}
+      ${previousHTML}
+      ${nextDueHTML}
     </section>
   `;
 }
@@ -1305,6 +1328,15 @@ appEl.addEventListener("click", (e) => {
 appEl.addEventListener("change", (e) => {
   const el = e.target;
   const vehicle = av();
+
+  if(el.getAttribute("data-action") === "mark-tire-swap-done"){
+    if(el.checked){
+      vehicle.tireSwapCompletedFor = el.getAttribute("data-key");
+      saveState(); render();
+      showToast(t("dashboard.swapMarkedDoneToast"));
+    }
+    return;
+  }
 
   if(el.id === "importFileInput"){
     const file = el.files[0];

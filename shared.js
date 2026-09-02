@@ -139,17 +139,22 @@ const I18N = {
     itemsSection: {title: "Service Items"},
     dashboard: {
       title: "Dashboard",
+      statusLinePrefix: "Vehicle Maintenance Status:",
       upcomingLabel: "Coming up next",
-      allGood: "Everything's in good shape — nothing due soon.",
-      overallGood: "All good — nothing due soon",
+      previousLabel: "Previous Service Done",
+      nextDueLabel: "Next Services Due",
+      allGood: "Everything's in good shape — nothing due within 8,000 km or 6 months.",
+      overallGood: "Good",
       overallSoon: (count) => `${count} item${count === 1 ? "" : "s"} coming up soon`,
       overallDue: (count) => `${count} item${count === 1 ? "" : "s"} due now`,
       overallOverdue: (count) => `${count} item${count === 1 ? "" : "s"} overdue`,
-      lastServiceLine: (km, date) => `Last service done at ${km} km on ${date}`,
-      nextServiceLine: (km, date, kmRemaining, days) => `Next service due at ${km} km on ${date} — in ${kmRemaining} km, ${days} day${days === 1 ? "" : "s"}`,
-      nextServiceLineOverdue: (km, date, kmRemaining, days) => `Next service was due at ${km} km on ${date} — overdue by ${kmRemaining} km, ${days} day${days === 1 ? "" : "s"}`,
+      lastServiceLine: (km, date) => `Done at ${km} km on ${date}`,
+      nextServiceLine: (km, date, kmRemaining, days) => `Due at ${km} km or ${date} — in ${kmRemaining} km, ${days} day${days === 1 ? "" : "s"}`,
+      nextServiceLineOverdue: (km, date, kmRemaining, days) => `Was due at ${km} km or ${date} — overdue by ${kmRemaining} km, ${days} day${days === 1 ? "" : "s"}`,
       seasonalWinterToSummer: "It's swap season — most people switch from winter to summer tires between the beginning of April and end of May.",
       seasonalSummerToWinter: "It's swap season — most people switch from summer to winter tires between mid-October and mid-December.",
+      markSwapDone: "Mark as completed",
+      swapMarkedDoneToast: "Tire swap marked as done for this season.",
     },
     vehicleInfo: {
       title: "Vehicle Information",
@@ -508,17 +513,22 @@ const I18N = {
     itemsSection: {title: "Éléments d'entretien"},
     dashboard: {
       title: "Tableau de bord",
+      statusLinePrefix: "État d'entretien du véhicule :",
       upcomingLabel: "À venir prochainement",
-      allGood: "Tout est en bon état — rien n'est dû prochainement.",
-      overallGood: "Tout va bien — rien n'est dû prochainement",
+      previousLabel: "Entretien précédent effectué",
+      nextDueLabel: "Prochains entretiens dus",
+      allGood: "Tout est en bon état — rien n'est dû dans les 8 000 km ou 6 mois.",
+      overallGood: "Bon",
       overallSoon: (count) => `${count} élément${count === 1 ? "" : "s"} à venir prochainement`,
       overallDue: (count) => `${count} élément${count === 1 ? "" : "s"} dû${count === 1 ? "" : "s"} maintenant`,
       overallOverdue: (count) => `${count} élément${count === 1 ? "" : "s"} en retard`,
-      lastServiceLine: (km, date) => `Dernier entretien fait à ${km} km le ${date}`,
-      nextServiceLine: (km, date, kmRemaining, days) => `Prochain entretien dû à ${km} km le ${date} — dans ${kmRemaining} km, ${days} jour${days === 1 ? "" : "s"}`,
-      nextServiceLineOverdue: (km, date, kmRemaining, days) => `Le prochain entretien était dû à ${km} km le ${date} — en retard de ${kmRemaining} km, ${days} jour${days === 1 ? "" : "s"}`,
+      lastServiceLine: (km, date) => `Fait à ${km} km le ${date}`,
+      nextServiceLine: (km, date, kmRemaining, days) => `Dû à ${km} km ou le ${date} — dans ${kmRemaining} km, ${days} jour${days === 1 ? "" : "s"}`,
+      nextServiceLineOverdue: (km, date, kmRemaining, days) => `Était dû à ${km} km ou le ${date} — en retard de ${kmRemaining} km, ${days} jour${days === 1 ? "" : "s"}`,
       seasonalWinterToSummer: "C'est la saison du changement — la plupart des gens passent des pneus d'hiver aux pneus d'été entre le début avril et la fin mai.",
       seasonalSummerToWinter: "C'est la saison du changement — la plupart des gens passent des pneus d'été aux pneus d'hiver entre la mi-octobre et la mi-décembre.",
+      markSwapDone: "Marquer comme complété",
+      swapMarkedDoneToast: "Changement de pneus marqué comme fait pour cette saison.",
     },
     vehicleInfo: {
       title: "Renseignements sur le véhicule",
@@ -769,6 +779,7 @@ function defaultVehicle(name){
     year: "", make: "", model: "", vin: "", assumeNoPriorHistory: false, drivingCondition: "severe",
     setupConfirmed: { basics: false, info: false, conditions: false },
     optionalServicesEnabled: false,
+    tireSwapCompletedFor: null,
     items: {}, history: [],
   };
 }
@@ -1068,6 +1079,7 @@ Object.values(state.vehicles).forEach(v => {
     v.setupConfirmed = { basics: alreadySetUp, info: alreadySetUp, conditions: alreadySetUp };
   }
   if(v.optionalServicesEnabled == null) v.optionalServicesEnabled = false;
+  if(v.tireSwapCompletedFor === undefined) v.tireSwapCompletedFor = null;
   // Brake service and cabin air filter used to be tracked automatically for every vehicle
   // and are now opt-in. Anyone who already had them tracked keeps them (and the toggle
   // reflects that), rather than silently losing that history.

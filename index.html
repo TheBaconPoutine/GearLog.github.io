@@ -14,6 +14,7 @@
 </head>
 <body>
 <div class="wrap"><div id="app"></div></div>
+<div id="printReportRoot" class="pdf-root"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="shared.js"></script>
@@ -76,6 +77,12 @@ function buildItemIds(drivetrain, transmission){
 /* =====================================================================
    I18N
 ===================================================================== */
+
+function escapeHtml(str){
+  const div = document.createElement("div");
+  div.textContent = str == null ? "" : String(str);
+  return div.innerHTML;
+}
 
 function itemDisplayName(key, item){
   if(item.custom) return item.customName || key;
@@ -147,16 +154,24 @@ const THRESH = {
   graceKm: 200, graceDays: 7,
 };
 
-function calculateAvgMonthlyKm(vehicle){
-  const entries = (vehicle.history || [])
-    .filter(h => h.km != null && h.date)
-    .slice()
+function getMileageDataPoints(vehicle){
+  const fromLog = (vehicle.mileageLog || []).filter(e => e.km != null && e.date).map(e => ({date: e.date, km: Number(e.km)}));
+  const fromHistory = (vehicle.history || []).filter(h => h.km != null && h.date).map(h => ({date: h.date, km: Number(h.km)}));
+  const merged = fromLog.concat(fromHistory)
     .sort((a, b) => a.date.localeCompare(b.date));
+  // Collapse same-day entries to the highest recorded mileage that day.
+  const byDate = {};
+  merged.forEach(e => { if(!byDate[e.date] || e.km > byDate[e.date]) byDate[e.date] = e.km; });
+  return Object.keys(byDate).sort().map(date => ({date, km: byDate[date]}));
+}
+
+function calculateAvgMonthlyKm(vehicle){
+  const entries = getMileageDataPoints(vehicle);
   if(entries.length < 2) return null;
   const first = entries[0];
   const last = entries[entries.length - 1];
   const days = daysBetween(parseISO(first.date), parseISO(last.date));
-  const kmDiff = Number(last.km) - Number(first.km);
+  const kmDiff = last.km - first.km;
   if(days <= 0 || kmDiff <= 0) return null;
   return kmDiff / (days / 30.44);
 }
@@ -165,15 +180,12 @@ function calculateMileageThisYear(vehicle){
   const currentKm = Number(vehicle.currentMileage);
   if(!currentKm) return null;
   const currentYear = new Date().getFullYear();
-  const entries = (vehicle.history || [])
-    .filter(h => h.km != null && h.date)
-    .slice()
-    .sort((a, b) => a.date.localeCompare(b.date));
-  const beforeThisYear = entries.filter(h => parseISO(h.date).getFullYear() < currentYear);
-  const thisYearEntries = entries.filter(h => parseISO(h.date).getFullYear() === currentYear);
+  const entries = getMileageDataPoints(vehicle);
+  const beforeThisYear = entries.filter(e => parseISO(e.date).getFullYear() < currentYear);
+  const thisYearEntries = entries.filter(e => parseISO(e.date).getFullYear() === currentYear);
   let baselineKm = null;
-  if(beforeThisYear.length > 0) baselineKm = Number(beforeThisYear[beforeThisYear.length - 1].km);
-  else if(thisYearEntries.length > 0) baselineKm = Number(thisYearEntries[0].km);
+  if(beforeThisYear.length > 0) baselineKm = beforeThisYear[beforeThisYear.length - 1].km;
+  else if(thisYearEntries.length > 0) baselineKm = thisYearEntries[0].km;
   if(baselineKm == null) return null;
   const driven = currentKm - baselineKm;
   return driven > 0 ? driven : null;
@@ -236,6 +248,7 @@ function trackerSubNavHTML(){
       <button class="sub-tab ${tab === "setup" ? "active" : ""}" type="button" data-action="tracker-tab" data-key="setup">${t("trackerTabs.setup")}</button>
       ${hasItems ? `
         <button class="sub-tab ${tab === "status" ? "active" : ""}" type="button" data-action="tracker-tab" data-key="status">${t("trackerTabs.status")}</button>
+        <button class="sub-tab ${tab === "inspections" ? "active" : ""}" type="button" data-action="tracker-tab" data-key="inspections">${t("trackerTabs.inspections")}</button>
         <button class="sub-tab ${tab === "history" ? "active" : ""}" type="button" data-action="tracker-tab" data-key="history">${t("trackerTabs.history")}</button>
       ` : ""}
     </nav>
@@ -246,8 +259,10 @@ function trackerTabContentHTML(){
   switch(state.trackerTab){
     case "status":
       return backupCardHTML() + bannerHTML() + statusCardHTML() + staleBannerHTML() + dashboardHTML() + itemsSectionHTML();
+    case "inspections":
+      return inspectionsTabHTML();
     case "history":
-      return backupCardHTML() + historyCardHTML();
+      return backupCardHTML() + historyCardHTML() + inspectionReportsCardHTML();
     case "setup":
     default: {
       const v = av();
@@ -255,7 +270,7 @@ function trackerTabContentHTML(){
       const hasItems = Object.keys(v.items).length > 0;
       if(hasItems){
         // Already set up — show every section at once for free editing, no gating.
-        return setupCardHTML() + vehicleInfoCardHTML() + drivingConditionCardHTML() + buildListCardHTML() + remindersCardHTML();
+        return setupCardHTML() + vehicleInfoCardHTML() + drivingConditionCardHTML() + remindersCardHTML() + buildListCardHTML();
       }
       let html = setupCardHTML();
       if(sc.basics) html += vehicleInfoCardHTML();
@@ -297,7 +312,7 @@ function vehicleInfoCardHTML(){
 
       <div class="year-highlight">
         <label class="field"><span style="display:flex; align-items:center;">${t("vehicleInfo.year")}<span class="status-pill">${t("vehicleInfo.yearBadge")}</span></span>
-          <input type="number" data-field="year" value="${v.year || ""}" placeholder="2016" min="1900" max="${new Date().getFullYear() + 1}" step="1" ${!hasItems ? "required" : ""}>
+          <input type="number" data-field="year" value="${v.year || new Date().getFullYear()}" placeholder="2016" min="1900" max="${new Date().getFullYear() + 1}" step="1" ${!hasItems ? "required" : ""}>
           <span class="hint">${t("vehicleInfo.yearHint")}</span>
         </label>
       </div>
@@ -551,7 +566,7 @@ function dataWarningModalHTML(){
           <p>${t("dataWarning.accountHint")}</p>
         </div>
         <div class="modal-box-footer">
-          <a class="btn secondary" href="account.html" style="text-decoration:none; display:inline-block; text-align:center;">${t("dataWarning.goToAccountBtn")}</a>
+          <a class="btn secondary" href="account.html" data-action="dismiss-data-warning" style="text-decoration:none; display:inline-block; text-align:center;">${t("dataWarning.goToAccountBtn")}</a>
           <button class="btn c-orange" type="button" data-action="dismiss-data-warning">${t("dataWarning.dismiss")}</button>
         </div>
       </div>
@@ -585,7 +600,11 @@ function dashboardHTML(){
   const swapAlreadyDone = swapWindow && v.tireSwapCompletedFor === swapWindow.id;
   const showSwapBanner = swapWindow && !swapAlreadyDone;
 
-  if(computed.length === 0 && !showSwapBanner) return "";
+  // Driving stats — auto-calculated from actual mileage updates and service history, never manually entered.
+  const avgKm = calculateAvgMonthlyKm(v);
+  const mileageThisYear = calculateMileageThisYear(v);
+
+  if(computed.length === 0 && !showSwapBanner && !avgKm && !mileageThisYear) return "";
 
   const statusRank = { ok: 0, soon: 1, due: 2, over: 3 };
   let overallStatus = "ok";
@@ -613,15 +632,18 @@ function dashboardHTML(){
     </div>
   ` : "";
 
-  // Driving stats — auto-calculated from actual service history, never manually entered.
-  const avgKm = calculateAvgMonthlyKm(v);
-  const mileageThisYear = calculateMileageThisYear(v);
-  const statsHTML = (avgKm || mileageThisYear) ? `
+  const statsHTML = `
     <div class="dash-stats">
-      ${avgKm ? `<div class="dash-stat"><div class="dash-stat-value">${Math.round(avgKm).toLocaleString()}</div><div class="dash-stat-label">${t("dashboard.avgKmLabel")}</div></div>` : ""}
-      ${mileageThisYear ? `<div class="dash-stat"><div class="dash-stat-value">${Math.round(mileageThisYear).toLocaleString()}</div><div class="dash-stat-label">${t("dashboard.mileageThisYearLabel")}</div></div>` : ""}
+      <div class="dash-stat">
+        ${avgKm ? `<div class="dash-stat-value">${Math.round(avgKm).toLocaleString()}</div>` : `<div class="dash-stat-value dash-stat-pending">—</div>`}
+        <div class="dash-stat-label">${t("dashboard.avgKmLabel")}</div>
+      </div>
+      <div class="dash-stat">
+        ${mileageThisYear ? `<div class="dash-stat-value">${Math.round(mileageThisYear).toLocaleString()}</div>` : `<div class="dash-stat-value dash-stat-pending">—</div>`}
+        <div class="dash-stat-label">${t("dashboard.mileageThisYearLabel")}</div>
+      </div>
     </div>
-  ` : "";
+  `;
 
   // Next Services Due — anything within 8,000 km or 6 months (≈180 days), soonest first. Kept to
   // one line: just where/when it's due, no extra math spelled out.
@@ -825,10 +847,139 @@ function itemCardHTML(vehicle, key){
       </details>
       <div class="item-footer">
         <button class="btn secondary c-blue" type="button" data-action="done-today" data-key="${key}">${t("item.markDoneToday")}</button>
-        ${result ? `<button class="btn secondary c-green" type="button" data-action="export-one-ics" data-key="${key}">${t("item.addToCalendar")}</button>` : ""}
         <button class="btn secondary c-red" type="button" data-action="remove-item" data-key="${key}">${t("item.removeItem")}</button>
       </div>
     </div>
+  `;
+}
+
+function inspectionsTabHTML(){
+  const v = av();
+  const serviceRows = Object.keys(v.items).map(key => {
+    const item = v.items[key];
+    return `<label class="insp-check"><input type="checkbox" data-insp-service="${key}"> ${itemDisplayName(key, item)}</label>`;
+  }).join("");
+
+  return `
+    <section class="card">
+      <h2>${t("inspections.title")}</h2>
+      <p class="insp-subtitle">${t("inspections.forDiyer")}</p>
+      <p class="card-sub" style="margin-bottom:20px;">${t("inspections.description")}</p>
+
+      <div class="grid-2">
+        <label class="field">${t("inspections.date")}
+          <input type="date" id="inspDate" value="${v.currentDate || todayISO()}">
+        </label>
+        <label class="field">${t("inspections.mileage")}
+          <input type="number" id="inspMileage" min="0" value="${v.currentMileage ?? ""}">
+        </label>
+      </div>
+
+      <p class="dash-label" style="margin-top:22px;">${t("inspections.treadLabel")}</p>
+      <div class="grid-4">
+        <label class="field">${t("inspections.fl")}<input type="number" id="inspTreadFL" min="0" step="0.5"></label>
+        <label class="field">${t("inspections.fr")}<input type="number" id="inspTreadFR" min="0" step="0.5"></label>
+        <label class="field">${t("inspections.rl")}<input type="number" id="inspTreadRL" min="0" step="0.5"></label>
+        <label class="field">${t("inspections.rr")}<input type="number" id="inspTreadRR" min="0" step="0.5"></label>
+      </div>
+
+      <p class="dash-label" style="margin-top:18px;">${t("inspections.brakeLabel")}</p>
+      <div class="grid-4">
+        <label class="field">${t("inspections.fl")}<input type="number" id="inspBrakeFL" min="0" step="0.5"></label>
+        <label class="field">${t("inspections.fr")}<input type="number" id="inspBrakeFR" min="0" step="0.5"></label>
+        <label class="field">${t("inspections.rl")}<input type="number" id="inspBrakeRL" min="0" step="0.5"></label>
+        <label class="field">${t("inspections.rr")}<input type="number" id="inspBrakeRR" min="0" step="0.5"></label>
+      </div>
+
+      ${serviceRows ? `
+        <p class="dash-label" style="margin-top:18px;">${t("inspections.servicesLabel")}</p>
+        <div class="insp-checklist">${serviceRows}</div>
+      ` : ""}
+
+      <p class="dash-label" style="margin-top:18px;">${t("inspections.notesLabel")}</p>
+      <textarea id="inspNotes" placeholder="${t("inspections.notesPlaceholder")}"></textarea>
+
+      <div class="actions-row" style="margin-top:18px;">
+        <button class="btn c-green" type="button" data-action="save-inspection">${t("inspections.saveBtn")}</button>
+      </div>
+    </section>
+  `;
+}
+
+function buildInspectionReportHTML(vehicle, insp, addPageBreak){
+  const servicesHTML = (insp.servicesPerformed || []).length > 0
+    ? `<ul>${insp.servicesPerformed.map(key => `<li>${escapeHtml(itemDisplayName(key, vehicle.items[key] || {}))}</li>`).join("")}</ul>`
+    : `<p>${t("inspections.pdfNone")}</p>`;
+  const vehicleLabel = [vehicle.year, vehicle.make, vehicle.model].filter(Boolean).join(" ") || vehicle.name;
+  const tread = insp.tireTread || {};
+  const brake = insp.brakePad || {};
+  const dash = (v) => (v === "" || v == null) ? "—" : `${v} mm`;
+
+  return `
+    <div class="pdf-page"${addPageBreak ? ' style="page-break-after: always;"' : ""}>
+      <div class="pdf-header">
+        <div class="pdf-brand">GEARLOG</div>
+        <h1>${t("inspections.pdfTitle")}</h1>
+      </div>
+      <div class="pdf-meta">
+        <div><b>${t("inspections.pdfDate")}:</b> ${fmtDate(parseISO(insp.date))}</div>
+        <div><b>${t("inspections.pdfMileage")}:</b> ${insp.mileage != null ? Number(insp.mileage).toLocaleString() + " km" : "—"}</div>
+        <div><b>${t("inspections.pdfVehicle")}:</b> ${escapeHtml(vehicleLabel)}</div>
+      </div>
+
+      <h2>${t("inspections.pdfTread")}</h2>
+      <table class="pdf-table">
+        <tr><th>${t("inspections.fl")}</th><th>${t("inspections.fr")}</th><th>${t("inspections.rl")}</th><th>${t("inspections.rr")}</th></tr>
+        <tr><td>${dash(tread.fl)}</td><td>${dash(tread.fr)}</td><td>${dash(tread.rl)}</td><td>${dash(tread.rr)}</td></tr>
+      </table>
+
+      <h2>${t("inspections.pdfBrake")}</h2>
+      <table class="pdf-table">
+        <tr><th>${t("inspections.fl")}</th><th>${t("inspections.fr")}</th><th>${t("inspections.rl")}</th><th>${t("inspections.rr")}</th></tr>
+        <tr><td>${dash(brake.fl)}</td><td>${dash(brake.fr)}</td><td>${dash(brake.rl)}</td><td>${dash(brake.rr)}</td></tr>
+      </table>
+
+      <h2>${t("inspections.pdfServices")}</h2>
+      ${servicesHTML}
+
+      <h2>${t("inspections.pdfNotes")}</h2>
+      <p class="pdf-notes">${insp.notes ? escapeHtml(insp.notes) : t("inspections.pdfNone")}</p>
+
+      <div class="pdf-footer">${t("inspections.pdfGeneratedFor")(escapeHtml(vehicle.name))}</div>
+    </div>
+  `;
+}
+
+function inspectionReportsCardHTML(){
+  const v = av();
+  const inspections = v.inspections || [];
+  if(inspections.length === 0){
+    return `
+      <section class="card">
+        <h2>${t("inspections.reportsTitle")}</h2>
+        <p class="card-sub">${t("inspections.reportsEmpty")}</p>
+      </section>
+    `;
+  }
+  const sorted = inspections.slice().sort((a, b) => (b.date || "").localeCompare(a.date || ""));
+  const rows = sorted.map(insp => `
+    <div class="reminder-row">
+      <span class="reminder-name">${t("inspections.reportLine")(fmtDate(parseISO(insp.date)), insp.mileage != null ? Number(insp.mileage).toLocaleString() : "—")}</span>
+      <div style="display:flex; gap:8px; flex-shrink:0;">
+        <button class="btn secondary c-blue" type="button" data-action="view-inspection-pdf" data-key="${insp.id}">${t("inspections.viewPdfBtn")}</button>
+        <button class="btn secondary c-red" type="button" data-action="delete-inspection" data-key="${insp.id}">${t("item.removeItem")}</button>
+      </div>
+    </div>
+  `).join("");
+
+  return `
+    <section class="card">
+      <h2>${t("inspections.reportsTitle")}</h2>
+      <div class="reminder-list">${rows}</div>
+      <div class="actions-row" style="margin-top:16px;">
+        <button class="btn c-green" type="button" data-action="export-all-inspections">${t("inspections.exportAllBtn")}</button>
+      </div>
+    </section>
   `;
 }
 
@@ -1172,6 +1323,10 @@ appEl.addEventListener("click", (e) => {
           downloadICS([{name: itemDisplayName(deferredKey, item), date: result.projectedDate}]);
           showToast(t("reminders.createdOneToast")(itemDisplayName(deferredKey, item)));
         }
+      } else if(deferredAction === "delete-inspection"){
+        vehicle.inspections = (vehicle.inspections || []).filter(i => i.id !== deferredKey);
+        saveState(); render();
+        showToast(t("inspections.deletedToast"));
       }
       break;
     }
@@ -1230,6 +1385,7 @@ appEl.addEventListener("click", (e) => {
         ensureItemsForCurrentPreset(vehicle);
         if(vehicle.optionalServicesEnabled) addRecommendedOptionalServices(vehicle);
         const count = Object.keys(vehicle.items).length;
+        vehicle.previousServiceSnapshot = [];
 
         let assumedDate = null;
         if(vehicle.assumeNoPriorHistory){
@@ -1404,7 +1560,8 @@ appEl.addEventListener("click", (e) => {
             km: item.lastKm, date: item.lastDate, notes: "", source: "auto",
           });
         }
-        vehicle.previousServiceSnapshot = [key];
+        if(!Array.isArray(vehicle.previousServiceSnapshot)) vehicle.previousServiceSnapshot = [];
+        if(!vehicle.previousServiceSnapshot.includes(key)) vehicle.previousServiceSnapshot.push(key);
       }
       saveState(); render();
       showToast(t("item.updatedToast")(itemDisplayName(key, item)));
@@ -1422,7 +1579,8 @@ appEl.addEventListener("click", (e) => {
         name: item.custom ? item.customName : null,
         km: mileage, date: vehicle.currentDate || todayISO(), notes: "", source: "auto",
       });
-      vehicle.previousServiceSnapshot = [key];
+      if(!Array.isArray(vehicle.previousServiceSnapshot)) vehicle.previousServiceSnapshot = [];
+      if(!vehicle.previousServiceSnapshot.includes(key)) vehicle.previousServiceSnapshot.push(key);
       saveState(); render();
       showToast(t("item.markedDoneToast")(itemDisplayName(key, item)));
 
@@ -1455,6 +1613,68 @@ appEl.addEventListener("click", (e) => {
         vehicle.items[key] = {km: cat.km, months: cat.months, lastKm: null, lastDate: null, optional: true};
         saveState(); render();
       }
+      break;
+    }
+
+    case "view-inspection-pdf": {
+      const insp = (vehicle.inspections || []).find(i => i.id === key);
+      if(insp){
+        document.getElementById("printReportRoot").innerHTML = buildInspectionReportHTML(vehicle, insp, false);
+        setTimeout(() => window.print(), 50);
+      }
+      break;
+    }
+
+    case "export-all-inspections": {
+      const all = (vehicle.inspections || []).slice().sort((a, b) => (a.date || "").localeCompare(b.date || ""));
+      if(all.length === 0) break;
+      const html = all.map((insp, i) => buildInspectionReportHTML(vehicle, insp, i < all.length - 1)).join("");
+      document.getElementById("printReportRoot").innerHTML = html;
+      setTimeout(() => window.print(), 50);
+      break;
+    }
+
+    case "delete-inspection":
+      requestConfirm(t("inspections.deleteReportConfirm"), "delete-inspection", key);
+      break;
+
+    case "save-inspection": {
+      const dateEl = document.getElementById("inspDate");
+      const mileageEl = document.getElementById("inspMileage");
+      const treadFL = document.getElementById("inspTreadFL").value;
+      const treadFR = document.getElementById("inspTreadFR").value;
+      const treadRL = document.getElementById("inspTreadRL").value;
+      const treadRR = document.getElementById("inspTreadRR").value;
+      const brakeFL = document.getElementById("inspBrakeFL").value;
+      const brakeFR = document.getElementById("inspBrakeFR").value;
+      const brakeRL = document.getElementById("inspBrakeRL").value;
+      const brakeRR = document.getElementById("inspBrakeRR").value;
+      const notes = document.getElementById("inspNotes").value.trim();
+      const servicesPerformed = Array.from(appEl.querySelectorAll('[data-insp-service]:checked')).map(el => el.getAttribute("data-insp-service"));
+
+      const inspection = {
+        id: "insp_" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+        date: dateEl.value || todayISO(),
+        mileage: mileageEl.value === "" ? null : Number(mileageEl.value),
+        tireTread: { fl: treadFL, fr: treadFR, rl: treadRL, rr: treadRR },
+        brakePad: { fl: brakeFL, fr: brakeFR, rl: brakeRL, rr: brakeRR },
+        servicesPerformed,
+        notes,
+      };
+      if(!vehicle.inspections) vehicle.inspections = [];
+      vehicle.inspections.push(inspection);
+      saveState();
+      showToast(t("inspections.savedToast"));
+
+      // Clear the form for the next entry rather than leaving stale values behind.
+      dateEl.value = vehicle.currentDate || todayISO();
+      mileageEl.value = vehicle.currentMileage ?? "";
+      ["inspTreadFL","inspTreadFR","inspTreadRL","inspTreadRR","inspBrakeFL","inspBrakeFR","inspBrakeRL","inspBrakeRR"].forEach(id => {
+        const fld = document.getElementById(id);
+        if(fld) fld.value = "";
+      });
+      document.getElementById("inspNotes").value = "";
+      appEl.querySelectorAll('[data-insp-service]:checked').forEach(el => { el.checked = false; });
       break;
     }
 
@@ -1526,6 +1746,16 @@ appEl.addEventListener("change", (e) => {
     const val = el.value;
     if(setupField === "currentMileage" || setupField === "avgMonthlyKm"){
       vehicle[setupField] = val === "" ? null : Number(val);
+      if(setupField === "currentMileage" && vehicle.currentMileage != null){
+        const today = vehicle.currentDate || todayISO();
+        if(!vehicle.mileageLog) vehicle.mileageLog = [];
+        const lastEntry = vehicle.mileageLog[vehicle.mileageLog.length - 1];
+        if(lastEntry && lastEntry.date === today){
+          lastEntry.km = vehicle.currentMileage;
+        } else {
+          vehicle.mileageLog.push({date: today, km: vehicle.currentMileage});
+        }
+      }
     } else {
       vehicle[setupField] = val;
     }

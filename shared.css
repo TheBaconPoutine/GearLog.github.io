@@ -191,6 +191,7 @@
   .dash-stats{display:grid; grid-template-columns: 1fr 1fr; gap:12px; margin-bottom:18px;}
   .dash-stat{background: var(--panel-raised); border:1px solid var(--hairline); border-radius: var(--radius); padding:12px 10px; text-align:center;}
   .dash-stat-value{font-family: var(--font-display); font-weight:700; font-size:19px;}
+  .dash-stat-value.dash-stat-pending{color: var(--text-dim2); font-weight:400;}
   .dash-stat-label{font-family: var(--font-mono); font-size:10.5px; text-transform:uppercase; letter-spacing:0.5px; color: var(--text-dim2); margin-top:4px;}
   .dash-columns{display:grid; grid-template-columns: 1fr; gap:24px;}
   @media (min-width: 640px){ .dash-columns{grid-template-columns: 1fr 1fr;} }
@@ -253,13 +254,20 @@
 
   label.field{display:flex; flex-direction:column; gap:6px; font-size: 12.5px; color: var(--text-dim2); min-width:0;}
   label.field span.hint{font-size:11px; color:#6b7178; font-weight:400;}
-  select, input[type=number], input[type=date], input[type=text], input[type=email], input[type=password]{
+  select, input[type=number], input[type=date], input[type=text], input[type=email], input[type=password], textarea{
     background: var(--panel-raised); border: 1px solid var(--hairline); color: var(--text);
     font-family: var(--font-mono); font-size: 14px; padding: 9px 10px; border-radius: 6px; outline: none; width:100%;
   }
-  select:focus, input:focus{border-color: var(--amber);}
+  select:focus, input:focus, textarea:focus{border-color: var(--amber);}
   select{font-family: var(--font-body); font-size:13.5px;}
   input:disabled{opacity:0.5; cursor:not-allowed;}
+  textarea{resize:vertical; min-height:70px; font-family: var(--font-body); font-size:13.5px; line-height:1.5;}
+  .grid-4{display:grid; grid-template-columns: repeat(4, 1fr); gap: 10px;}
+  @media (max-width: 520px){ .grid-4{grid-template-columns: repeat(2, 1fr);} }
+  .insp-subtitle{font-family: var(--font-display); font-weight:700; font-size:16px; color: var(--amber); margin:-4px 0 10px;}
+  .insp-checklist{display:flex; flex-direction:column; gap:8px;}
+  .insp-check{display:flex; align-items:center; gap:8px; font-size:13px; cursor:pointer;}
+  .insp-check input{width:auto;}
 
   .btn{
     font-family: var(--font-display); font-weight:600; letter-spacing:0.4px; text-transform: uppercase; font-size: 12.5px;
@@ -309,6 +317,9 @@
   #itemsHeader h2{margin:0; font-family:var(--font-display); font-weight:600; font-size:15px; text-transform:uppercase; letter-spacing:1.2px; color:var(--amber);}
 
   .item{background: var(--panel); border: 1px solid var(--hairline); border-left: 4px solid var(--hairline); border-radius: var(--radius); padding: 16px 18px; margin-bottom: 12px;}
+  .item.item-clickable{cursor:pointer; transition: background .12s ease, border-color .12s ease;}
+  .item.item-clickable:hover{background: var(--panel-raised); border-color: var(--amber-dim, var(--amber));}
+  .item.item-clickable .item-name:after{content:" →"; color: var(--text-dim2); font-weight:400;}
   .item.status-ok{border-left-color: var(--green);}
   .item.status-soon{border-left-color: var(--amber);}
   .item.status-due{border-left-color: var(--orange);}
@@ -513,8 +524,6 @@
     padding: 17px 18px; font-size:15px; box-shadow: 0 4px 16px rgba(0,0,0,0.22);
     color: var(--blue-text, var(--text));
   }
-  details.acc.acc-priority > summary .summary-txt:before{content:"★ ";}
-  details.acc.acc-priority[open] > summary .summary-txt:before{content:"★ ";}
   details.acc.acc-priority .acc-body{
     padding: 18px 18px 6px; margin-top:8px; background: var(--panel-raised); border-radius: var(--radius); border:2px solid var(--blue-fill, var(--hairline));
   }
@@ -755,6 +764,13 @@
   .callout:first-child{margin-top:0;}
   .callout b{color:var(--text);}
 
+  .guide-divider{
+    margin: 32px 0 24px; padding: 16px 18px; text-align:center;
+    border-top: 1px dashed var(--hairline); border-bottom: 1px dashed var(--hairline);
+  }
+  .guide-divider p{margin:0; font-size:13px; color: var(--text-dim); line-height:1.6;}
+  .guide-divider b{color: var(--blue-text, var(--text));}
+
   /* Style variants so stacked callouts in the same section don't blob together */
   .callout.callout-b{background: transparent; border: 1px solid var(--sec-fill, var(--blue));}
   .callout.callout-c{background: color-mix(in srgb, var(--sec-fill, var(--blue)) 6%, transparent); border-left:none; border-top: 3px solid var(--sec-fill, var(--blue)); border-radius:4px;}
@@ -815,3 +831,33 @@
   .modal-box-scroll{padding:12px 24px; overflow-y:auto; flex:1; min-height:0;}
   .modal-box p{font-size:13.5px; color:var(--text-dim); line-height:1.6; margin:0 0 20px;}
   .modal-box-footer{padding:14px 24px 22px; flex-shrink:0; border-top:1px solid var(--hairline); margin-top:4px;}
+
+  /* ===================================================================
+     Inspection report PDF — hidden on screen, shown only when printing
+     (or "Save as PDF" from the browser print dialog). Deliberately
+     plain black-on-white, independent of the app's dark theme, so it
+     stays legible and ink-friendly on paper.
+  =================================================================== */
+  .pdf-root{display:none;}
+  @media print{
+    body > *:not(#printReportRoot){display:none !important;}
+    #printReportRoot{display:block !important;}
+    body{background:#fff !important;}
+  }
+  .pdf-page{
+    background:#fff; color:#000; font-family: Arial, Helvetica, sans-serif;
+    max-width:800px; margin:0 auto; padding:32px 28px;
+  }
+  .pdf-header{border-bottom:3px solid #000; padding-bottom:14px; margin-bottom:20px;}
+  .pdf-brand{font-family: Arial, Helvetica, sans-serif; font-weight:800; font-size:22px; letter-spacing:1px; color:#000;}
+  .pdf-header h1{font-size:16px; font-weight:600; margin:6px 0 0; color:#000;}
+  .pdf-meta{display:flex; flex-wrap:wrap; gap:6px 28px; font-size:13px; color:#000; margin-bottom:22px;}
+  .pdf-meta b{font-weight:700;}
+  .pdf-page h2{font-size:13px; font-weight:700; text-transform:uppercase; letter-spacing:0.5px; color:#000; margin:22px 0 8px; border-bottom:1px solid #000; padding-bottom:4px;}
+  .pdf-table{width:100%; border-collapse:collapse; font-size:13px; color:#000; margin-bottom:6px;}
+  .pdf-table th, .pdf-table td{border:1px solid #000; padding:8px 10px; text-align:center;}
+  .pdf-table th{background:#eee; font-weight:700;}
+  .pdf-page ul{margin:0; padding-left:20px; font-size:13px; color:#000;}
+  .pdf-page ul li{margin-bottom:3px;}
+  .pdf-notes{font-size:13px; color:#000; white-space:pre-wrap; line-height:1.6;}
+  .pdf-footer{margin-top:32px; padding-top:12px; border-top:1px solid #000; font-size:11px; color:#333; text-align:center;}

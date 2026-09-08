@@ -3,7 +3,7 @@ const I18N = {
     brandTagline: "know what's next, before it's overdue",
     madeWithClaude: "Built with Claude AI",
     nav: {tracker: "Service Tracker", resources: "Resources", share: "Share & Download", about: "About", account: "Account"},
-    trackerTabs: {setup: "Vehicle Settings", status: "Status & Services", history: "History"},
+    trackerTabs: {setup: "Vehicle Settings", status: "Status & Services", inspections: "Inspections", history: "History"},
     langButton: "🇫🇷 Français",
     banner: {
       html: "All service intervals shown here are an average across manufacturers, based on the <b>severe-condition</b> maintenance schedule — not the standard/light-duty one. Severe conditions cover what most Canadian drivers deal with regularly: cold winters, stop-and-go city traffic, increasingly hot summers, dusty or gravel roads, frequent short trips, and towing. If your driving is lighter than that, treat these intervals as a safe upper bound and adjust as you see fit.",
@@ -126,6 +126,34 @@ const I18N = {
       removeBody: "Open the event in your calendar app and delete it, the same way you'd remove any other calendar event — GearLog can't manage or clear it remotely once it's been added to your calendar.",
       promptAfterDone: (name, date) => `Want a calendar reminder for ${name}'s next service, estimated around ${date}?`,
     },
+    inspections: {
+      title: "Inspections",
+      forDiyer: "For the DIYer",
+      description: "A quick way to log what you find under the vehicle — tread depth, brake pad thickness, and anything else worth noting — so you've got a real record over time, not just a memory of \"it looked fine last time.\" Every saved inspection becomes its own printable report, and catching uneven wear or thinning pads early is exactly what keeps small issues from turning into expensive ones.",
+      date: "Inspection Date",
+      mileage: "Mileage (KM)",
+      treadLabel: "Tire Tread Depth (mm)",
+      brakeLabel: "Brake Pad Thickness (mm)",
+      fl: "Front Left", fr: "Front Right", rl: "Rear Left", rr: "Rear Right",
+      servicesLabel: "Services Performed",
+      notesLabel: "Notes",
+      notesPlaceholder: "Anything else worth remembering — leaks, noises, damage, upcoming concerns...",
+      saveBtn: "Save Inspection",
+      savedToast: "Inspection saved.",
+      reportsTitle: "Inspection Reports",
+      reportsEmpty: "No inspections saved yet — they'll show up here once you save one from the Inspections tab.",
+      reportLine: (date, mileage) => `${date} — ${mileage} km`,
+      viewPdfBtn: "View PDF",
+      exportAllBtn: "Export All to PDF",
+      deleteReportConfirm: "Delete this inspection report? This can't be undone.",
+      deletedToast: "Inspection report deleted.",
+      pdfTitle: "Vehicle Inspection Report",
+      pdfDate: "Date", pdfMileage: "Mileage", pdfVehicle: "Vehicle",
+      pdfTread: "Tire Tread Depth", pdfBrake: "Brake Pad Thickness",
+      pdfServices: "Services Performed", pdfNotes: "Notes",
+      pdfNone: "None recorded",
+      pdfGeneratedFor: (name) => `Generated for ${name}`,
+    },
     backup: {
       title: "Backup & Transfer",
       hint: "Move everything — every vehicle, its service list, and its history — to another device, or keep a backup somewhere safe.",
@@ -173,7 +201,7 @@ const I18N = {
       dueOnLine: (date) => `Due on ${date}`,
       dueOnLineOverdue: (date) => `Was due on ${date}`,
       avgKmLabel: "Avg. KM / Month",
-      mileageThisYearLabel: "Driven This Year",
+      mileageThisYearLabel: "KM Driven This Year",
       seasonalWinterToSummer: "It's swap season — most people switch from winter to summer tires between the beginning of April and end of May.",
       seasonalSummerToWinter: "It's swap season — most people switch from summer to winter tires between mid-October and mid-December.",
       markSwapDone: "Mark as completed",
@@ -403,7 +431,7 @@ const I18N = {
     brandTagline: "sachez ce qui s'en vient, avant que ce soit en retard",
     madeWithClaude: "Créé avec Claude AI",
     nav: {tracker: "Suivi d'entretien", resources: "Ressources", share: "Partager et télécharger", about: "À propos", account: "Compte"},
-    trackerTabs: {setup: "Paramètres du véhicule", status: "État et entretien", history: "Historique"},
+    trackerTabs: {setup: "Paramètres du véhicule", status: "État et entretien", inspections: "Inspections", history: "Historique"},
     langButton: "🇬🇧 English",
     banner: {
       html: "Tous les intervalles d'entretien affichés ici représentent une moyenne entre les fabricants, selon l'horaire d'entretien en <b>conditions sévères</b> — et non l'horaire normal. Les conditions sévères incluent ce que vivent la plupart des conducteurs canadiens : hivers froids, circulation arrêt-départ en ville, étés de plus en plus chauds, routes poussiéreuses ou de gravier, trajets courts fréquents, et remorquage. Si votre conduite est plus légère, considérez ces intervalles comme une limite prudente et ajustez-les à votre guise.",
@@ -526,6 +554,34 @@ const I18N = {
       removeBody: "Ouvrez l'événement dans votre application de calendrier et supprimez-le, de la même façon que vous supprimeriez tout autre événement de calendrier — GearLog ne peut pas le gérer ou l'effacer à distance une fois ajouté à votre calendrier.",
       promptAfterDone: (name, date) => `Voulez-vous un rappel de calendrier pour le prochain entretien de ${name}, estimé vers le ${date}?`,
     },
+    inspections: {
+      title: "Inspections",
+      forDiyer: "Pour le bricoleur",
+      description: "Un moyen rapide de noter ce que vous trouvez sous le véhicule — profondeur de bande de roulement, épaisseur des plaquettes de frein, et tout autre détail à retenir — pour avoir un véritable historique dans le temps, pas seulement le souvenir que « ça avait l'air correct la dernière fois ». Chaque inspection enregistrée devient son propre rapport imprimable, et repérer une usure inégale ou des plaquettes qui s'amincissent tôt est exactement ce qui empêche les petits problèmes de devenir coûteux.",
+      date: "Date de l'inspection",
+      mileage: "Kilométrage (KM)",
+      treadLabel: "Profondeur de bande de roulement (mm)",
+      brakeLabel: "Épaisseur des plaquettes de frein (mm)",
+      fl: "Avant gauche", fr: "Avant droit", rl: "Arrière gauche", rr: "Arrière droit",
+      servicesLabel: "Entretiens effectués",
+      notesLabel: "Notes",
+      notesPlaceholder: "Tout autre détail à retenir — fuites, bruits, dommages, préoccupations à venir...",
+      saveBtn: "Enregistrer l'inspection",
+      savedToast: "Inspection enregistrée.",
+      reportsTitle: "Rapports d'inspection",
+      reportsEmpty: "Aucune inspection enregistrée pour l'instant — elles apparaîtront ici une fois que vous en aurez enregistré une depuis l'onglet Inspections.",
+      reportLine: (date, mileage) => `${date} — ${mileage} km`,
+      viewPdfBtn: "Voir le PDF",
+      exportAllBtn: "Tout exporter en PDF",
+      deleteReportConfirm: "Supprimer ce rapport d'inspection? Cette action est irréversible.",
+      deletedToast: "Rapport d'inspection supprimé.",
+      pdfTitle: "Rapport d'inspection du véhicule",
+      pdfDate: "Date", pdfMileage: "Kilométrage", pdfVehicle: "Véhicule",
+      pdfTread: "Profondeur de bande de roulement", pdfBrake: "Épaisseur des plaquettes de frein",
+      pdfServices: "Entretiens effectués", pdfNotes: "Notes",
+      pdfNone: "Aucun enregistré",
+      pdfGeneratedFor: (name) => `Généré pour ${name}`,
+    },
     backup: {
       title: "Sauvegarde et transfert",
       hint: "Transférez tout — chaque véhicule, sa liste d'entretien et son historique — vers un autre appareil, ou gardez une sauvegarde en lieu sûr.",
@@ -573,7 +629,7 @@ const I18N = {
       dueOnLine: (date) => `Dû le ${date}`,
       dueOnLineOverdue: (date) => `Était dû le ${date}`,
       avgKmLabel: "Moy. KM / mois",
-      mileageThisYearLabel: "Parcouru cette année",
+      mileageThisYearLabel: "KM parcourus cette année",
       seasonalWinterToSummer: "C'est la saison du changement — la plupart des gens passent des pneus d'hiver aux pneus d'été entre le début avril et la fin mai.",
       seasonalSummerToWinter: "C'est la saison du changement — la plupart des gens passent des pneus d'été aux pneus d'hiver entre la mi-octobre et la mi-décembre.",
       markSwapDone: "Marquer comme complété",
@@ -833,6 +889,8 @@ function defaultVehicle(name){
     optionalServicesEnabled: false,
     tireSwapCompletedFor: null,
     previousServiceSnapshot: null,
+    mileageLog: [],
+    inspections: [],
     items: {}, history: [],
   };
 }
@@ -1142,6 +1200,10 @@ Object.values(state.vehicles).forEach(v => {
   if(v.optionalServicesEnabled == null) v.optionalServicesEnabled = false;
   if(v.tireSwapCompletedFor === undefined) v.tireSwapCompletedFor = null;
   if(v.previousServiceSnapshot === undefined) v.previousServiceSnapshot = null;
+  if(v.mileageLog === undefined){
+    v.mileageLog = (v.currentMileage != null && v.currentDate) ? [{date: v.currentDate, km: Number(v.currentMileage)}] : [];
+  }
+  if(!Array.isArray(v.inspections)) v.inspections = [];
   // Brake service and cabin air filter used to be tracked automatically for every vehicle
   // and are now opt-in. Anyone who already had them tracked keeps them (and the toggle
   // reflects that), rather than silently losing that history.

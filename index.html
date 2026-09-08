@@ -450,6 +450,9 @@ function remindersCardHTML(){
     `;
   }).filter(Boolean).join("");
 
+  const nextSwap = getNextTireSwapInfo(v);
+  const nextSwapLabel = t("reminders." + (nextSwap.direction === "toSummer" ? "toSummerLabel" : "toWinterLabel"));
+
   return `
     <section class="card" id="setup-reminders-card">
       <h2>${t("reminders.title")}</h2>
@@ -458,6 +461,10 @@ function remindersCardHTML(){
       <div class="reminder-row reminder-row-featured">
         <span class="reminder-name">${t("reminders.monthlyLabel")}</span>
         <button class="btn secondary c-green" type="button" data-action="monthly-reminder-ics">${t("reminders.createBtn")}</button>
+      </div>
+      <div class="reminder-row reminder-row-featured">
+        <span class="reminder-name">${t("reminders.tireSwapLabel")(nextSwapLabel)}</span>
+        <button class="btn secondary c-green" type="button" data-action="tire-swap-reminder-ics">${t("reminders.createBtn")}</button>
       </div>
 
       ${itemRows ? `
@@ -572,31 +579,27 @@ function dataWarningModalHTML(){
   `;
 }
 
-let diagnosticDateOverride = null; // "YYYY-MM-DD" string set from diagnostic mode, or null for real-date behavior
-
-function getEffectiveToday(){
-  if(diagnosticDateOverride){
-    const parsed = parseISO(diagnosticDateOverride);
-    if(parsed) return parsed;
-  }
-  return new Date();
-}
-
 function diagnosticPanelHTML(){
   if(!diagnosticModeActive) return "";
+  const v = av();
   return `
     <section class="card" style="border:2px dashed var(--red-text); background: rgba(212,87,75,0.06);">
       <h2>🛠️ ${t("diagnostic.title")}</h2>
       <p class="card-sub">${t("diagnostic.description")}</p>
 
-      <label class="field">${t("diagnostic.overrideDateLabel")}
-        <input type="date" id="diagOverrideDate" value="${diagnosticDateOverride || ""}">
-      </label>
+      <div class="grid-2">
+        <label class="field">${t("diagnostic.simDateLabel")}
+          <input type="date" id="diagSimDate" value="${v.currentDate || todayISO()}">
+        </label>
+        <label class="field">${t("diagnostic.simMileageLabel")}
+          <input type="number" id="diagSimMileage" min="0" value="${v.currentMileage ?? ""}">
+        </label>
+      </div>
       <div class="actions-row" style="margin-top:10px;">
         <button class="btn secondary" type="button" data-action="apply-diagnostic-date">${t("diagnostic.applyDateBtn")}</button>
         <button class="btn secondary" type="button" data-action="clear-diagnostic-date">${t("diagnostic.clearDateBtn")}</button>
       </div>
-      ${diagnosticDateOverride ? `<p class="card-sub" style="margin-top:8px;">${t("diagnostic.currentlyOverriding")(diagnosticDateOverride)}</p>` : ""}
+      <p class="card-sub" style="margin-top:8px;">${t("diagnostic.simHint")}</p>
 
       <p class="dash-label" style="margin-top:18px;">${t("diagnostic.quickActionsLabel")}</p>
       <div class="actions-row" style="flex-wrap:wrap;">
@@ -612,8 +615,31 @@ function diagnosticPanelHTML(){
   `;
 }
 
-function getSeasonalSwapWindow(){
-  const today = getEffectiveToday();
+function getNextTireSwapInfo(vehicle){
+  const today = parseISO(vehicle.currentDate) || new Date();
+  const year = today.getFullYear();
+  const month = today.getMonth() + 1;
+  const day = today.getDate();
+
+  if(month <= 3 || (month === 12 && day > 15)){
+    // Jan-Mar, or Dec 16-31 -> next swap is summer (this year, or next year if we're in December)
+    const targetYear = month === 12 ? year + 1 : year;
+    return { direction: "toSummer", targetDate: `${targetYear}-04-01` };
+  }
+  if(month === 4 || month === 5){
+    // Currently in the summer window
+    return { direction: "toSummer", targetDate: `${year}-05-31` };
+  }
+  if(month >= 6 && month <= 9 || (month === 10 && day < 15)){
+    // Jun-Sep, or Oct 1-14 -> next swap is winter this year
+    return { direction: "toWinter", targetDate: `${year}-10-15` };
+  }
+  // Oct 15 - Dec 15 -> currently in the winter window
+  return { direction: "toWinter", targetDate: `${year}-12-15` };
+}
+
+function getSeasonalSwapWindow(vehicle){
+  const today = parseISO(vehicle.currentDate) || new Date();
   const month = today.getMonth() + 1; // 1-12
   const day = today.getDate();
   const year = today.getFullYear();
@@ -634,7 +660,7 @@ function dashboardHTML(){
     return result ? { key, name: itemDisplayName(key, item), item, ...result } : null;
   }).filter(Boolean);
 
-  const swapWindow = getSeasonalSwapWindow();
+  const swapWindow = getSeasonalSwapWindow(v);
   const swapAlreadyDone = swapWindow && v.tireSwapCompletedFor === swapWindow.id;
   const showSwapBanner = swapWindow && !swapAlreadyDone;
 
@@ -662,11 +688,11 @@ function dashboardHTML(){
 
   const swapHTML = showSwapBanner ? `
     <div class="dash-seasonal">
-      <div><b>🔄</b> ${t("dashboard." + (swapWindow.direction === "toSummer" ? "seasonalWinterToSummer" : "seasonalSummerToWinter"))}</div>
-      <label class="dash-swap-check">
-        <input type="checkbox" data-action="mark-tire-swap-done" data-key="${swapWindow.id}">
-        ${t("dashboard.markSwapDone")}
-      </label>
+      <p class="dash-seasonal-title">${t("dashboard.seasonalSwapTitle")}</p>
+      <div>${t("dashboard." + (swapWindow.direction === "toSummer" ? "seasonalWinterToSummer" : "seasonalSummerToWinter"))}</div>
+      <div class="actions-row" style="margin-top:4px;">
+        <button class="btn secondary c-blue" type="button" data-action="mark-tire-swap-done" data-key="${swapWindow.id}" data-direction="${swapWindow.direction}">${t("dashboard.markSwapDone")}</button>
+      </div>
     </div>
   ` : "";
 
@@ -798,7 +824,7 @@ function itemsSectionHTML(){
         <label>&nbsp;<button class="btn secondary" type="button" data-action="add-custom-item">${t("customItem.add")}</button></label>
       </div>
       <label style="display:flex; align-items:center; gap:8px; margin-top:12px; font-size:12.5px; color:var(--text-dim2); cursor:pointer;">
-        <input type="checkbox" id="customItemOptional" style="width:auto;">
+        <input type="checkbox" id="customItemOptional">
         ${t("customItem.markOptional")}
       </label>
     </section>
@@ -1115,6 +1141,18 @@ function historyCardHTML(){
 }
 
 
+function logMileageEntry(vehicle){
+  if(vehicle.currentMileage == null) return;
+  const today = vehicle.currentDate || todayISO();
+  if(!vehicle.mileageLog) vehicle.mileageLog = [];
+  const lastEntry = vehicle.mileageLog[vehicle.mileageLog.length - 1];
+  if(lastEntry && lastEntry.date === today){
+    lastEntry.km = vehicle.currentMileage;
+  } else {
+    vehicle.mileageLog.push({date: today, km: vehicle.currentMileage});
+  }
+}
+
 function updatePreviousServiceSnapshot(vehicle, key, mileage, date){
   const batchKey = `${mileage}_${date}`;
   if(vehicle.previousServiceSnapshotKey !== batchKey){
@@ -1313,18 +1351,24 @@ appEl.addEventListener("click", (e) => {
 
   switch(action){
     case "apply-diagnostic-date": {
-      const dateEl = document.getElementById("diagOverrideDate");
+      const dateEl = document.getElementById("diagSimDate");
+      const mileageEl = document.getElementById("diagSimMileage");
       if(dateEl && dateEl.value){
-        diagnosticDateOverride = dateEl.value;
-        render();
+        vehicle.currentDate = dateEl.value;
+        if(mileageEl && mileageEl.value !== ""){
+          vehicle.currentMileage = Number(mileageEl.value);
+        }
+        logMileageEntry(vehicle);
+        saveState(); render();
         showToast(t("diagnostic.dateAppliedToast")(dateEl.value));
       }
       break;
     }
 
     case "clear-diagnostic-date":
-      diagnosticDateOverride = null;
-      render();
+      vehicle.currentDate = todayISO();
+      logMileageEntry(vehicle);
+      saveState(); render();
       showToast(t("diagnostic.dateClearedToast"));
       break;
 
@@ -1348,9 +1392,25 @@ appEl.addEventListener("click", (e) => {
 
     case "exit-diagnostic-mode":
       diagnosticModeActive = false;
-      diagnosticDateOverride = null;
-      render();
+      vehicle.currentDate = todayISO();
+      logMileageEntry(vehicle);
+      saveState(); render();
       break;
+
+    case "mark-tire-swap-done": {
+      vehicle.tireSwapCompletedFor = key;
+      const completedDirection = el.getAttribute("data-direction");
+      saveState(); render();
+      showToast(t("dashboard.swapMarkedDoneToast"));
+
+      const year = (parseISO(vehicle.currentDate) || new Date()).getFullYear();
+      const next = completedDirection === "toSummer"
+        ? { direction: "toWinter", targetDate: `${year}-10-15` }
+        : { direction: "toSummer", targetDate: `${year + 1}-04-01` };
+      const nextLabel = t("reminders." + (next.direction === "toSummer" ? "toSummerLabel" : "toWinterLabel"));
+      requestConfirm(t("dashboard.promptNextSwap")(nextLabel, fmtDate(parseISO(next.targetDate))), "create-tire-swap-reminder", null, next);
+      break;
+    }
 
     case "logo-click": {
       const now = Date.now();
@@ -1430,6 +1490,10 @@ appEl.addEventListener("click", (e) => {
         vehicle.inspections = (vehicle.inspections || []).filter(i => i.id !== deferredKey);
         saveState(); render();
         showToast(t("inspections.deletedToast"));
+      } else if(deferredAction === "create-tire-swap-reminder"){
+        const nextLabel = t("reminders." + (deferredExtra.direction === "toSummer" ? "toSummerLabel" : "toWinterLabel"));
+        downloadICS([{name: nextLabel, date: parseISO(deferredExtra.targetDate)}]);
+        showToast(t("reminders.createdOneToast")(nextLabel));
       }
       break;
     }
@@ -1621,6 +1685,14 @@ appEl.addEventListener("click", (e) => {
       showToast(t("reminders.createdMonthlyToast"));
       break;
 
+    case "tire-swap-reminder-ics": {
+      const next = getNextTireSwapInfo(vehicle);
+      const nextLabel = t("reminders." + (next.direction === "toSummer" ? "toSummerLabel" : "toWinterLabel"));
+      downloadICS([{name: nextLabel, date: parseISO(next.targetDate)}]);
+      showToast(t("reminders.createdOneToast")(nextLabel));
+      break;
+    }
+
     case "switch-tab":
       activeTab[key] = el.getAttribute("data-tab") || "last";
       detailsOpen[key] = true;
@@ -1808,15 +1880,6 @@ appEl.addEventListener("change", (e) => {
   const el = e.target;
   const vehicle = av();
 
-  if(el.getAttribute("data-action") === "mark-tire-swap-done"){
-    if(el.checked){
-      vehicle.tireSwapCompletedFor = el.getAttribute("data-key");
-      saveState(); render();
-      showToast(t("dashboard.swapMarkedDoneToast"));
-    }
-    return;
-  }
-
   if(el.id === "importFileInput"){
     const file = el.files[0];
     if(!file) return;
@@ -1833,16 +1896,7 @@ appEl.addEventListener("change", (e) => {
     const val = el.value;
     if(setupField === "currentMileage" || setupField === "avgMonthlyKm"){
       vehicle[setupField] = val === "" ? null : Number(val);
-      if(setupField === "currentMileage" && vehicle.currentMileage != null){
-        const today = vehicle.currentDate || todayISO();
-        if(!vehicle.mileageLog) vehicle.mileageLog = [];
-        const lastEntry = vehicle.mileageLog[vehicle.mileageLog.length - 1];
-        if(lastEntry && lastEntry.date === today){
-          lastEntry.km = vehicle.currentMileage;
-        } else {
-          vehicle.mileageLog.push({date: today, km: vehicle.currentMileage});
-        }
-      }
+      if(setupField === "currentMileage") logMileageEntry(vehicle);
     } else {
       vehicle[setupField] = val;
     }

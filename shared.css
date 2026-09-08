@@ -207,12 +207,11 @@
   .dash-item-line{font-family: var(--font-mono); font-size:11.5px; color: var(--text-dim2); line-height:1.5; white-space:normal; overflow-wrap:break-word; word-break:break-word;}
   .dash-empty{color: var(--text-dim2); font-size:13px; margin:0;}
   .dash-seasonal{
-    display:flex; flex-direction:column; gap:10px; background: rgba(242,169,59,0.10); border:1px solid var(--amber);
-    border-radius: var(--radius); padding:12px 14px; font-size:13px; color: var(--text-dim); line-height:1.5; margin-bottom:16px;
+    display:flex; flex-direction:column; gap:6px; background: rgba(242,169,59,0.10); border:1px solid var(--amber);
+    border-radius: var(--radius); padding:14px 16px; font-size:13px; color: var(--text-dim); line-height:1.5; margin-bottom:16px;
   }
+  .dash-seasonal-title{font-family: var(--font-display); font-weight:700; font-size:14px; color: var(--amber); margin:0;}
   .dash-seasonal b{color: var(--amber);}
-  .dash-swap-check{display:flex; align-items:center; gap:8px; font-size:12.5px; color: var(--text-dim2); cursor:pointer;}
-  .dash-swap-check input{width:auto;}
 
   .reminder-row{
     display:flex; align-items:center; justify-content:space-between; gap:12px;
@@ -261,13 +260,25 @@
   select:focus, input:focus, textarea:focus{border-color: var(--amber);}
   select{font-family: var(--font-body); font-size:13.5px;}
   input:disabled{opacity:0.5; cursor:not-allowed;}
+
+  input[type=checkbox]{
+    appearance: none; -webkit-appearance: none; width:18px; height:18px; flex-shrink:0;
+    border: 1.5px solid var(--hairline); border-radius:5px; background: var(--panel-raised);
+    cursor:pointer; position:relative; margin:0; transition: background .12s ease, border-color .12s ease;
+  }
+  input[type=checkbox]:hover{border-color: var(--amber-dim, var(--amber));}
+  input[type=checkbox]:checked{background: var(--amber); border-color: var(--amber);}
+  input[type=checkbox]:checked::after{
+    content:"✓"; position:absolute; top:50%; left:50%; transform:translate(-50%, -55%);
+    color: var(--bg); font-size:13px; font-weight:800; line-height:1;
+  }
+  input[type=checkbox]:focus-visible{outline:2px solid var(--amber); outline-offset:2px;}
   textarea{resize:vertical; min-height:70px; font-family: var(--font-body); font-size:13.5px; line-height:1.5;}
   .grid-4{display:grid; grid-template-columns: repeat(4, 1fr); gap: 10px;}
   @media (max-width: 520px){ .grid-4{grid-template-columns: repeat(2, 1fr);} }
   .insp-subtitle{font-family: var(--font-display); font-weight:700; font-size:16px; color: var(--amber); margin:-4px 0 10px;}
   .insp-checklist{display:flex; flex-direction:column; gap:8px;}
   .insp-check{display:flex; align-items:center; gap:8px; font-size:13px; cursor:pointer;}
-  .insp-check input{width:auto;}
 
   .btn{
     font-family: var(--font-display); font-weight:600; letter-spacing:0.4px; text-transform: uppercase; font-size: 12.5px;

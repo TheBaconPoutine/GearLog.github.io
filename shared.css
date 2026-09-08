@@ -558,6 +558,8 @@
 
   .item .rank-num{font-family: var(--font-mono); color: var(--text-dim2); font-weight:400; margin-right:8px; font-size:12.5px;}
   .item p.note{margin: 8px 0 0; font-size:13px; color: var(--text-dim); line-height:1.55;}
+  .item p.note a{color: var(--text); text-decoration: underline; text-underline-offset: 2px;}
+  .item p.note a:hover{color: var(--amber);}
 
   /* Tire subcategory accordion buttons — themed to match each subcategory's ranking gradient */
   details.sub.theme-winter{--sec-fill:#1D6FA5; --sec-text:#7EC1EA;}

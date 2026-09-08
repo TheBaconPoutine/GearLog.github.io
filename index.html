@@ -105,6 +105,8 @@ let historyFilter = "all"; // "all" | "service" | "repair"
 let dataWarningDismissedThisSession = sessionStorage.getItem("gearlog_data_warning_dismissed") === "1"; // persists for this browser tab session — survives navigating between pages, resets when the tab/window is closed, or when you sign out
 let pendingCondition = {}; // vehicleId -> "severe" | "normal", transient selection awaiting confirmation
 let listBuildLoading = false; // purely cosmetic brief loading state shown while creating/updating the service list
+let logoClickTimes = []; // timestamps of recent logo clicks, for the diagnostic-mode trigger
+let diagnosticModeActive = false;
 
 function addRecommendedOptionalServices(vehicle){
   RECOMMENDED_OPTIONAL_IDS.forEach(id => {
@@ -275,7 +277,7 @@ function trackerTabContentHTML(){
       let html = setupCardHTML();
       if(sc.basics) html += vehicleInfoCardHTML();
       if(sc.info) html += drivingConditionCardHTML();
-      if(sc.conditions) html += buildListCardHTML();
+      if(sc.conditions) html += remindersCardHTML() + buildListCardHTML();
       return html;
     }
   }
@@ -454,10 +456,6 @@ function remindersCardHTML(){
       <p style="font-size:12.5px; color:var(--text-dim2); margin:-6px 0 16px; line-height:1.5;">${t("reminders.description")}</p>
 
       <div class="reminder-row reminder-row-featured">
-        <span class="reminder-name">${t("reminders.allServicesLabel")}</span>
-        <button class="btn secondary c-green" type="button" data-action="export-all-ics">${t("reminders.createBtn")}</button>
-      </div>
-      <div class="reminder-row reminder-row-featured">
         <span class="reminder-name">${t("reminders.monthlyLabel")}</span>
         <button class="btn secondary c-green" type="button" data-action="monthly-reminder-ics">${t("reminders.createBtn")}</button>
       </div>
@@ -574,8 +572,48 @@ function dataWarningModalHTML(){
   `;
 }
 
+let diagnosticDateOverride = null; // "YYYY-MM-DD" string set from diagnostic mode, or null for real-date behavior
+
+function getEffectiveToday(){
+  if(diagnosticDateOverride){
+    const parsed = parseISO(diagnosticDateOverride);
+    if(parsed) return parsed;
+  }
+  return new Date();
+}
+
+function diagnosticPanelHTML(){
+  if(!diagnosticModeActive) return "";
+  return `
+    <section class="card" style="border:2px dashed var(--red-text); background: rgba(212,87,75,0.06);">
+      <h2>🛠️ ${t("diagnostic.title")}</h2>
+      <p class="card-sub">${t("diagnostic.description")}</p>
+
+      <label class="field">${t("diagnostic.overrideDateLabel")}
+        <input type="date" id="diagOverrideDate" value="${diagnosticDateOverride || ""}">
+      </label>
+      <div class="actions-row" style="margin-top:10px;">
+        <button class="btn secondary" type="button" data-action="apply-diagnostic-date">${t("diagnostic.applyDateBtn")}</button>
+        <button class="btn secondary" type="button" data-action="clear-diagnostic-date">${t("diagnostic.clearDateBtn")}</button>
+      </div>
+      ${diagnosticDateOverride ? `<p class="card-sub" style="margin-top:8px;">${t("diagnostic.currentlyOverriding")(diagnosticDateOverride)}</p>` : ""}
+
+      <p class="dash-label" style="margin-top:18px;">${t("diagnostic.quickActionsLabel")}</p>
+      <div class="actions-row" style="flex-wrap:wrap;">
+        <button class="btn secondary" type="button" data-action="diag-reset-onboarding">${t("diagnostic.resetOnboardingBtn")}</button>
+        <button class="btn secondary" type="button" data-action="diag-reset-tireswap">${t("diagnostic.resetTireSwapBtn")}</button>
+        <button class="btn secondary" type="button" data-action="diag-simulate-away">${t("diagnostic.simulateAwayBtn")}</button>
+      </div>
+
+      <div class="actions-row" style="margin-top:18px; padding-top:14px; border-top:1px solid var(--hairline);">
+        <button class="btn secondary c-red" type="button" data-action="exit-diagnostic-mode">${t("diagnostic.exitBtn")}</button>
+      </div>
+    </section>
+  `;
+}
+
 function getSeasonalSwapWindow(){
-  const today = new Date();
+  const today = getEffectiveToday();
   const month = today.getMonth() + 1; // 1-12
   const day = today.getDate();
   const year = today.getFullYear();
@@ -877,10 +915,10 @@ function inspectionsTabHTML(){
 
       <p class="dash-label" style="margin-top:22px;">${t("inspections.treadLabel")}</p>
       <div class="grid-4">
-        <label class="field">${t("inspections.fl")}<input type="number" id="inspTreadFL" min="0" step="0.5"></label>
-        <label class="field">${t("inspections.fr")}<input type="number" id="inspTreadFR" min="0" step="0.5"></label>
-        <label class="field">${t("inspections.rl")}<input type="number" id="inspTreadRL" min="0" step="0.5"></label>
-        <label class="field">${t("inspections.rr")}<input type="number" id="inspTreadRR" min="0" step="0.5"></label>
+        <label class="field">${t("inspections.fl")}<input type="number" id="inspTreadFL" min="0" max="20" step="1" placeholder="5"></label>
+        <label class="field">${t("inspections.fr")}<input type="number" id="inspTreadFR" min="0" max="20" step="1" placeholder="5"></label>
+        <label class="field">${t("inspections.rl")}<input type="number" id="inspTreadRL" min="0" max="20" step="1" placeholder="5"></label>
+        <label class="field">${t("inspections.rr")}<input type="number" id="inspTreadRR" min="0" max="20" step="1" placeholder="5"></label>
       </div>
 
       <p class="dash-label" style="margin-top:18px;">${t("inspections.brakeLabel")}</p>
@@ -913,7 +951,8 @@ function buildInspectionReportHTML(vehicle, insp, addPageBreak){
   const vehicleLabel = [vehicle.year, vehicle.make, vehicle.model].filter(Boolean).join(" ") || vehicle.name;
   const tread = insp.tireTread || {};
   const brake = insp.brakePad || {};
-  const dash = (v) => (v === "" || v == null) ? "—" : `${v} mm`;
+  const dashTread = (v) => (v === "" || v == null) ? "—" : `${v}/32"`;
+  const dashBrake = (v) => (v === "" || v == null) ? "—" : `${v} mm`;
 
   return `
     <div class="pdf-page"${addPageBreak ? ' style="page-break-after: always;"' : ""}>
@@ -930,13 +969,13 @@ function buildInspectionReportHTML(vehicle, insp, addPageBreak){
       <h2>${t("inspections.pdfTread")}</h2>
       <table class="pdf-table">
         <tr><th>${t("inspections.fl")}</th><th>${t("inspections.fr")}</th><th>${t("inspections.rl")}</th><th>${t("inspections.rr")}</th></tr>
-        <tr><td>${dash(tread.fl)}</td><td>${dash(tread.fr)}</td><td>${dash(tread.rl)}</td><td>${dash(tread.rr)}</td></tr>
+        <tr><td>${dashTread(tread.fl)}</td><td>${dashTread(tread.fr)}</td><td>${dashTread(tread.rl)}</td><td>${dashTread(tread.rr)}</td></tr>
       </table>
 
       <h2>${t("inspections.pdfBrake")}</h2>
       <table class="pdf-table">
         <tr><th>${t("inspections.fl")}</th><th>${t("inspections.fr")}</th><th>${t("inspections.rl")}</th><th>${t("inspections.rr")}</th></tr>
-        <tr><td>${dash(brake.fl)}</td><td>${dash(brake.fr)}</td><td>${dash(brake.rl)}</td><td>${dash(brake.rr)}</td></tr>
+        <tr><td>${dashBrake(brake.fl)}</td><td>${dashBrake(brake.fr)}</td><td>${dashBrake(brake.rl)}</td><td>${dashBrake(brake.rr)}</td></tr>
       </table>
 
       <h2>${t("inspections.pdfServices")}</h2>
@@ -1075,6 +1114,16 @@ function historyCardHTML(){
   `;
 }
 
+
+function updatePreviousServiceSnapshot(vehicle, key, mileage, date){
+  const batchKey = `${mileage}_${date}`;
+  if(vehicle.previousServiceSnapshotKey !== batchKey){
+    vehicle.previousServiceSnapshot = [];
+    vehicle.previousServiceSnapshotKey = batchKey;
+  }
+  if(!Array.isArray(vehicle.previousServiceSnapshot)) vehicle.previousServiceSnapshot = [];
+  if(!vehicle.previousServiceSnapshot.includes(key)) vehicle.previousServiceSnapshot.push(key);
+}
 
 function addHistoryEntry(vehicle, {itemKey, name, km, date, notes, source, type}){
   vehicle.history.push({
@@ -1215,6 +1264,7 @@ function render(){
     }
     let html = headerHTML() + navHTML();
     html += vehicleTabsHTML() + trackerSubNavHTML();
+    html += diagnosticPanelHTML();
     html += listBuildLoading ? loadingScreenHTML() : trackerTabContentHTML();
     html += footerHTML() + changelogModalHTML() + dataWarningModalHTML() + onboardingModalHTML() + confirmModalHTML() + toastHTML();
     appEl.innerHTML = html;
@@ -1262,6 +1312,59 @@ appEl.addEventListener("click", (e) => {
   const vehicle = av();
 
   switch(action){
+    case "apply-diagnostic-date": {
+      const dateEl = document.getElementById("diagOverrideDate");
+      if(dateEl && dateEl.value){
+        diagnosticDateOverride = dateEl.value;
+        render();
+        showToast(t("diagnostic.dateAppliedToast")(dateEl.value));
+      }
+      break;
+    }
+
+    case "clear-diagnostic-date":
+      diagnosticDateOverride = null;
+      render();
+      showToast(t("diagnostic.dateClearedToast"));
+      break;
+
+    case "diag-reset-onboarding":
+      state.hasSeenOnboardingPopup = false;
+      saveState();
+      showToast(t("diagnostic.resetOnboardingToast"));
+      break;
+
+    case "diag-reset-tireswap":
+      vehicle.tireSwapCompletedFor = null;
+      saveState(); render();
+      showToast(t("diagnostic.resetTireSwapToast"));
+      break;
+
+    case "diag-simulate-away":
+      state.lastOpenedAt = new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString();
+      saveState();
+      showToast(t("diagnostic.simulateAwayToast"));
+      break;
+
+    case "exit-diagnostic-mode":
+      diagnosticModeActive = false;
+      diagnosticDateOverride = null;
+      render();
+      break;
+
+    case "logo-click": {
+      const now = Date.now();
+      logoClickTimes.push(now);
+      logoClickTimes = logoClickTimes.filter(t => now - t <= 5000);
+      if(logoClickTimes.length >= 10){
+        logoClickTimes = [];
+        diagnosticModeActive = !diagnosticModeActive;
+        render();
+        showToast(diagnosticModeActive ? t("diagnostic.enabledToast") : t("diagnostic.disabledToast"));
+      }
+      break;
+    }
+
     case "goto-item": {
       detailsOpen["__itemsSection"] = true;
       detailsOpen[key] = true;
@@ -1385,7 +1488,6 @@ appEl.addEventListener("click", (e) => {
         ensureItemsForCurrentPreset(vehicle);
         if(vehicle.optionalServicesEnabled) addRecommendedOptionalServices(vehicle);
         const count = Object.keys(vehicle.items).length;
-        vehicle.previousServiceSnapshot = [];
 
         let assumedDate = null;
         if(vehicle.assumeNoPriorHistory){
@@ -1396,7 +1498,7 @@ appEl.addEventListener("click", (e) => {
             vehicle.items[k].lastDate = assumedDate;
           });
           vehicle.assumeNoPriorHistory = false;
-          vehicle.previousServiceSnapshot = Object.keys(vehicle.items);
+          Object.keys(vehicle.items).forEach(k => updatePreviousServiceSnapshot(vehicle, k, 0, assumedDate));
         }
 
         vehicle.setupConfirmed.basics = true;
@@ -1514,19 +1616,6 @@ appEl.addEventListener("click", (e) => {
       document.getElementById("importFileInput").click();
       break;
 
-    case "export-all-ics": {
-      const events = [];
-      Object.keys(vehicle.items).forEach(k => {
-        const item = vehicle.items[k];
-        const result = computeItem(vehicle, item);
-        if(result) events.push({name: itemDisplayName(k, item), date: result.projectedDate});
-      });
-      if(events.length === 0){ showToast(t("item.enterPrompt"), "error"); break; }
-      downloadICS(events);
-      showToast(t("reminders.createdAllToast"));
-      break;
-    }
-
     case "monthly-reminder-ics":
       downloadMonthlyReminderICS();
       showToast(t("reminders.createdMonthlyToast"));
@@ -1560,8 +1649,7 @@ appEl.addEventListener("click", (e) => {
             km: item.lastKm, date: item.lastDate, notes: "", source: "auto",
           });
         }
-        if(!Array.isArray(vehicle.previousServiceSnapshot)) vehicle.previousServiceSnapshot = [];
-        if(!vehicle.previousServiceSnapshot.includes(key)) vehicle.previousServiceSnapshot.push(key);
+        updatePreviousServiceSnapshot(vehicle, key, item.lastKm, item.lastDate);
       }
       saveState(); render();
       showToast(t("item.updatedToast")(itemDisplayName(key, item)));
@@ -1579,8 +1667,7 @@ appEl.addEventListener("click", (e) => {
         name: item.custom ? item.customName : null,
         km: mileage, date: vehicle.currentDate || todayISO(), notes: "", source: "auto",
       });
-      if(!Array.isArray(vehicle.previousServiceSnapshot)) vehicle.previousServiceSnapshot = [];
-      if(!vehicle.previousServiceSnapshot.includes(key)) vehicle.previousServiceSnapshot.push(key);
+      updatePreviousServiceSnapshot(vehicle, key, mileage, item.lastDate);
       saveState(); render();
       showToast(t("item.markedDoneToast")(itemDisplayName(key, item)));
 

@@ -132,7 +132,7 @@ const I18N = {
       description: "A quick way to log what you find under the vehicle — tread depth, brake pad thickness, and anything else worth noting — so you've got a real record over time, not just a memory of \"it looked fine last time.\" Every saved inspection becomes its own printable report, and catching uneven wear or thinning pads early is exactly what keeps small issues from turning into expensive ones.",
       date: "Inspection Date",
       mileage: "Mileage (KM)",
-      treadLabel: "Tire Tread Depth (mm)",
+      treadLabel: "Tire Tread Depth (32nds of an inch)",
       brakeLabel: "Brake Pad Thickness (mm)",
       fl: "Front Left", fr: "Front Right", rl: "Rear Left", rr: "Rear Right",
       servicesLabel: "Services Performed",
@@ -153,6 +153,26 @@ const I18N = {
       pdfServices: "Services Performed", pdfNotes: "Notes",
       pdfNone: "None recorded",
       pdfGeneratedFor: (name) => `Generated for ${name}`,
+    },
+    diagnostic: {
+      title: "Diagnostic Mode",
+      description: "Testing tools only — override the date used for date-dependent features below, or quickly reset flags to re-trigger a flow, without needing to wait real days for it.",
+      overrideDateLabel: "Override Today's Date",
+      applyDateBtn: "Apply",
+      clearDateBtn: "Clear Override",
+      currentlyOverriding: (date) => `Currently overriding today's date to ${date} for the seasonal tire swap check.`,
+      quickActionsLabel: "Quick Actions",
+      resetOnboardingBtn: "Reset First-Time Popup",
+      resetTireSwapBtn: "Reset Tire Swap Reminder",
+      simulateAwayBtn: "Simulate 5 Days Away",
+      exitBtn: "Exit Diagnostic Mode",
+      enabledToast: "Diagnostic mode enabled.",
+      disabledToast: "Diagnostic mode disabled.",
+      dateAppliedToast: (date) => `Override date set to ${date}.`,
+      dateClearedToast: "Override date cleared — using the real date again.",
+      resetOnboardingToast: "First-time popup will show again on your next list creation.",
+      resetTireSwapToast: "Tire swap reminder will show again if you're in a swap window.",
+      simulateAwayToast: "Last-opened timestamp set to 5 days ago — reopen the app (or reload) to see the effect.",
     },
     backup: {
       title: "Backup & Transfer",
@@ -560,7 +580,7 @@ const I18N = {
       description: "Un moyen rapide de noter ce que vous trouvez sous le véhicule — profondeur de bande de roulement, épaisseur des plaquettes de frein, et tout autre détail à retenir — pour avoir un véritable historique dans le temps, pas seulement le souvenir que « ça avait l'air correct la dernière fois ». Chaque inspection enregistrée devient son propre rapport imprimable, et repérer une usure inégale ou des plaquettes qui s'amincissent tôt est exactement ce qui empêche les petits problèmes de devenir coûteux.",
       date: "Date de l'inspection",
       mileage: "Kilométrage (KM)",
-      treadLabel: "Profondeur de bande de roulement (mm)",
+      treadLabel: "Profondeur de bande de roulement (32es de pouce)",
       brakeLabel: "Épaisseur des plaquettes de frein (mm)",
       fl: "Avant gauche", fr: "Avant droit", rl: "Arrière gauche", rr: "Arrière droit",
       servicesLabel: "Entretiens effectués",
@@ -581,6 +601,26 @@ const I18N = {
       pdfServices: "Entretiens effectués", pdfNotes: "Notes",
       pdfNone: "Aucun enregistré",
       pdfGeneratedFor: (name) => `Généré pour ${name}`,
+    },
+    diagnostic: {
+      title: "Mode diagnostic",
+      description: "Outils de test seulement — remplacez la date utilisée pour les fonctionnalités liées à la date ci-dessous, ou réinitialisez rapidement des indicateurs pour redéclencher un parcours, sans devoir attendre plusieurs jours réels.",
+      overrideDateLabel: "Remplacer la date d'aujourd'hui",
+      applyDateBtn: "Appliquer",
+      clearDateBtn: "Effacer le remplacement",
+      currentlyOverriding: (date) => `La date d'aujourd'hui est actuellement remplacée par ${date} pour la vérification du changement de pneus saisonnier.`,
+      quickActionsLabel: "Actions rapides",
+      resetOnboardingBtn: "Réinitialiser la fenêtre de bienvenue",
+      resetTireSwapBtn: "Réinitialiser le rappel de changement de pneus",
+      simulateAwayBtn: "Simuler 5 jours d'absence",
+      exitBtn: "Quitter le mode diagnostic",
+      enabledToast: "Mode diagnostic activé.",
+      disabledToast: "Mode diagnostic désactivé.",
+      dateAppliedToast: (date) => `Date de remplacement définie à ${date}.`,
+      dateClearedToast: "Date de remplacement effacée — utilisation de la vraie date à nouveau.",
+      resetOnboardingToast: "La fenêtre de bienvenue s'affichera de nouveau à votre prochaine création de liste.",
+      resetTireSwapToast: "Le rappel de changement de pneus s'affichera de nouveau si vous êtes dans une période de changement.",
+      simulateAwayToast: "Horodatage de dernière ouverture réglé à 5 jours dans le passé — rouvrez l'application (ou rechargez) pour voir l'effet.",
     },
     backup: {
       title: "Sauvegarde et transfert",
@@ -889,6 +929,7 @@ function defaultVehicle(name){
     optionalServicesEnabled: false,
     tireSwapCompletedFor: null,
     previousServiceSnapshot: null,
+    previousServiceSnapshotKey: null,
     mileageLog: [],
     inspections: [],
     items: {}, history: [],
@@ -1200,6 +1241,7 @@ Object.values(state.vehicles).forEach(v => {
   if(v.optionalServicesEnabled == null) v.optionalServicesEnabled = false;
   if(v.tireSwapCompletedFor === undefined) v.tireSwapCompletedFor = null;
   if(v.previousServiceSnapshot === undefined) v.previousServiceSnapshot = null;
+  if(v.previousServiceSnapshotKey === undefined) v.previousServiceSnapshotKey = null;
   if(v.mileageLog === undefined){
     v.mileageLog = (v.currentMileage != null && v.currentDate) ? [{date: v.currentDate, km: Number(v.currentMileage)}] : [];
   }
@@ -1346,7 +1388,7 @@ function headerHTML(){
   return `
     <header class="top">
       <div class="brand">
-        <div class="mark">GEAR<span>LOG</span></div>
+        <div class="mark" data-action="logo-click" style="cursor:pointer;">GEAR<span>LOG</span></div>
         <div class="tagline">${t("brandTagline")}</div>
         <div class="made-with">${t("madeWithClaude")}</div>
       </div>

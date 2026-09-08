@@ -147,10 +147,42 @@ const THRESH = {
   graceKm: 200, graceDays: 7,
 };
 
+function calculateAvgMonthlyKm(vehicle){
+  const entries = (vehicle.history || [])
+    .filter(h => h.km != null && h.date)
+    .slice()
+    .sort((a, b) => a.date.localeCompare(b.date));
+  if(entries.length < 2) return null;
+  const first = entries[0];
+  const last = entries[entries.length - 1];
+  const days = daysBetween(parseISO(first.date), parseISO(last.date));
+  const kmDiff = Number(last.km) - Number(first.km);
+  if(days <= 0 || kmDiff <= 0) return null;
+  return kmDiff / (days / 30.44);
+}
+
+function calculateMileageThisYear(vehicle){
+  const currentKm = Number(vehicle.currentMileage);
+  if(!currentKm) return null;
+  const currentYear = new Date().getFullYear();
+  const entries = (vehicle.history || [])
+    .filter(h => h.km != null && h.date)
+    .slice()
+    .sort((a, b) => a.date.localeCompare(b.date));
+  const beforeThisYear = entries.filter(h => parseISO(h.date).getFullYear() < currentYear);
+  const thisYearEntries = entries.filter(h => parseISO(h.date).getFullYear() === currentYear);
+  let baselineKm = null;
+  if(beforeThisYear.length > 0) baselineKm = Number(beforeThisYear[beforeThisYear.length - 1].km);
+  else if(thisYearEntries.length > 0) baselineKm = Number(thisYearEntries[0].km);
+  if(baselineKm == null) return null;
+  const driven = currentKm - baselineKm;
+  return driven > 0 ? driven : null;
+}
+
 function computeItem(vehicle, item){
   const currentMileage = Number(vehicle.currentMileage) || 0;
   const currentDate = parseISO(vehicle.currentDate) || new Date();
-  const avgMonthlyKm = Number(vehicle.avgMonthlyKm) || 0;
+  const avgMonthlyKm = calculateAvgMonthlyKm(vehicle) || Number(vehicle.avgMonthlyKm) || 0;
 
   if(item.lastKm == null || !item.lastDate) return null;
 
@@ -223,7 +255,7 @@ function trackerTabContentHTML(){
       const hasItems = Object.keys(v.items).length > 0;
       if(hasItems){
         // Already set up — show every section at once for free editing, no gating.
-        return setupCardHTML() + vehicleInfoCardHTML() + drivingConditionCardHTML() + buildListCardHTML();
+        return setupCardHTML() + vehicleInfoCardHTML() + drivingConditionCardHTML() + buildListCardHTML() + remindersCardHTML();
       }
       let html = setupCardHTML();
       if(sc.basics) html += vehicleInfoCardHTML();
@@ -265,7 +297,7 @@ function vehicleInfoCardHTML(){
 
       <div class="year-highlight">
         <label class="field"><span style="display:flex; align-items:center;">${t("vehicleInfo.year")}<span class="status-pill">${t("vehicleInfo.yearBadge")}</span></span>
-          <input type="text" data-field="year" value="${v.year || ""}" placeholder="2016" ${!hasItems ? "required" : ""}>
+          <input type="number" data-field="year" value="${v.year || ""}" placeholder="2016" min="1900" max="${new Date().getFullYear() + 1}" step="1" ${!hasItems ? "required" : ""}>
           <span class="hint">${t("vehicleInfo.yearHint")}</span>
         </label>
       </div>
@@ -387,12 +419,52 @@ function buildListCardHTML(){
   `;
 }
 
+function remindersCardHTML(){
+  const v = av();
+  const itemRows = Object.keys(v.items).map(key => {
+    const item = v.items[key];
+    const result = computeItem(v, item);
+    if(!result) return "";
+    return `
+      <div class="reminder-row">
+        <span class="reminder-name">${itemDisplayName(key, item)}</span>
+        <button class="btn secondary c-green" type="button" data-action="export-one-ics" data-key="${key}">${t("reminders.createBtn")}</button>
+      </div>
+    `;
+  }).filter(Boolean).join("");
+
+  return `
+    <section class="card" id="setup-reminders-card">
+      <h2>${t("reminders.title")}</h2>
+      <p style="font-size:12.5px; color:var(--text-dim2); margin:-6px 0 16px; line-height:1.5;">${t("reminders.description")}</p>
+
+      <div class="reminder-row reminder-row-featured">
+        <span class="reminder-name">${t("reminders.allServicesLabel")}</span>
+        <button class="btn secondary c-green" type="button" data-action="export-all-ics">${t("reminders.createBtn")}</button>
+      </div>
+      <div class="reminder-row reminder-row-featured">
+        <span class="reminder-name">${t("reminders.monthlyLabel")}</span>
+        <button class="btn secondary c-green" type="button" data-action="monthly-reminder-ics">${t("reminders.createBtn")}</button>
+      </div>
+
+      ${itemRows ? `
+        <p class="dash-label" style="margin-top:22px;">${t("reminders.individualLabel")}</p>
+        <div class="reminder-list">${itemRows}</div>
+      ` : ""}
+
+      <div class="callout" style="margin-top:20px;">
+        <b>${t("reminders.removeTitle")}</b> ${t("reminders.removeBody")}
+      </div>
+    </section>
+  `;
+}
+
 function statusCardHTML(){
   const v = av();
   return `
     <section class="card">
       <h2>${t("status.title")}</h2>
-      <div class="grid-3">
+      <div class="grid-2">
         <label class="field">${t("status.currentMileage")}
           <input type="number" data-field="currentMileage" min="0" value="${v.currentMileage ?? ""}">
         </label>
@@ -400,15 +472,9 @@ function statusCardHTML(){
           <input type="date" data-field="currentDate" value="${v.currentDate || todayISO()}" readonly disabled style="opacity:0.65; cursor:default;">
           <span class="hint">${t("status.autoDateHint")}</span>
         </label>
-        <label class="field">${t("status.avgMonthlyKm")}
-          <input type="number" data-field="avgMonthlyKm" min="0" value="${v.avgMonthlyKm ?? ""}">
-          <span class="hint">${t("status.avgHint")}</span>
-        </label>
       </div>
       <div class="actions-row">
         <button class="btn" type="button" data-action="recalc">${t("status.recalc")}</button>
-        <button class="btn secondary c-green" type="button" data-action="export-all-ics">${t("status.exportAllIcs")}</button>
-        <button class="btn secondary c-green" type="button" data-action="monthly-reminder-ics">${t("status.monthlyReminderIcs")}</button>
         <button class="btn secondary c-red" type="button" data-action="reset-vehicle">${t("status.resetAll")}</button>
       </div>
     </section>
@@ -446,6 +512,29 @@ function backupCardHTML(){
 }
 
 
+let showOnboardingPopup = false;
+
+function onboardingModalHTML(){
+  if(!showOnboardingPopup) return "";
+  return `
+    <div class="modal-overlay" data-dismiss-action="dismiss-onboarding">
+      <div class="modal-box">
+        <div class="modal-box-header">
+          <h3>👋 ${t("onboarding.title")}</h3>
+          <button class="modal-close-x" type="button" data-action="dismiss-onboarding" aria-label="Close">✕</button>
+        </div>
+        <div class="modal-box-scroll">
+          <p>${t("onboarding.body")}</p>
+        </div>
+        <div class="modal-box-footer">
+          <a class="btn secondary" href="resources.html" style="text-decoration:none; display:inline-block; text-align:center;">${t("onboarding.goToResourcesBtn")}</a>
+          <button class="btn c-orange" type="button" data-action="dismiss-onboarding">${t("onboarding.dismiss")}</button>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
 function dataWarningModalHTML(){
   if(!authReady) return ""; // wait until we know whether there's an active signed-in session
   if(currentUser) return ""; // signed in — data is synced, this warning no longer applies
@@ -459,8 +548,10 @@ function dataWarningModalHTML(){
         </div>
         <div class="modal-box-scroll">
           <p>${t("dataWarning.body")}</p>
+          <p>${t("dataWarning.accountHint")}</p>
         </div>
         <div class="modal-box-footer">
+          <a class="btn secondary" href="account.html" style="text-decoration:none; display:inline-block; text-align:center;">${t("dataWarning.goToAccountBtn")}</a>
           <button class="btn c-orange" type="button" data-action="dismiss-data-warning">${t("dataWarning.dismiss")}</button>
         </div>
       </div>
@@ -522,22 +613,18 @@ function dashboardHTML(){
     </div>
   ` : "";
 
-  // Previous Service Done — every item with recorded history, most recent first.
-  const withHistory = computed.filter(c => c.item.lastKm != null && c.item.lastDate)
-    .sort((a, b) => (b.item.lastDate || "").localeCompare(a.item.lastDate || ""));
-  const previousHTML = withHistory.length > 0 ? `
-    <p class="dash-label">${t("dashboard.previousLabel")}</p>
-    <div class="dash-scroll">
-      ${withHistory.map(u => `
-        <div class="dash-row">
-          <div class="dash-row-top"><span class="dash-item-name">${u.name}</span></div>
-          <div class="dash-item-line">${t("dashboard.lastServiceLine")(Math.round(u.item.lastKm).toLocaleString(), fmtDate(parseISO(u.item.lastDate)))}</div>
-        </div>
-      `).join("")}
+  // Driving stats — auto-calculated from actual service history, never manually entered.
+  const avgKm = calculateAvgMonthlyKm(v);
+  const mileageThisYear = calculateMileageThisYear(v);
+  const statsHTML = (avgKm || mileageThisYear) ? `
+    <div class="dash-stats">
+      ${avgKm ? `<div class="dash-stat"><div class="dash-stat-value">${Math.round(avgKm).toLocaleString()}</div><div class="dash-stat-label">${t("dashboard.avgKmLabel")}</div></div>` : ""}
+      ${mileageThisYear ? `<div class="dash-stat"><div class="dash-stat-value">${Math.round(mileageThisYear).toLocaleString()}</div><div class="dash-stat-label">${t("dashboard.mileageThisYearLabel")}</div></div>` : ""}
     </div>
   ` : "";
 
-  // Next Services Due — anything within 8,000 km or 6 months (≈180 days), soonest first.
+  // Next Services Due — anything within 8,000 km or 6 months (≈180 days), soonest first. Kept to
+  // one line: just where/when it's due, no extra math spelled out.
   const dueSoonThresholdKm = 8000, dueSoonThresholdDays = 180;
   const dueSoon = computed.filter(c => c.kmRemaining <= dueSoonThresholdKm || c.daysRemaining <= dueSoonThresholdDays)
     .sort((a, b) => a.daysRemaining - b.daysRemaining);
@@ -547,14 +634,12 @@ function dashboardHTML(){
       ${dueSoon.map(u => {
         const nextDateStr = fmtDate(u.projectedDate);
         const isOverdue = u.status === "over";
-        const daysAbs = Math.round(Math.abs(u.daysRemaining));
         let line;
         if(u.hasKmInterval){
           const nextKmStr = Math.round(u.nextDueKm).toLocaleString();
-          const kmAbs = Math.round(Math.abs(u.kmRemaining)).toLocaleString();
-          line = isOverdue ? t("dashboard.nextServiceLineOverdue")(nextKmStr, nextDateStr, kmAbs, daysAbs) : t("dashboard.nextServiceLine")(nextKmStr, nextDateStr, kmAbs, daysAbs);
+          line = isOverdue ? t("dashboard.dueAtLineOverdue")(nextKmStr, nextDateStr) : t("dashboard.dueAtLine")(nextKmStr, nextDateStr);
         } else {
-          line = isOverdue ? t("dashboard.nextServiceLineOverdueDateOnly")(nextDateStr, daysAbs) : t("dashboard.nextServiceLineDateOnly")(nextDateStr, daysAbs);
+          line = isOverdue ? t("dashboard.dueOnLineOverdue")(nextDateStr) : t("dashboard.dueOnLine")(nextDateStr);
         }
         return `
           <div class="dash-row dash-row-clickable" data-action="goto-item" data-key="${u.key}">
@@ -569,6 +654,25 @@ function dashboardHTML(){
     </div>
   ` : `<p class="dash-empty">${t("dashboard.allGood")}</p>`;
 
+  // Previous Service Done — a snapshot of whatever was most recently marked done, not a running
+  // history (History tab covers that). Falls back to showing everything with recorded history
+  // for vehicles that predate this snapshot tracking.
+  const withHistory = computed.filter(c => c.item.lastKm != null && c.item.lastDate);
+  const snapshotKeys = v.previousServiceSnapshot;
+  const previousItems = (Array.isArray(snapshotKeys) ? withHistory.filter(c => snapshotKeys.includes(c.key)) : withHistory)
+    .sort((a, b) => (b.item.lastDate || "").localeCompare(a.item.lastDate || ""));
+  const previousHTML = previousItems.length > 0 ? `
+    <p class="dash-label">${t("dashboard.previousLabel")}</p>
+    <div class="dash-scroll">
+      ${previousItems.map(u => `
+        <div class="dash-row dash-row-clickable" data-action="goto-item" data-key="${u.key}">
+          <div class="dash-row-top"><span class="dash-item-name">${u.name}</span></div>
+          <div class="dash-item-line">${t("dashboard.lastServiceLine")(Math.round(u.item.lastKm).toLocaleString(), fmtDate(parseISO(u.item.lastDate)))}</div>
+        </div>
+      `).join("")}
+    </div>
+  ` : "";
+
   return `
     <section class="card dash-card">
       <h2>${t("dashboard.title")}</h2>
@@ -577,9 +681,10 @@ function dashboardHTML(){
         <div class="dash-status-value">${overallMeta.label}</div>
       </div>
       ${swapHTML}
+      ${statsHTML}
       <div class="dash-columns">
-        <div class="dash-col">${previousHTML}</div>
         <div class="dash-col">${nextDueHTML}</div>
+        <div class="dash-col">${previousHTML}</div>
       </div>
     </section>
   `;
@@ -960,7 +1065,7 @@ function render(){
     let html = headerHTML() + navHTML();
     html += vehicleTabsHTML() + trackerSubNavHTML();
     html += listBuildLoading ? loadingScreenHTML() : trackerTabContentHTML();
-    html += footerHTML() + changelogModalHTML() + dataWarningModalHTML() + confirmModalHTML() + toastHTML();
+    html += footerHTML() + changelogModalHTML() + dataWarningModalHTML() + onboardingModalHTML() + confirmModalHTML() + toastHTML();
     appEl.innerHTML = html;
   }catch(err){
     console.error("GearLog render error:", err);
@@ -985,6 +1090,9 @@ appEl.addEventListener("click", (e) => {
     if(overlayAction === "dismiss-data-warning"){
       dataWarningDismissedThisSession = true;
       sessionStorage.setItem("gearlog_data_warning_dismissed", "1");
+      render();
+    } else if(overlayAction === "dismiss-onboarding"){
+      showOnboardingPopup = false;
       render();
     } else if(overlayAction === "dismiss-changelog"){
       state.lastSeenChangelogVersion = t("changelog")[0].version;
@@ -1025,6 +1133,11 @@ appEl.addEventListener("click", (e) => {
       saveState(); render();
       break;
 
+    case "dismiss-onboarding":
+      showOnboardingPopup = false;
+      render();
+      break;
+
     case "cancel-confirm":
       pendingConfirm = null;
       render();
@@ -1052,6 +1165,13 @@ appEl.addEventListener("click", (e) => {
         saveState(); render();
       } else if(deferredAction === "import-backup"){
         performImport(deferredExtra);
+      } else if(deferredAction === "create-reminder-after-done"){
+        const item = vehicle.items[deferredKey];
+        const result = item ? computeItem(vehicle, item) : null;
+        if(result){
+          downloadICS([{name: itemDisplayName(deferredKey, item), date: result.projectedDate}]);
+          showToast(t("reminders.createdOneToast")(itemDisplayName(deferredKey, item)));
+        }
       }
       break;
     }
@@ -1120,6 +1240,7 @@ appEl.addEventListener("click", (e) => {
             vehicle.items[k].lastDate = assumedDate;
           });
           vehicle.assumeNoPriorHistory = false;
+          vehicle.previousServiceSnapshot = Object.keys(vehicle.items);
         }
 
         vehicle.setupConfirmed.basics = true;
@@ -1135,6 +1256,12 @@ appEl.addEventListener("click", (e) => {
           showToast(hadItemsBefore ? t("setup.updateSuccessWithAssume")(count, assumedDate) : t("setup.createSuccessWithAssume")(count, assumedDate));
         } else {
           showToast(hadItemsBefore ? t("setup.updateSuccess")(count) : t("setup.createSuccess")(count));
+        }
+
+        if(!hadItemsBefore && !state.hasSeenOnboardingPopup){
+          state.hasSeenOnboardingPopup = true;
+          saveState();
+          setTimeout(() => { showOnboardingPopup = true; render(); }, 1200);
         }
       }, 700);
       break;
@@ -1162,6 +1289,11 @@ appEl.addEventListener("click", (e) => {
         if(modelEl) vehicle.model = modelEl.value;
         if(!vehicle.year.trim() || !vehicle.make.trim() || !vehicle.model.trim()){
           showToast(t("vehicleInfo.requiredAlert"), "error");
+          break;
+        }
+        const yearNum = parseInt(vehicle.year, 10);
+        if(!yearNum || yearNum < 1900 || yearNum > new Date().getFullYear() + 1){
+          showToast(t("vehicleInfo.yearRangeAlert"), "error");
           break;
         }
       }
@@ -1235,11 +1367,13 @@ appEl.addEventListener("click", (e) => {
       });
       if(events.length === 0){ showToast(t("item.enterPrompt"), "error"); break; }
       downloadICS(events);
+      showToast(t("reminders.createdAllToast"));
       break;
     }
 
     case "monthly-reminder-ics":
       downloadMonthlyReminderICS();
+      showToast(t("reminders.createdMonthlyToast"));
       break;
 
     case "switch-tab":
@@ -1270,8 +1404,10 @@ appEl.addEventListener("click", (e) => {
             km: item.lastKm, date: item.lastDate, notes: "", source: "auto",
           });
         }
+        vehicle.previousServiceSnapshot = [key];
       }
       saveState(); render();
+      showToast(t("item.updatedToast")(itemDisplayName(key, item)));
       break;
     }
 
@@ -1286,14 +1422,24 @@ appEl.addEventListener("click", (e) => {
         name: item.custom ? item.customName : null,
         km: mileage, date: vehicle.currentDate || todayISO(), notes: "", source: "auto",
       });
+      vehicle.previousServiceSnapshot = [key];
       saveState(); render();
+      showToast(t("item.markedDoneToast")(itemDisplayName(key, item)));
+
+      const result = computeItem(vehicle, item);
+      if(result){
+        requestConfirm(t("reminders.promptAfterDone")(itemDisplayName(key, item), fmtDate(result.projectedDate)), "create-reminder-after-done", key);
+      }
       break;
     }
 
     case "export-one-ics": {
       const item = vehicle.items[key];
       const result = computeItem(vehicle, item);
-      if(result) downloadICS([{name: itemDisplayName(key, item), date: result.projectedDate}]);
+      if(result){
+        downloadICS([{name: itemDisplayName(key, item), date: result.projectedDate}]);
+        showToast(t("reminders.createdOneToast")(itemDisplayName(key, item)));
+      }
       break;
     }
 

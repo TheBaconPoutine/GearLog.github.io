@@ -3,7 +3,7 @@ const I18N = {
     brandTagline: "know what's next, before it's overdue",
     madeWithClaude: "Built with Claude AI",
     nav: {tracker: "Service Tracker", resources: "Resources", share: "Share & Download", about: "About", account: "Account"},
-    trackerTabs: {setup: "Vehicle Info", status: "Status & Services", history: "History"},
+    trackerTabs: {setup: "Vehicle Settings", status: "Status & Services", history: "History"},
     langButton: "🇫🇷 Français",
     banner: {
       html: "All service intervals shown here are an average across manufacturers, based on the <b>severe-condition</b> maintenance schedule — not the standard/light-duty one. Severe conditions cover what most Canadian drivers deal with regularly: cold winters, stop-and-go city traffic, increasingly hot summers, dusty or gravel roads, frequent short trips, and towing. If your driving is lighter than that, treat these intervals as a safe upper bound and adjust as you see fit.",
@@ -105,16 +105,26 @@ const I18N = {
       currentMileage: "Current Mileage (KM)",
       currentDate: "Current Date",
       autoDateHint: "kept current automatically",
-      avgMonthlyKm: "Average KM / Month",
-      avgHint: "used to convert remaining KM into an estimated day count",
       recalc: "Recalculate",
-      exportAllIcs: "Create All Reminders",
-      monthlyReminderIcs: "Create Monthly Reminder Mileage",
       resetAll: "Reset This Vehicle",
       resetConfirm: "This clears all data for this vehicle. Continue?",
       staleBanner: "You haven't updated this vehicle's mileage or date in over a month — update them above for more accurate due dates.",
       monthlyReminderSummary: "Update your mileage in GearLog",
       monthlyReminderDescription: "A monthly nudge to log your current mileage and date so your service reminders stay accurate.",
+    },
+    reminders: {
+      title: "Reminders",
+      description: "Create calendar reminders (.ics files) for your services. Each one downloads separately, so pick exactly what you want a reminder for.",
+      allServicesLabel: "All Services",
+      monthlyLabel: "Monthly Mileage Reminder",
+      individualLabel: "Individual Services",
+      createBtn: "Create Reminder",
+      createdAllToast: "Reminders created — check your downloads.",
+      createdMonthlyToast: "Monthly reminder created — check your downloads.",
+      createdOneToast: (name) => `Reminder created for ${name}.`,
+      removeTitle: "To remove a reminder:",
+      removeBody: "Open the event in your calendar app and delete it, the same way you'd remove any other calendar event — GearLog can't manage or clear it remotely once it's been added to your calendar.",
+      promptAfterDone: (name, date) => `Want a calendar reminder for ${name}'s next service, estimated around ${date}?`,
     },
     backup: {
       title: "Backup & Transfer",
@@ -130,7 +140,15 @@ const I18N = {
     dataWarning: {
       title: "Before you start",
       body: "GearLog saves everything only in this browser — there's no account and no server. If you clear your browser's cookies/site data, uninstall the app, or switch devices, your vehicles and history will be gone unless you've exported a backup first. You can do that anytime from Backup & Transfer, found at the top of the Status & Services and History tabs.",
+      accountHint: "If you'd rather your data saved automatically and stayed safe across devices, create an account or sign in below — it only takes a minute.",
+      goToAccountBtn: "Create Account / Sign In",
       dismiss: "Got it",
+    },
+    onboarding: {
+      title: "Your list is ready!",
+      body: "While you're here — the Resources page has tire brand rankings, trusted local shops, and online parts retailers. If you're not sure what kind of tire fits how you actually drive, the Tire Finder quiz over there can point you in the right direction in under a minute.",
+      goToResourcesBtn: "Check Out Resources",
+      dismiss: "Maybe Later",
     },
     confirmModal: {
       title: "Please confirm",
@@ -150,10 +168,12 @@ const I18N = {
       overallDue: (count) => `${count} item${count === 1 ? "" : "s"} due now`,
       overallOverdue: (count) => `${count} item${count === 1 ? "" : "s"} overdue`,
       lastServiceLine: (km, date) => `Done at ${km} km on ${date}`,
-      nextServiceLine: (km, date, kmRemaining, days) => `Due at ${km} km or ${date} — in ${kmRemaining} km, ${days} day${days === 1 ? "" : "s"}`,
-      nextServiceLineOverdue: (km, date, kmRemaining, days) => `Was due at ${km} km or ${date} — overdue by ${kmRemaining} km, ${days} day${days === 1 ? "" : "s"}`,
-      nextServiceLineDateOnly: (date, days) => `Due on ${date} — in ${days} day${days === 1 ? "" : "s"}`,
-      nextServiceLineOverdueDateOnly: (date, days) => `Was due on ${date} — overdue by ${days} day${days === 1 ? "" : "s"}`,
+      dueAtLine: (km, date) => `Due at ${km} km or ${date}`,
+      dueAtLineOverdue: (km, date) => `Was due at ${km} km or ${date}`,
+      dueOnLine: (date) => `Due on ${date}`,
+      dueOnLineOverdue: (date) => `Was due on ${date}`,
+      avgKmLabel: "Avg. KM / Month",
+      mileageThisYearLabel: "Driven This Year",
       seasonalWinterToSummer: "It's swap season — most people switch from winter to summer tires between the beginning of April and end of May.",
       seasonalSummerToWinter: "It's swap season — most people switch from summer to winter tires between mid-October and mid-December.",
       markSwapDone: "Mark as completed",
@@ -167,6 +187,7 @@ const I18N = {
       yearHint: "Used by \"No Prior Service History\" in Vehicle Setup to estimate when unknown services last happened.",
       optionalLabel: "optional",
       requiredAlert: "Enter year, make, and model before continuing — VIN is the only optional field here.",
+      yearRangeAlert: "Enter a real vehicle year between 1900 and next year.",
       deleteVehicleBtn: "Delete This Vehicle",
     },
     addons: {
@@ -203,6 +224,8 @@ const I18N = {
       removeItem: "Remove item",
       removeConfirm: (name) => `Remove "${name}" from your service list? (Its history entries are kept.)`,
       needMileageAlert: "Enter your current mileage above first, so 'done today' has a KM value to record.",
+      markedDoneToast: (name) => `${name} marked done.`,
+      updatedToast: (name) => `${name} updated.`,
       optionalRecommendedBadge: "Optional — but recommended",
       optionalBadge: "Optional",
       emptyState: 'No service list yet — choose your drivetrain and transmission above, then hit "Build Service List".',
@@ -380,7 +403,7 @@ const I18N = {
     brandTagline: "sachez ce qui s'en vient, avant que ce soit en retard",
     madeWithClaude: "Créé avec Claude AI",
     nav: {tracker: "Suivi d'entretien", resources: "Ressources", share: "Partager et télécharger", about: "À propos", account: "Compte"},
-    trackerTabs: {setup: "Info du véhicule", status: "État et entretien", history: "Historique"},
+    trackerTabs: {setup: "Paramètres du véhicule", status: "État et entretien", history: "Historique"},
     langButton: "🇬🇧 English",
     banner: {
       html: "Tous les intervalles d'entretien affichés ici représentent une moyenne entre les fabricants, selon l'horaire d'entretien en <b>conditions sévères</b> — et non l'horaire normal. Les conditions sévères incluent ce que vivent la plupart des conducteurs canadiens : hivers froids, circulation arrêt-départ en ville, étés de plus en plus chauds, routes poussiéreuses ou de gravier, trajets courts fréquents, et remorquage. Si votre conduite est plus légère, considérez ces intervalles comme une limite prudente et ajustez-les à votre guise.",
@@ -482,16 +505,26 @@ const I18N = {
       currentMileage: "Kilométrage actuel (KM)",
       currentDate: "Date actuelle",
       autoDateHint: "maintenue à jour automatiquement",
-      avgMonthlyKm: "Moyenne de KM par mois",
-      avgHint: "utilisé pour convertir les KM restants en un nombre de jours estimé",
       recalc: "Recalculer",
-      exportAllIcs: "Créer tous les rappels",
-      monthlyReminderIcs: "Créer le rappel mensuel de kilométrage",
       resetAll: "Réinitialiser ce véhicule",
       resetConfirm: "Ceci efface toutes les données de ce véhicule. Continuer?",
       staleBanner: "Vous n'avez pas mis à jour le kilométrage ou la date de ce véhicule depuis plus d'un mois — mettez-les à jour ci-dessus pour des échéances plus précises.",
       monthlyReminderSummary: "Mettez à jour votre kilométrage dans GearLog",
       monthlyReminderDescription: "Un rappel mensuel pour noter votre kilométrage et la date actuelle afin que vos rappels d'entretien restent précis.",
+    },
+    reminders: {
+      title: "Rappels",
+      description: "Créez des rappels de calendrier (fichiers .ics) pour vos entretiens. Chacun se télécharge séparément, alors choisissez exactement ce pour quoi vous voulez un rappel.",
+      allServicesLabel: "Tous les entretiens",
+      monthlyLabel: "Rappel mensuel de kilométrage",
+      individualLabel: "Entretiens individuels",
+      createBtn: "Créer un rappel",
+      createdAllToast: "Rappels créés — vérifiez vos téléchargements.",
+      createdMonthlyToast: "Rappel mensuel créé — vérifiez vos téléchargements.",
+      createdOneToast: (name) => `Rappel créé pour ${name}.`,
+      removeTitle: "Pour supprimer un rappel :",
+      removeBody: "Ouvrez l'événement dans votre application de calendrier et supprimez-le, de la même façon que vous supprimeriez tout autre événement de calendrier — GearLog ne peut pas le gérer ou l'effacer à distance une fois ajouté à votre calendrier.",
+      promptAfterDone: (name, date) => `Voulez-vous un rappel de calendrier pour le prochain entretien de ${name}, estimé vers le ${date}?`,
     },
     backup: {
       title: "Sauvegarde et transfert",
@@ -507,7 +540,15 @@ const I18N = {
     dataWarning: {
       title: "Avant de commencer",
       body: "GearLog enregistre tout uniquement dans ce navigateur — il n'y a ni compte ni serveur. Si vous effacez les témoins/données de site de votre navigateur, désinstallez l'application, ou changez d'appareil, vos véhicules et votre historique disparaîtront à moins d'avoir exporté une sauvegarde au préalable. Vous pouvez le faire en tout temps depuis Sauvegarde et transfert, en haut des onglets État et entretien et Historique.",
+      accountHint: "Si vous préférez que vos données soient enregistrées automatiquement et restent en sécurité sur tous vos appareils, créez un compte ou connectez-vous ci-dessous — ça ne prend qu'une minute.",
+      goToAccountBtn: "Créer un compte / Se connecter",
       dismiss: "Compris",
+    },
+    onboarding: {
+      title: "Votre liste est prête!",
+      body: "Pendant que vous êtes ici — la page Ressources contient des classements de marques de pneus, des ateliers locaux de confiance et des détaillants de pièces en ligne. Si vous ne savez pas quel type de pneu convient à votre conduite, le questionnaire de recherche de pneu là-bas peut vous orienter en moins d'une minute.",
+      goToResourcesBtn: "Voir les ressources",
+      dismiss: "Plus tard",
     },
     confirmModal: {
       title: "Veuillez confirmer",
@@ -527,10 +568,12 @@ const I18N = {
       overallDue: (count) => `${count} élément${count === 1 ? "" : "s"} dû${count === 1 ? "" : "s"} maintenant`,
       overallOverdue: (count) => `${count} élément${count === 1 ? "" : "s"} en retard`,
       lastServiceLine: (km, date) => `Fait à ${km} km le ${date}`,
-      nextServiceLine: (km, date, kmRemaining, days) => `Dû à ${km} km ou le ${date} — dans ${kmRemaining} km, ${days} jour${days === 1 ? "" : "s"}`,
-      nextServiceLineOverdue: (km, date, kmRemaining, days) => `Était dû à ${km} km ou le ${date} — en retard de ${kmRemaining} km, ${days} jour${days === 1 ? "" : "s"}`,
-      nextServiceLineDateOnly: (date, days) => `Dû le ${date} — dans ${days} jour${days === 1 ? "" : "s"}`,
-      nextServiceLineOverdueDateOnly: (date, days) => `Était dû le ${date} — en retard de ${days} jour${days === 1 ? "" : "s"}`,
+      dueAtLine: (km, date) => `Dû à ${km} km ou le ${date}`,
+      dueAtLineOverdue: (km, date) => `Était dû à ${km} km ou le ${date}`,
+      dueOnLine: (date) => `Dû le ${date}`,
+      dueOnLineOverdue: (date) => `Était dû le ${date}`,
+      avgKmLabel: "Moy. KM / mois",
+      mileageThisYearLabel: "Parcouru cette année",
       seasonalWinterToSummer: "C'est la saison du changement — la plupart des gens passent des pneus d'hiver aux pneus d'été entre le début avril et la fin mai.",
       seasonalSummerToWinter: "C'est la saison du changement — la plupart des gens passent des pneus d'été aux pneus d'hiver entre la mi-octobre et la mi-décembre.",
       markSwapDone: "Marquer comme complété",
@@ -544,6 +587,7 @@ const I18N = {
       yearHint: "Utilisée par « Aucun historique d'entretien connu » dans Configuration du véhicule pour estimer quand les entretiens inconnus ont eu lieu.",
       optionalLabel: "facultatif",
       requiredAlert: "Entrez l'année, la marque et le modèle avant de continuer — le NIV est le seul champ facultatif ici.",
+      yearRangeAlert: "Entrez une véritable année de véhicule entre 1900 et l'an prochain.",
       deleteVehicleBtn: "Supprimer ce véhicule",
     },
     addons: {
@@ -580,6 +624,8 @@ const I18N = {
       removeItem: "Retirer cet élément",
       removeConfirm: (name) => `Retirer « ${name} » de votre liste d'entretien? (Son historique sera conservé.)`,
       needMileageAlert: "Entrez d'abord votre kilométrage actuel ci-dessus, afin que « fait aujourd'hui » ait une valeur en KM à enregistrer.",
+      markedDoneToast: (name) => `${name} marqué comme fait.`,
+      updatedToast: (name) => `${name} mis à jour.`,
       optionalRecommendedBadge: "Facultatif — mais recommandé",
       optionalBadge: "Facultatif",
       emptyState: "Aucune liste d'entretien pour l'instant — choisissez votre rouage d'entraînement et votre boîte de vitesses ci-dessus, puis cliquez sur « Créer la liste d'entretien ».",
@@ -786,6 +832,7 @@ function defaultVehicle(name){
     setupConfirmed: { basics: false, info: false, conditions: false },
     optionalServicesEnabled: false,
     tireSwapCompletedFor: null,
+    previousServiceSnapshot: null,
     items: {}, history: [],
   };
 }
@@ -799,6 +846,7 @@ function defaultState(){
     vehicles: {v1: defaultVehicle("Vehicle 1")},
     lastSeenChangelogVersion: 0,
     lastOpenedAt: null,
+    hasSeenOnboardingPopup: false,
   };
 }
 
@@ -1071,6 +1119,13 @@ if(!state.currentPage) state.currentPage = "tracker";
 if(!state.trackerTab) state.trackerTab = "setup";
 if(state.lastSeenChangelogVersion == null) state.lastSeenChangelogVersion = 0;
 if(state.lastOpenedAt === undefined) state.lastOpenedAt = null;
+if(state.hasSeenOnboardingPopup === undefined){
+  // Existing users who already have a vehicle set up aren't "new" — don't show them
+  // the first-time onboarding tip just because they updated to this version.
+  const alreadyHasData = Object.values(state.vehicles || {}).some(v => Object.keys(v.items || {}).length > 0);
+  state.hasSeenOnboardingPopup = alreadyHasData;
+}
+if(state.hasSeenOnboardingPopup === undefined) state.hasSeenOnboardingPopup = false;
 Object.values(state.vehicles).forEach(v => {
   if(!Array.isArray(v.history)) v.history = [];
   if(!v.items) v.items = {};
@@ -1086,6 +1141,7 @@ Object.values(state.vehicles).forEach(v => {
   }
   if(v.optionalServicesEnabled == null) v.optionalServicesEnabled = false;
   if(v.tireSwapCompletedFor === undefined) v.tireSwapCompletedFor = null;
+  if(v.previousServiceSnapshot === undefined) v.previousServiceSnapshot = null;
   // Brake service and cabin air filter used to be tracked automatically for every vehicle
   // and are now opt-in. Anyone who already had them tracked keeps them (and the toggle
   // reflects that), rather than silently losing that history.

@@ -548,6 +548,7 @@ function backupCardHTML(){
 
 function onboardingModalHTML(){
   if(!window.__gearlogShowTourOffer) return "";
+  if(changelogModalHTML() !== "" || dataWarningModalHTML() !== "") return "";
   return `
     <div class="modal-overlay" data-dismiss-action="dismiss-onboarding">
       <div class="modal-box">
@@ -694,8 +695,6 @@ function dashboardHTML(){
   const avgKm = calculateAvgMonthlyKm(v);
   const mileageThisYear = calculateMileageThisYear(v);
 
-  if(computed.length === 0 && !hasAnyAlerts && !avgKm && !mileageThisYear) return "";
-
   const statusRank = { ok: 0, soon: 1, due: 2, over: 3 };
   let overallStatus = "ok";
   let overCount = 0, dueCount = 0, soonCount = 0;
@@ -760,31 +759,33 @@ function dashboardHTML(){
   const dueSoonThresholdKm = 8000, dueSoonThresholdDays = 180;
   const dueSoon = computed.filter(c => c.kmRemaining <= dueSoonThresholdKm || c.daysRemaining <= dueSoonThresholdDays)
     .sort((a, b) => a.daysRemaining - b.daysRemaining);
-  const nextDueHTML = dueSoon.length > 0 ? `
+  const nextDueHTML = `
     <p class="dash-label">${t("dashboard.nextDueLabel")}</p>
-    <div class="dash-scroll">
-      ${dueSoon.map(u => {
-        const nextDateStr = fmtDate(u.projectedDate);
-        const isOverdue = u.status === "over";
-        let line;
-        if(u.hasKmInterval){
-          const nextKmStr = Math.round(u.nextDueKm).toLocaleString();
-          line = isOverdue ? t("dashboard.dueAtLineOverdue")(nextKmStr, nextDateStr) : t("dashboard.dueAtLine")(nextKmStr, nextDateStr);
-        } else {
-          line = isOverdue ? t("dashboard.dueOnLineOverdue")(nextDateStr) : t("dashboard.dueOnLine")(nextDateStr);
-        }
-        return `
-          <div class="dash-row dash-row-clickable" data-action="goto-item" data-key="${u.key}">
-            <div class="dash-row-top">
-              <span class="dash-item-name">${u.name}</span>
-              <span class="status-pill status-${u.status}">${t("statusMeta." + u.status)}</span>
+    ${dueSoon.length > 0 ? `
+      <div class="dash-scroll">
+        ${dueSoon.map(u => {
+          const nextDateStr = fmtDate(u.projectedDate);
+          const isOverdue = u.status === "over";
+          let line;
+          if(u.hasKmInterval){
+            const nextKmStr = Math.round(u.nextDueKm).toLocaleString();
+            line = isOverdue ? t("dashboard.dueAtLineOverdue")(nextKmStr, nextDateStr) : t("dashboard.dueAtLine")(nextKmStr, nextDateStr);
+          } else {
+            line = isOverdue ? t("dashboard.dueOnLineOverdue")(nextDateStr) : t("dashboard.dueOnLine")(nextDateStr);
+          }
+          return `
+            <div class="dash-row dash-row-clickable" data-action="goto-item" data-key="${u.key}">
+              <div class="dash-row-top">
+                <span class="dash-item-name">${u.name}</span>
+                <span class="status-pill status-${u.status}">${t("statusMeta." + u.status)}</span>
+              </div>
+              <div class="dash-item-line">${line}</div>
             </div>
-            <div class="dash-item-line">${line}</div>
-          </div>
-        `;
-      }).join("")}
-    </div>
-  ` : `<p class="dash-empty">${t("dashboard.allGood")}</p>`;
+          `;
+        }).join("")}
+      </div>
+    ` : `<p class="dash-empty">${t("dashboard.allGood")}</p>`}
+  `;
 
   // Previous Service Done — a snapshot of whatever was most recently marked done, not a running
   // history (History tab covers that). Falls back to showing everything with recorded history
@@ -793,17 +794,19 @@ function dashboardHTML(){
   const snapshotKeys = v.previousServiceSnapshot;
   const previousItems = (Array.isArray(snapshotKeys) ? withHistory.filter(c => snapshotKeys.includes(c.key)) : withHistory)
     .sort((a, b) => (b.item.lastDate || "").localeCompare(a.item.lastDate || ""));
-  const previousHTML = previousItems.length > 0 ? `
+  const previousHTML = `
     <p class="dash-label">${t("dashboard.previousLabel")}</p>
-    <div class="dash-scroll">
-      ${previousItems.map(u => `
-        <div class="dash-row dash-row-clickable" data-action="goto-item" data-key="${u.key}">
-          <div class="dash-row-top"><span class="dash-item-name">${u.name}</span></div>
-          <div class="dash-item-line">${t("dashboard.lastServiceLine")(Math.round(u.item.lastKm).toLocaleString(), fmtDate(parseISO(u.item.lastDate)))}</div>
-        </div>
-      `).join("")}
-    </div>
-  ` : "";
+    ${previousItems.length > 0 ? `
+      <div class="dash-scroll">
+        ${previousItems.map(u => `
+          <div class="dash-row dash-row-clickable" data-action="goto-item" data-key="${u.key}">
+            <div class="dash-row-top"><span class="dash-item-name">${u.name}</span></div>
+            <div class="dash-item-line">${t("dashboard.lastServiceLine")(Math.round(u.item.lastKm).toLocaleString(), fmtDate(parseISO(u.item.lastDate)))}</div>
+          </div>
+        `).join("")}
+      </div>
+    ` : `<p class="dash-empty">${t("dashboard.noPriorHistory")}</p>`}
+  `;
 
   return `
     <section class="card dash-card">
@@ -812,8 +815,11 @@ function dashboardHTML(){
         <div class="dash-status-prefix">${t("dashboard.statusLinePrefix")}</div>
         <div class="dash-status-value">${overallMeta.label}</div>
       </div>
+      <div class="dash-divider"></div>
       ${alertsHTML}
+      ${alertsHTML ? '<div class="dash-divider"></div>' : ""}
       ${statsHTML}
+      <div class="dash-divider"></div>
       <div class="dash-columns">
         <div class="dash-col">${nextDueHTML}</div>
         <div class="dash-col">${previousHTML}</div>
@@ -1534,6 +1540,10 @@ appEl.addEventListener("click", (e) => {
       tourSkip();
       break;
 
+    case "tour-toggle-minimize":
+      tourToggleMinimize();
+      break;
+
     case "cancel-confirm":
       pendingConfirm = null;
       render();
@@ -1661,6 +1671,7 @@ appEl.addEventListener("click", (e) => {
         } else {
           showToast(hadItemsBefore ? t("setup.updateSuccess")(count) : t("setup.createSuccess")(count));
         }
+        maybeAdvanceTourFor("build-list");
       }, 700);
       break;
     }
@@ -1671,6 +1682,7 @@ appEl.addEventListener("click", (e) => {
       saveState(); render();
       showToast(t("setup.basicsSavedToast"));
       if(!hasItems) setTimeout(() => document.getElementById("setup-info-card")?.scrollIntoView({behavior: "smooth", block: "start"}), 50);
+      maybeAdvanceTourFor("save-basics-step");
       break;
     }
 
@@ -1699,6 +1711,7 @@ appEl.addEventListener("click", (e) => {
       saveState(); render();
       showToast(t("setup.infoSavedToast"));
       if(!hasItems) setTimeout(() => document.getElementById("setup-conditions-card")?.scrollIntoView({behavior: "smooth", block: "start"}), 50);
+      maybeAdvanceTourFor("save-info-step");
       break;
     }
 
@@ -1743,6 +1756,7 @@ appEl.addEventListener("click", (e) => {
       saveState(); render();
       showToast(toastMsg);
       if(!hasItems) setTimeout(() => document.getElementById("setup-buildlist-card")?.scrollIntoView({behavior: "smooth", block: "start"}), 50);
+      maybeAdvanceTourFor("confirm-conditions-step");
       break;
     }
 

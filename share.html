@@ -104,6 +104,10 @@ appEl.addEventListener("click", (e) => {
       tourSkip();
       break;
 
+    case "tour-toggle-minimize":
+      tourToggleMinimize();
+      break;
+
     case "dismiss-changelog":
       state.lastSeenChangelogVersion = t("changelog")[0].version;
       saveState(); render();

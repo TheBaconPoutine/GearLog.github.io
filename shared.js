@@ -209,6 +209,8 @@ const I18N = {
       backBtn: "Back",
       nextBtn: "Next",
       finishBtn: "Finish",
+      minimizeBtn: "Minimize",
+      expandBtn: "Expand",
       welcomeTitle: "Welcome to GearLog",
       welcomeBody: "Let's walk through how everything works — from setting up your first vehicle to tracking every service, inspection, and reminder. Skip out any time with the button below, and you can always restart this from the About page later.",
       setupBasicsTitle: "Vehicle Basics",
@@ -225,8 +227,12 @@ const I18N = {
       statusCurrentBody: "This is where you log your vehicle's current mileage. Keeping it updated is what powers every due-date calculation in the app — the date stays current automatically.",
       statusDashboardTitle: "Your Dashboard",
       statusDashboardBody: "At a glance: your overall status, any active alerts like tire swaps or undercoating, your driving stats, and what's due next versus what you've done recently.",
-      statusItemExampleTitle: "A Service Item, Up Close",
-      statusItemExampleBody: "Here's a real item from your list. Each one tracks its own interval, shows how far away it is from due, and lets you mark it done, update its history, or remove it. Tap any item to expand it and see for yourself.",
+      itemFindExampleTitle: "Meet Engine Oil",
+      itemFindExampleBody: "Every item in your list works the same way, so let's walk through one closely — Engine Oil, since almost every vehicle has it. It's currently collapsed, just like the rest of your list. Tap Next and we'll open it up.",
+      itemExpandedTitle: "Inside an Item",
+      itemExpandedBody: "This readout shows exactly where Engine Oil stands — how far it is from due by both kilometers and date, whichever comes first. The tabs below let you review or edit when it was last done and adjust its interval if your driving habits differ from the default.",
+      itemActionsTitle: "Marking It Done",
+      itemActionsBody: "\"Mark Done Today\" logs today's mileage and date as the last service, resets the countdown, and offers to create a calendar reminder for the next one. \"Remove Item\" takes it off your list entirely if it doesn't apply to your vehicle.",
       inspectionsOverviewTitle: "Inspections",
       inspectionsOverviewBody: "A DIY inspection form — log tread depth, brake pad thickness, and notes, then check off what you did. Every saved inspection becomes its own printable report.",
       historyOverviewTitle: "Service History",
@@ -260,6 +266,7 @@ const I18N = {
       overallDue: (count) => `${count} item${count === 1 ? "" : "s"} due now`,
       overallOverdue: (count) => `${count} item${count === 1 ? "" : "s"} overdue`,
       lastServiceLine: (km, date) => `Done at ${km} km on ${date}`,
+      noPriorHistory: "No prior service history yet — once you mark something done, it'll show up here.",
       dueAtLine: (km, date) => `Due at ${km} km or ${date}`,
       dueAtLineOverdue: (km, date) => `Was due at ${km} km or ${date}`,
       dueOnLine: (date) => `Due on ${date}`,
@@ -716,6 +723,8 @@ const I18N = {
       backBtn: "Retour",
       nextBtn: "Suivant",
       finishBtn: "Terminer",
+      minimizeBtn: "Réduire",
+      expandBtn: "Agrandir",
       welcomeTitle: "Bienvenue sur GearLog",
       welcomeBody: "Voyons ensemble comment tout fonctionne — de la configuration de votre premier véhicule au suivi de chaque entretien, inspection et rappel. Quittez en tout temps avec le bouton ci-dessous, et vous pouvez toujours redémarrer cette visite depuis la page À propos plus tard.",
       setupBasicsTitle: "Informations de base",
@@ -732,8 +741,12 @@ const I18N = {
       statusCurrentBody: "C'est ici que vous inscrivez le kilométrage actuel de votre véhicule. Le garder à jour est ce qui alimente chaque calcul d'échéance dans l'application — la date reste à jour automatiquement.",
       statusDashboardTitle: "Votre tableau de bord",
       statusDashboardBody: "En un coup d'œil : votre état général, toute alerte active comme les changements de pneus ou l'antirouille, vos statistiques de conduite, et ce qui est à venir par rapport à ce que vous avez fait récemment.",
-      statusItemExampleTitle: "Un entretien, de près",
-      statusItemExampleBody: "Voici un entretien réel de votre liste. Chacun suit son propre intervalle, montre à quelle distance il est de son échéance, et vous permet de le marquer comme fait, de mettre à jour son historique, ou de le retirer. Touchez n'importe quel entretien pour le déplier et voir par vous-même.",
+      itemFindExampleTitle: "Découvrons l'huile moteur",
+      itemFindExampleBody: "Chaque entretien de votre liste fonctionne de la même façon, alors examinons-en un de près — l'huile moteur, puisque presque tous les véhicules en ont. Il est actuellement replié, comme le reste de votre liste. Touchez Suivant et nous allons le déplier.",
+      itemExpandedTitle: "À l'intérieur d'un entretien",
+      itemExpandedBody: "Ce relevé montre exactement où en est l'huile moteur — à quelle distance elle est de son échéance, en kilomètres ou en date, selon ce qui arrive en premier. Les onglets ci-dessous vous permettent de consulter ou modifier la dernière fois qu'il a été fait et d'ajuster son intervalle si vos habitudes de conduite diffèrent de la valeur par défaut.",
+      itemActionsTitle: "Le marquer comme fait",
+      itemActionsBody: "« Fait aujourd'hui » enregistre le kilométrage et la date d'aujourd'hui comme dernier entretien, réinitialise le compte à rebours, et propose de créer un rappel de calendrier pour le prochain. « Retirer l'entretien » le retire complètement de votre liste s'il ne s'applique pas à votre véhicule.",
       inspectionsOverviewTitle: "Inspections",
       inspectionsOverviewBody: "Un formulaire d'inspection à faire soi-même — inscrivez la profondeur de bande de roulement, l'épaisseur des plaquettes de frein et des notes, puis cochez ce que vous avez fait. Chaque inspection enregistrée devient son propre rapport imprimable.",
       historyOverviewTitle: "Historique d'entretien",
@@ -767,6 +780,7 @@ const I18N = {
       overallDue: (count) => `${count} élément${count === 1 ? "" : "s"} dû${count === 1 ? "" : "s"} maintenant`,
       overallOverdue: (count) => `${count} élément${count === 1 ? "" : "s"} en retard`,
       lastServiceLine: (km, date) => `Fait à ${km} km le ${date}`,
+      noPriorHistory: "Aucun historique d'entretien pour l'instant — une fois que vous marquerez quelque chose comme fait, ça apparaîtra ici.",
       dueAtLine: (km, date) => `Dû à ${km} km ou le ${date}`,
       dueAtLineOverdue: (km, date) => `Était dû à ${km} km ou le ${date}`,
       dueOnLine: (date) => `Dû le ${date}`,
@@ -1020,18 +1034,20 @@ const I18N = {
 // highlight, or null for a general intro/closing message with no specific element.
 const TOUR_STEPS = [
   { id: "welcome",            page: "index.html",     tab: "setup",       target: null },
-  { id: "setupBasics",        page: "index.html",     tab: "setup",       target: "#setup-basics-card" },
-  { id: "setupInfo",          page: "index.html",     tab: "setup",       target: "#setup-info-card" },
-  { id: "setupConditions",    page: "index.html",     tab: "setup",       target: "#setup-conditions-card" },
+  { id: "setupBasics",        page: "index.html",     tab: "setup",       target: "#setup-basics-card", primaryAction: "save-basics-step" },
+  { id: "setupInfo",          page: "index.html",     tab: "setup",       target: "#setup-info-card", primaryAction: "save-info-step" },
+  { id: "setupConditions",    page: "index.html",     tab: "setup",       target: "#setup-conditions-card", primaryAction: "confirm-conditions-step" },
   { id: "setupReminders",     page: "index.html",     tab: "setup",       target: "#setup-reminders-card" },
-  { id: "setupBuildList",     page: "index.html",     tab: "setup",       target: "#setup-buildlist-card" },
+  { id: "setupBuildList",     page: "index.html",     tab: "setup",       target: "#setup-buildlist-card", primaryAction: "build-list" },
   { id: "statusCurrent",      page: "index.html",     tab: "status",      target: "#status-current-card" },
   { id: "statusDashboard",    page: "index.html",     tab: "status",      target: ".dash-card" },
-  { id: "statusItemExample",  page: "index.html",     tab: "status",      target: "#itemsList", openItems: true },
+  { id: "itemFindExample",    page: "index.html",     tab: "status",      target: '.edit[data-key="engine_oil"]', openItems: true },
+  { id: "itemExpanded",       page: "index.html",     tab: "status",      target: '.edit[data-key="engine_oil"]', openItems: true, openTarget: true },
+  { id: "itemActions",        page: "index.html",     tab: "status",      target: '[data-action="done-today"][data-key="engine_oil"]', openItems: true },
   { id: "inspectionsOverview",page: "index.html",     tab: "inspections", target: "#inspections-main-card" },
   { id: "historyOverview",    page: "index.html",     tab: "history",     target: "#history-main-card" },
-  { id: "resourcesOverview",  page: "resources.html", tab: null,          target: "#res-tires" },
-  { id: "resourcesQuiz",      page: "resources.html", tab: null,          target: "#acc-guide" },
+  { id: "resourcesOverview",  page: "resources.html", tab: null,          target: "#res-tires", openTarget: true },
+  { id: "resourcesQuiz",      page: "resources.html", tab: null,          target: "#acc-guide", openTarget: true },
   { id: "otherAbout",         page: "about.html",     tab: null,          target: null },
   { id: "otherShare",         page: "share.html",     tab: null,          target: null },
   { id: "finalAccount",       page: "account.html",   tab: null,          target: null },
@@ -1082,13 +1098,41 @@ function tourGoToIndex(newIndex){
   }
 }
 
-function tourNext(){ tourGoToIndex(state.tourStepIndex + 1); }
+function tourNext(){
+  const currentStep = TOUR_STEPS[state.tourStepIndex];
+  if(currentStep && currentStep.primaryAction){
+    const btn = document.querySelector(`[data-action="${currentStep.primaryAction}"]`);
+    if(btn){
+      btn.click();
+      return; // the real handler advances the tour itself via maybeAdvanceTourFor
+    }
+  }
+  tourGoToIndex(state.tourStepIndex + 1);
+}
 function tourBack(){ tourGoToIndex(state.tourStepIndex - 1); }
 function tourSkip(){
   state.tourActive = false;
   saveState();
   if(typeof render === "function") render();
 }
+
+function tourToggleMinimize(){
+  tourCaptionMinimized = !tourCaptionMinimized;
+  if(typeof render === "function") render();
+}
+
+// Called at the end of a real action's own handler (save-basics-step, build-list, etc.) so that
+// clicking that button directly ALSO advances the tour when it's active and on the matching step —
+// the same single code path whether the tour's Next button or the real button was clicked.
+function maybeAdvanceTourFor(actionName){
+  if(!state.tourActive) return;
+  const step = TOUR_STEPS[state.tourStepIndex];
+  if(step && step.primaryAction === actionName){
+    tourGoToIndex(state.tourStepIndex + 1);
+  }
+}
+
+let tourCaptionMinimized = false;
 
 function tourOverlayHTML(){
   const step = getCurrentTourStep();
@@ -1097,11 +1141,16 @@ function tourOverlayHTML(){
   const stepNum = state.tourStepIndex + 1;
   const total = TOUR_STEPS.length;
   return `
-    <div class="tour-backdrop"></div>
-    <div class="tour-caption">
-      <div class="tour-caption-step">${t("tour.stepCounter")(stepNum, total)}</div>
-      <div class="tour-caption-title">${t("tour." + step.id + "Title")}</div>
-      <p class="tour-caption-body">${t("tour." + step.id + "Body")}</p>
+    ${step.target ? '<div class="tour-backdrop"></div>' : ""}
+    <div class="tour-caption ${tourCaptionMinimized ? "tour-caption-minimized" : ""}">
+      <div class="tour-caption-topline">
+        <span class="tour-caption-step">${t("tour.stepCounter")(stepNum, total)}</span>
+        <button class="tour-caption-minimize-btn" type="button" data-action="tour-toggle-minimize">${tourCaptionMinimized ? t("tour.expandBtn") : t("tour.minimizeBtn")}</button>
+      </div>
+      ${!tourCaptionMinimized ? `
+        <div class="tour-caption-title">${t("tour." + step.id + "Title")}</div>
+        <p class="tour-caption-body">${t("tour." + step.id + "Body")}</p>
+      ` : ""}
       <div class="tour-caption-actions">
         <button class="btn secondary" type="button" data-action="tour-skip">${t("tour.skipBtn")}</button>
         <div style="display:flex; gap:8px;">
@@ -1122,10 +1171,15 @@ function applyTourHighlight(){
     const itemsSection = document.querySelector("details.items-collapse");
     if(itemsSection) itemsSection.open = true;
   }
+  if(step.openTarget){
+    const targetForOpen = document.querySelector(step.target);
+    const detailsEl = targetForOpen && (targetForOpen.tagName === "DETAILS" ? targetForOpen : targetForOpen.closest("details"));
+    if(detailsEl) detailsEl.open = true;
+  }
   const target = document.querySelector(step.target);
   if(target){
     target.classList.add("tour-spotlight");
-    target.scrollIntoView({behavior: "smooth", block: "center"});
+    target.scrollIntoView({behavior: "smooth", block: "start"});
   }
 }
 

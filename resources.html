@@ -1399,8 +1399,9 @@ function render(){
     if(appLoadingScreenActive){ appEl.innerHTML = appLoadingScreenHTML(); return; }
     let html = headerHTML() + navHTML();
     html += resourcesPageHTML();
-    html += footerHTML() + changelogModalHTML() + confirmModalHTML() + toastHTML();
+    html += footerHTML() + changelogModalHTML() + confirmModalHTML() + toastHTML() + tourOverlayHTML();
     appEl.innerHTML = html;
+    setTimeout(applyTourHighlight, 30);
   }catch(err){
     console.error("GearLog render error:", err);
     appEl.innerHTML = `
@@ -1436,6 +1437,22 @@ appEl.addEventListener("click", (e) => {
   const key = el.getAttribute("data-key");
 
   switch(action){
+    case "logo-click":
+      window.location.href = "index.html";
+      break;
+
+    case "tour-next":
+      tourNext();
+      break;
+
+    case "tour-back":
+      tourBack();
+      break;
+
+    case "tour-skip":
+      tourSkip();
+      break;
+
     case "dismiss-changelog":
       state.lastSeenChangelogVersion = t("changelog")[0].version;
       saveState(); render();

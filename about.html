@@ -34,6 +34,14 @@ function aboutPageHTML(){
 
   return `
     <section class="card">
+      <h2>${t("about.tourTitle")}</h2>
+      <p class="card-sub" style="margin-bottom:14px;">${t("about.tourBody")}</p>
+      <div class="actions-row">
+        <button class="btn c-orange" type="button" data-action="start-tour">${t("about.tourBtn")}</button>
+      </div>
+    </section>
+
+    <section class="card">
       <h2>${t("about.aiTitle")}</h2>
       ${aiParas}
     </section>
@@ -55,8 +63,9 @@ function render(){
     document.documentElement.lang = state.language;
     let html = headerHTML() + navHTML();
     html += aboutPageHTML();
-    html += footerHTML() + changelogModalHTML() + confirmModalHTML() + toastHTML();
+    html += footerHTML() + changelogModalHTML() + confirmModalHTML() + toastHTML() + tourOverlayHTML();
     appEl.innerHTML = html;
+    setTimeout(applyTourHighlight, 30);
   }catch(err){
     console.error("GearLog render error:", err);
     appEl.innerHTML = `
@@ -84,6 +93,26 @@ appEl.addEventListener("click", (e) => {
   const action = el.getAttribute("data-action");
 
   switch(action){
+    case "logo-click":
+      window.location.href = "index.html";
+      break;
+
+    case "tour-next":
+      tourNext();
+      break;
+
+    case "tour-back":
+      tourBack();
+      break;
+
+    case "tour-skip":
+      tourSkip();
+      break;
+
+    case "start-tour":
+      startTour();
+      break;
+
     case "dismiss-changelog":
       state.lastSeenChangelogVersion = t("changelog")[0].version;
       saveState(); render();

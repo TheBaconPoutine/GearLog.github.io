@@ -118,6 +118,7 @@ const I18N = {
       allServicesLabel: "All Services",
       monthlyLabel: "Monthly Mileage Reminder",
       tireSwapLabel: (nextLabel) => `Tire Swap Reminder (next: ${nextLabel})`,
+      undercoatingLabel: "Undercoating Reminder",
       toSummerLabel: "Switch to Summer Tires",
       toWinterLabel: "Switch to Winter Tires",
       individualLabel: "Individual Services",
@@ -197,10 +198,49 @@ const I18N = {
       dismiss: "Got it",
     },
     onboarding: {
-      title: "Your list is ready!",
-      body: "While you're here — the Resources page has tire brand rankings, trusted local shops, and online parts retailers. If you're not sure what kind of tire fits how you actually drive, the Tire Finder quiz over there can point you in the right direction in under a minute.",
-      goToResourcesBtn: "Check Out Resources",
-      dismiss: "Maybe Later",
+      title: "Welcome to GearLog!",
+      body: "New here? A quick guided walkthrough can show you around — how setup works, what the dashboard tracks, and where everything lives. It takes a few minutes and you can skip out any time.",
+      startTourBtn: "Start Walkthrough",
+      dismiss: "No Thanks",
+    },
+    tour: {
+      stepCounter: (num, total) => `Step ${num} of ${total}`,
+      skipBtn: "Skip Tour",
+      backBtn: "Back",
+      nextBtn: "Next",
+      finishBtn: "Finish",
+      welcomeTitle: "Welcome to GearLog",
+      welcomeBody: "Let's walk through how everything works — from setting up your first vehicle to tracking every service, inspection, and reminder. Skip out any time with the button below, and you can always restart this from the About page later.",
+      setupBasicsTitle: "Vehicle Basics",
+      setupBasicsBody: "Start here — pick your drivetrain and transmission. GearLog uses these to work out exactly which maintenance items apply to your vehicle. The toggles below let you assume no prior history (handy for a used car with an unknown record) and add commonly-recommended optional services.",
+      setupInfoTitle: "Vehicle Info",
+      setupInfoBody: "Once you save the basics, this card appears — year, make, model, and an optional VIN. The year is also what things like undercoating reminders and \"no prior history\" dates are based on.",
+      setupConditionsTitle: "Driving Conditions",
+      setupConditionsBody: "Tell GearLog whether you drive in normal or severe conditions — frequent short trips, towing, extreme heat or cold, dusty roads. Severe conditions automatically shorten some maintenance intervals.",
+      setupRemindersTitle: "Reminders",
+      setupRemindersBody: "Even before your list exists, you can set up a Monthly Mileage Reminder — a calendar nudge to keep your mileage updated, which keeps every due-date accurate. Once your list is built, this section grows to include tire swaps, undercoating, and every individual service too.",
+      setupBuildListTitle: "Build Your List",
+      setupBuildListBody: "This is the big one — tap it and GearLog builds your full maintenance list from everything above. You can always come back and update it later if anything changes.",
+      statusCurrentTitle: "Current Status",
+      statusCurrentBody: "This is where you log your vehicle's current mileage. Keeping it updated is what powers every due-date calculation in the app — the date stays current automatically.",
+      statusDashboardTitle: "Your Dashboard",
+      statusDashboardBody: "At a glance: your overall status, any active alerts like tire swaps or undercoating, your driving stats, and what's due next versus what you've done recently.",
+      statusItemExampleTitle: "A Service Item, Up Close",
+      statusItemExampleBody: "Here's a real item from your list. Each one tracks its own interval, shows how far away it is from due, and lets you mark it done, update its history, or remove it. Tap any item to expand it and see for yourself.",
+      inspectionsOverviewTitle: "Inspections",
+      inspectionsOverviewBody: "A DIY inspection form — log tread depth, brake pad thickness, and notes, then check off what you did. Every saved inspection becomes its own printable report.",
+      historyOverviewTitle: "Service History",
+      historyOverviewBody: "A full log of everything you've done, plus every inspection report you've saved — sortable, filterable, and exportable whenever you need it.",
+      resourcesOverviewTitle: "Resources",
+      resourcesOverviewBody: "Trusted tire stores, online parts retailers, motor oil brands, and honest tire brand rankings — organized and cross-referenced against independent testing, not just marketing.",
+      resourcesQuizTitle: "Not Sure What Tire You Need?",
+      resourcesQuizBody: "This section is worth reading before you shop — it explains what each tire type is actually for, and the quiz built into it gives you a specific recommendation based on how you actually drive.",
+      otherAboutTitle: "About This App",
+      otherAboutBody: "The About page — this one — covers exactly how your data is used and keeps a running changelog of everything that's changed. You can restart this tour from here any time.",
+      otherShareTitle: "Share & Install",
+      otherShareBody: "The Share page has instructions for adding GearLog to your phone's home screen like a real app, plus a quick way to send it to someone else.",
+      finalAccountTitle: "Last Stop: Your Account",
+      finalAccountBody: "That's the full tour! If you'd like your data to save automatically and follow you across devices, you can create an account right here — or stick with local-only storage if you'd rather. Either way, you're all set.",
     },
     confirmModal: {
       title: "Please confirm",
@@ -226,12 +266,17 @@ const I18N = {
       dueOnLineOverdue: (date) => `Was due on ${date}`,
       avgKmLabel: "Avg. KM / Month",
       mileageThisYearLabel: "KM Driven This Year",
+      alertsTitle: "Alerts",
       seasonalWinterToSummer: "It's swap season — most people switch from winter to summer tires between the beginning of April and end of May.",
       seasonalSummerToWinter: "It's swap season — most people switch from summer to winter tires between mid-October and mid-December.",
       seasonalSwapTitle: "Seasonal Tire Swap",
       markSwapDone: "Mark as completed",
       promptNextSwap: (nextLabel, date) => `Want a calendar reminder for your next swap — ${nextLabel}, around ${date}?`,
       swapMarkedDoneToast: "Tire swap marked as done for this season.",
+      undercoatingAlertTitle: "Undercoating",
+      undercoatingAlertBody: "It's that time of year — most shops recommend a fresh undercoating application to protect against road salt and winter corrosion.",
+      confirmUndercoatingBtn: "Confirm Done",
+      undercoatingConfirmedToast: "Undercoating confirmed for this year.",
     },
     vehicleInfo: {
       title: "Vehicle Information",
@@ -250,9 +295,13 @@ const I18N = {
       powerSteering: "+ Power Steering Fluid",
       added: "Added",
       optionalToggleLabel: "Enable Optional Services",
-      optionalToggleHintOn: "Brake service, cabin air filter, and undercoating are included below.",
-      optionalToggleHintOff: "Turn on to add brake service, cabin air filter, and undercoating to your tracked list.",
+      optionalToggleHintOn: "Brake service and cabin air filter are included below.",
+      optionalToggleHintOff: "Turn on to add brake service and cabin air filter to your tracked list.",
       optionalAddedToast: "Optional services added to your list.",
+      undercoatingToggleLabel: "Enable Undercoating Reminder",
+      undercoatingToggleHintOn: "You'll get a dashboard alert starting August 15th each year until you confirm it's done.",
+      undercoatingToggleHintOff: "Turn on to get a yearly reminder alert starting August 15th, until you confirm it's been done.",
+      undercoatingHistoryName: "Undercoating",
     },
     customItem: {
       title: "Add Custom Service Item",
@@ -396,6 +445,9 @@ const I18N = {
     },
     about: {
       title: "About",
+      tourTitle: "Guided Walkthrough",
+      tourBody: "Take the full guided tour of GearLog anytime — how setup works, what the dashboard tracks, and where everything lives.",
+      tourBtn: "Start Walkthrough",
       aiTitle: "AI Disclaimer",
       aiBody: [
         "GearLog was built using Claude, Anthropic's AI assistant, for 100% of the code — every function, layout, and interaction in this app was written by AI based on direction and feedback from the developer.",
@@ -573,6 +625,7 @@ const I18N = {
       allServicesLabel: "Tous les entretiens",
       monthlyLabel: "Rappel mensuel de kilométrage",
       tireSwapLabel: (nextLabel) => `Rappel de changement de pneus (prochain : ${nextLabel})`,
+      undercoatingLabel: "Rappel d'antirouille",
       toSummerLabel: "Passer aux pneus d'été",
       toWinterLabel: "Passer aux pneus d'hiver",
       individualLabel: "Entretiens individuels",
@@ -652,10 +705,49 @@ const I18N = {
       dismiss: "Compris",
     },
     onboarding: {
-      title: "Votre liste est prête!",
-      body: "Pendant que vous êtes ici — la page Ressources contient des classements de marques de pneus, des ateliers locaux de confiance et des détaillants de pièces en ligne. Si vous ne savez pas quel type de pneu convient à votre conduite, le questionnaire de recherche de pneu là-bas peut vous orienter en moins d'une minute.",
-      goToResourcesBtn: "Voir les ressources",
-      dismiss: "Plus tard",
+      title: "Bienvenue sur GearLog!",
+      body: "Nouveau ici? Une courte visite guidée peut vous montrer comment tout fonctionne — la configuration, ce que le tableau de bord suit, et où tout se trouve. Ça prend quelques minutes et vous pouvez quitter en tout temps.",
+      startTourBtn: "Commencer la visite",
+      dismiss: "Non merci",
+    },
+    tour: {
+      stepCounter: (num, total) => `Étape ${num} sur ${total}`,
+      skipBtn: "Passer la visite",
+      backBtn: "Retour",
+      nextBtn: "Suivant",
+      finishBtn: "Terminer",
+      welcomeTitle: "Bienvenue sur GearLog",
+      welcomeBody: "Voyons ensemble comment tout fonctionne — de la configuration de votre premier véhicule au suivi de chaque entretien, inspection et rappel. Quittez en tout temps avec le bouton ci-dessous, et vous pouvez toujours redémarrer cette visite depuis la page À propos plus tard.",
+      setupBasicsTitle: "Informations de base",
+      setupBasicsBody: "Commencez ici — choisissez votre transmission et votre boîte de vitesse. GearLog les utilise pour déterminer exactement quels entretiens s'appliquent à votre véhicule. Les interrupteurs ci-dessous vous permettent de supposer aucun historique préalable (utile pour un véhicule d'occasion sans dossier connu) et d'ajouter des services facultatifs couramment recommandés.",
+      setupInfoTitle: "Info du véhicule",
+      setupInfoBody: "Une fois les informations de base enregistrées, cette carte apparaît — année, marque, modèle et un NIV facultatif. L'année sert aussi de base aux rappels comme l'antirouille et aux dates « aucun historique préalable ».",
+      setupConditionsTitle: "Conditions de conduite",
+      setupConditionsBody: "Indiquez à GearLog si vous conduisez dans des conditions normales ou sévères — trajets courts fréquents, remorquage, chaleur ou froid extrême, routes poussiéreuses. Les conditions sévères raccourcissent automatiquement certains intervalles d'entretien.",
+      setupRemindersTitle: "Rappels",
+      setupRemindersBody: "Même avant que votre liste existe, vous pouvez configurer un rappel mensuel de kilométrage — un rappel de calendrier pour garder votre kilométrage à jour, ce qui garde chaque échéance précise. Une fois votre liste construite, cette section s'agrandit pour inclure les changements de pneus, l'antirouille et chaque entretien individuel aussi.",
+      setupBuildListTitle: "Construisez votre liste",
+      setupBuildListBody: "C'est le gros bouton — appuyez dessus et GearLog construit votre liste d'entretien complète à partir de tout ce qui précède. Vous pouvez toujours revenir et la mettre à jour plus tard si quelque chose change.",
+      statusCurrentTitle: "État actuel",
+      statusCurrentBody: "C'est ici que vous inscrivez le kilométrage actuel de votre véhicule. Le garder à jour est ce qui alimente chaque calcul d'échéance dans l'application — la date reste à jour automatiquement.",
+      statusDashboardTitle: "Votre tableau de bord",
+      statusDashboardBody: "En un coup d'œil : votre état général, toute alerte active comme les changements de pneus ou l'antirouille, vos statistiques de conduite, et ce qui est à venir par rapport à ce que vous avez fait récemment.",
+      statusItemExampleTitle: "Un entretien, de près",
+      statusItemExampleBody: "Voici un entretien réel de votre liste. Chacun suit son propre intervalle, montre à quelle distance il est de son échéance, et vous permet de le marquer comme fait, de mettre à jour son historique, ou de le retirer. Touchez n'importe quel entretien pour le déplier et voir par vous-même.",
+      inspectionsOverviewTitle: "Inspections",
+      inspectionsOverviewBody: "Un formulaire d'inspection à faire soi-même — inscrivez la profondeur de bande de roulement, l'épaisseur des plaquettes de frein et des notes, puis cochez ce que vous avez fait. Chaque inspection enregistrée devient son propre rapport imprimable.",
+      historyOverviewTitle: "Historique d'entretien",
+      historyOverviewBody: "Un historique complet de tout ce que vous avez fait, plus chaque rapport d'inspection que vous avez enregistré — triable, filtrable et exportable quand vous en avez besoin.",
+      resourcesOverviewTitle: "Ressources",
+      resourcesOverviewBody: "Des ateliers de pneus de confiance, des détaillants de pièces en ligne, des marques d'huile moteur et des classements honnêtes de marques de pneus — organisés et recoupés avec des essais indépendants, pas seulement du marketing.",
+      resourcesQuizTitle: "Pas sûr du pneu qu'il vous faut?",
+      resourcesQuizBody: "Cette section vaut la peine d'être lue avant de magasiner — elle explique à quoi sert vraiment chaque type de pneu, et le questionnaire qui y est intégré vous donne une recommandation précise selon votre conduite réelle.",
+      otherAboutTitle: "À propos de cette application",
+      otherAboutBody: "La page À propos — celle-ci — explique exactement comment vos données sont utilisées et tient un journal des changements. Vous pouvez redémarrer cette visite d'ici en tout temps.",
+      otherShareTitle: "Partager et installer",
+      otherShareBody: "La page Partager contient des instructions pour ajouter GearLog à l'écran d'accueil de votre téléphone comme une vraie application, plus un moyen rapide de l'envoyer à quelqu'un d'autre.",
+      finalAccountTitle: "Dernier arrêt : votre compte",
+      finalAccountBody: "C'est la fin de la visite! Si vous voulez que vos données s'enregistrent automatiquement et vous suivent sur tous vos appareils, vous pouvez créer un compte ici même — ou continuer avec le stockage local seulement si vous préférez. Dans les deux cas, vous êtes prêt.",
     },
     confirmModal: {
       title: "Veuillez confirmer",
@@ -681,12 +773,17 @@ const I18N = {
       dueOnLineOverdue: (date) => `Était dû le ${date}`,
       avgKmLabel: "Moy. KM / mois",
       mileageThisYearLabel: "KM parcourus cette année",
+      alertsTitle: "Alertes",
       seasonalWinterToSummer: "C'est la saison du changement — la plupart des gens passent des pneus d'hiver aux pneus d'été entre le début avril et la fin mai.",
       seasonalSummerToWinter: "C'est la saison du changement — la plupart des gens passent des pneus d'été aux pneus d'hiver entre la mi-octobre et la mi-décembre.",
       seasonalSwapTitle: "Changement de pneus saisonnier",
       markSwapDone: "Marquer comme complété",
       promptNextSwap: (nextLabel, date) => `Voulez-vous un rappel de calendrier pour votre prochain changement — ${nextLabel}, vers le ${date}?`,
       swapMarkedDoneToast: "Changement de pneus marqué comme fait pour cette saison.",
+      undercoatingAlertTitle: "Antirouille",
+      undercoatingAlertBody: "C'est cette période de l'année — la plupart des ateliers recommandent une nouvelle application d'antirouille pour protéger contre le sel de route et la corrosion hivernale.",
+      confirmUndercoatingBtn: "Confirmer comme fait",
+      undercoatingConfirmedToast: "Antirouille confirmée pour cette année.",
     },
     vehicleInfo: {
       title: "Renseignements sur le véhicule",
@@ -705,9 +802,13 @@ const I18N = {
       powerSteering: "+ Liquide de direction assistée",
       added: "Ajouté",
       optionalToggleLabel: "Activer les services facultatifs",
-      optionalToggleHintOn: "L'entretien des freins, le filtre à air d'habitacle et l'antirouille sont inclus ci-dessous.",
-      optionalToggleHintOff: "Activez pour ajouter l'entretien des freins, le filtre à air d'habitacle et l'antirouille à votre liste suivie.",
+      optionalToggleHintOn: "L'entretien des freins et le filtre à air d'habitacle sont inclus ci-dessous.",
+      optionalToggleHintOff: "Activez pour ajouter l'entretien des freins et le filtre à air d'habitacle à votre liste suivie.",
       optionalAddedToast: "Services facultatifs ajoutés à votre liste.",
+      undercoatingToggleLabel: "Activer le rappel d'antirouille",
+      undercoatingToggleHintOn: "Vous recevrez une alerte sur le tableau de bord à partir du 15 août chaque année, jusqu'à ce que vous confirmiez que c'est fait.",
+      undercoatingToggleHintOff: "Activez pour recevoir une alerte de rappel annuelle à partir du 15 août, jusqu'à ce que vous confirmiez que c'est fait.",
+      undercoatingHistoryName: "Antirouille",
     },
     customItem: {
       title: "Ajouter un élément d'entretien personnalisé",
@@ -851,6 +952,9 @@ const I18N = {
     },
     about: {
       title: "À propos",
+      tourTitle: "Visite guidée",
+      tourBody: "Refaites la visite guidée complète de GearLog en tout temps — comment la configuration fonctionne, ce que le tableau de bord suit, et où tout se trouve.",
+      tourBtn: "Commencer la visite",
       aiTitle: "Avis sur l'utilisation de l'IA",
       aiBody: [
         "GearLog a été construit avec Claude, l'assistant IA d'Anthropic, pour 100 % du code — chaque fonction, mise en page et interaction de cette application a été écrite par l'IA selon les directives et commentaires du développeur.",
@@ -911,6 +1015,120 @@ const I18N = {
   },
 };
 
+// Ordered steps for the guided walkthrough. Each step's page/tab tell every page's render()
+// whether the tour overlay belongs on THIS page right now. target is a CSS selector to
+// highlight, or null for a general intro/closing message with no specific element.
+const TOUR_STEPS = [
+  { id: "welcome",            page: "index.html",     tab: "setup",       target: null },
+  { id: "setupBasics",        page: "index.html",     tab: "setup",       target: "#setup-basics-card" },
+  { id: "setupInfo",          page: "index.html",     tab: "setup",       target: "#setup-info-card" },
+  { id: "setupConditions",    page: "index.html",     tab: "setup",       target: "#setup-conditions-card" },
+  { id: "setupReminders",     page: "index.html",     tab: "setup",       target: "#setup-reminders-card" },
+  { id: "setupBuildList",     page: "index.html",     tab: "setup",       target: "#setup-buildlist-card" },
+  { id: "statusCurrent",      page: "index.html",     tab: "status",      target: "#status-current-card" },
+  { id: "statusDashboard",    page: "index.html",     tab: "status",      target: ".dash-card" },
+  { id: "statusItemExample",  page: "index.html",     tab: "status",      target: "#itemsList", openItems: true },
+  { id: "inspectionsOverview",page: "index.html",     tab: "inspections", target: "#inspections-main-card" },
+  { id: "historyOverview",    page: "index.html",     tab: "history",     target: "#history-main-card" },
+  { id: "resourcesOverview",  page: "resources.html", tab: null,          target: "#res-tires" },
+  { id: "resourcesQuiz",      page: "resources.html", tab: null,          target: "#acc-guide" },
+  { id: "otherAbout",         page: "about.html",     tab: null,          target: null },
+  { id: "otherShare",         page: "share.html",     tab: null,          target: null },
+  { id: "finalAccount",       page: "account.html",   tab: null,          target: null },
+];
+
+function getCurrentTourStep(){
+  if(!state.tourActive) return null;
+  return TOUR_STEPS[state.tourStepIndex] || null;
+}
+
+// CURRENT_PAGE (set per-page as window.CURRENT_PAGE) uses short ids like "tracker"/"resources",
+// while TOUR_STEPS uses actual filenames for navigation. This maps one to the other.
+const TOUR_PAGE_ID_MAP = { "index.html": "tracker", "resources.html": "resources", "about.html": "about", "share.html": "share", "account.html": "account" };
+function tourStepMatchesCurrentPage(step){
+  if(typeof CURRENT_PAGE === "undefined") return true;
+  return TOUR_PAGE_ID_MAP[step.page] === CURRENT_PAGE;
+}
+
+function startTour(){
+  state.tourActive = true;
+  state.tourStepIndex = 0;
+  const first = TOUR_STEPS[0];
+  if(first.tab) state.trackerTab = first.tab;
+  saveState();
+  if(!tourStepMatchesCurrentPage(first)){
+    window.location.href = first.page;
+  } else if(typeof render === "function"){
+    render();
+  }
+}
+
+function tourGoToIndex(newIndex){
+  if(newIndex < 0) return;
+  if(newIndex >= TOUR_STEPS.length){
+    state.tourActive = false;
+    saveState();
+    if(typeof render === "function") render();
+    return;
+  }
+  const next = TOUR_STEPS[newIndex];
+  state.tourStepIndex = newIndex;
+  if(next.tab) state.trackerTab = next.tab;
+  saveState();
+  if(!tourStepMatchesCurrentPage(next)){
+    window.location.href = next.page;
+  } else if(typeof render === "function"){
+    render();
+  }
+}
+
+function tourNext(){ tourGoToIndex(state.tourStepIndex + 1); }
+function tourBack(){ tourGoToIndex(state.tourStepIndex - 1); }
+function tourSkip(){
+  state.tourActive = false;
+  saveState();
+  if(typeof render === "function") render();
+}
+
+function tourOverlayHTML(){
+  const step = getCurrentTourStep();
+  if(!step) return "";
+  if(!tourStepMatchesCurrentPage(step)) return "";
+  const stepNum = state.tourStepIndex + 1;
+  const total = TOUR_STEPS.length;
+  return `
+    <div class="tour-backdrop"></div>
+    <div class="tour-caption">
+      <div class="tour-caption-step">${t("tour.stepCounter")(stepNum, total)}</div>
+      <div class="tour-caption-title">${t("tour." + step.id + "Title")}</div>
+      <p class="tour-caption-body">${t("tour." + step.id + "Body")}</p>
+      <div class="tour-caption-actions">
+        <button class="btn secondary" type="button" data-action="tour-skip">${t("tour.skipBtn")}</button>
+        <div style="display:flex; gap:8px;">
+          ${stepNum > 1 ? `<button class="btn secondary" type="button" data-action="tour-back">${t("tour.backBtn")}</button>` : ""}
+          <button class="btn c-orange" type="button" data-action="tour-next">${stepNum === total ? t("tour.finishBtn") : t("tour.nextBtn")}</button>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function applyTourHighlight(){
+  document.querySelectorAll(".tour-spotlight").forEach(el => el.classList.remove("tour-spotlight"));
+  const step = getCurrentTourStep();
+  if(!step || !step.target) return;
+  if(!tourStepMatchesCurrentPage(step)) return;
+  if(step.openItems){
+    const itemsSection = document.querySelector("details.items-collapse");
+    if(itemsSection) itemsSection.open = true;
+  }
+  const target = document.querySelector(step.target);
+  if(target){
+    target.classList.add("tour-spotlight");
+    target.scrollIntoView({behavior: "smooth", block: "center"});
+  }
+}
+
 function t(path){
   const dict = I18N[state.language] || I18N.en;
   const parts = path.split(".");
@@ -942,6 +1160,8 @@ function defaultVehicle(name){
     setupConfirmed: { basics: false, info: false, conditions: false },
     optionalServicesEnabled: false,
     tireSwapCompletedFor: null,
+    undercoatingEnabled: false,
+    undercoatingConfirmedFor: null,
     previousServiceSnapshot: null,
     previousServiceSnapshotKey: null,
     mileageLog: [],
@@ -960,6 +1180,8 @@ function defaultState(){
     lastSeenChangelogVersion: 0,
     lastOpenedAt: null,
     hasSeenOnboardingPopup: false,
+    tourActive: false,
+    tourStepIndex: 0,
   };
 }
 
@@ -1239,6 +1461,8 @@ if(state.hasSeenOnboardingPopup === undefined){
   state.hasSeenOnboardingPopup = alreadyHasData;
 }
 if(state.hasSeenOnboardingPopup === undefined) state.hasSeenOnboardingPopup = false;
+if(state.tourActive === undefined) state.tourActive = false;
+if(state.tourStepIndex === undefined) state.tourStepIndex = 0;
 Object.values(state.vehicles).forEach(v => {
   if(!Array.isArray(v.history)) v.history = [];
   if(!v.items) v.items = {};
@@ -1254,6 +1478,14 @@ Object.values(state.vehicles).forEach(v => {
   }
   if(v.optionalServicesEnabled == null) v.optionalServicesEnabled = false;
   if(v.tireSwapCompletedFor === undefined) v.tireSwapCompletedFor = null;
+  if(v.undercoatingEnabled === undefined){
+    // Undercoating used to be a regular tracked item bundled with "optional services".
+    // If someone already had it in their list, carry that forward as enabled, and drop
+    // it from the items list since it's now handled as a dashboard alert instead.
+    v.undercoatingEnabled = !!(v.items && v.items.undercoating);
+  }
+  if(v.undercoatingConfirmedFor === undefined) v.undercoatingConfirmedFor = null;
+  if(v.items && v.items.undercoating) delete v.items.undercoating;
   if(v.previousServiceSnapshot === undefined) v.previousServiceSnapshot = null;
   if(v.previousServiceSnapshotKey === undefined) v.previousServiceSnapshotKey = null;
   if(v.mileageLog === undefined){
@@ -1353,6 +1585,14 @@ function appLoadingScreenHTML(){
 
 function hideAppLoadingScreen(){
   appLoadingScreenActive = false;
+  if(CURRENT_PAGE === "tracker" && !state.hasSeenOnboardingPopup){
+    const alreadyHasData = Object.values(state.vehicles || {}).some(v => Object.keys(v.items || {}).length > 0);
+    if(!alreadyHasData){
+      state.hasSeenOnboardingPopup = true;
+      saveState();
+      if(typeof window !== "undefined") window.__gearlogShowTourOffer = true;
+    }
+  }
   if(typeof render === "function") render();
 }
 

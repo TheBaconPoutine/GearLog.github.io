@@ -342,6 +342,7 @@ function setupCardHTML(){
   const assumeOn = !!v.assumeNoPriorHistory;
   const optionalOn = !!v.optionalServicesEnabled;
   const undercoatingOn = !!v.undercoatingEnabled;
+  const tireSwapOn = !!v.tireSwapEnabled;
   const hasItems = Object.keys(v.items).length > 0;
   return `
     <section class="card" id="setup-basics-card">
@@ -377,6 +378,14 @@ function setupCardHTML(){
         <div>
           <div class="assume-toggle-label">${t("addons.optionalToggleLabel")}</div>
           <div class="assume-toggle-hint">${optionalOn ? t("addons.optionalToggleHintOn") : t("addons.optionalToggleHintOff")}</div>
+        </div>
+      </div>
+
+      <div class="assume-toggle ${tireSwapOn ? "on" : ""}" data-action="toggle-tire-swap" role="button" tabindex="0" style="margin-top:10px;">
+        <div class="assume-toggle-check">${tireSwapOn ? "✓" : ""}</div>
+        <div>
+          <div class="assume-toggle-label">${t("addons.tireSwapToggleLabel")}</div>
+          <div class="assume-toggle-hint">${tireSwapOn ? t("addons.tireSwapToggleHintOn") : t("addons.tireSwapToggleHintOff")}</div>
         </div>
       </div>
 
@@ -470,10 +479,12 @@ function remindersCardHTML(){
         <span class="reminder-name">${t("reminders.monthlyLabel")}</span>
         <button class="btn secondary c-green" type="button" data-action="monthly-reminder-ics">${t("reminders.createBtn")}</button>
       </div>
-      <div class="reminder-row reminder-row-featured">
-        <span class="reminder-name">${t("reminders.tireSwapLabel")(nextSwapLabel)}</span>
-        <button class="btn secondary c-green" type="button" data-action="tire-swap-reminder-ics">${t("reminders.createBtn")}</button>
-      </div>
+      ${v.tireSwapEnabled ? `
+        <div class="reminder-row reminder-row-featured">
+          <span class="reminder-name">${t("reminders.tireSwapLabel")(nextSwapLabel)}</span>
+          <button class="btn secondary c-green" type="button" data-action="tire-swap-reminder-ics">${t("reminders.createBtn")}</button>
+        </div>
+      ` : ""}
       ${v.undercoatingEnabled ? `
         <div class="reminder-row reminder-row-featured">
           <span class="reminder-name">${t("reminders.undercoatingLabel")}</span>
@@ -508,7 +519,7 @@ function statusCardHTML(){
         </label>
       </div>
       <div class="actions-row">
-        <button class="btn" type="button" data-action="recalc">${t("status.recalc")}</button>
+        <button class="btn" type="button" data-action="recalc">${(v.mileageLog || []).length === 0 ? t("status.calculate") : t("status.recalc")}</button>
         <button class="btn secondary c-red" type="button" data-action="reset-vehicle">${t("status.resetAll")}</button>
       </div>
     </section>
@@ -685,7 +696,7 @@ function dashboardHTML(){
 
   const swapWindow = getSeasonalSwapWindow(v);
   const swapAlreadyDone = swapWindow && v.tireSwapCompletedFor === swapWindow.id;
-  const showSwapAlert = swapWindow && !swapAlreadyDone;
+  const showSwapAlert = v.tireSwapEnabled && swapWindow && !swapAlreadyDone;
 
   const undercoatingAlert = getUndercoatingAlert(v);
   const showUndercoatingAlert = !!undercoatingAlert;
@@ -736,10 +747,12 @@ function dashboardHTML(){
       </div>
     `);
   }
-  const alertsHTML = alertCards.length > 0 ? `
+  const alertsHTML = `
     <p class="dash-label" style="margin-top:0;">${t("dashboard.alertsTitle")}</p>
-    <div class="alerts-scroll">${alertCards.join("")}</div>
-  ` : "";
+    <div class="dash-section-box">
+      ${alertCards.length > 0 ? `<div class="alerts-scroll">${alertCards.join("")}</div>` : `<p class="dash-empty">${t("dashboard.noCurrentAlerts")}</p>`}
+    </div>
+  `;
 
   const statsHTML = `
     <div class="dash-stats">
@@ -761,30 +774,32 @@ function dashboardHTML(){
     .sort((a, b) => a.daysRemaining - b.daysRemaining);
   const nextDueHTML = `
     <p class="dash-label">${t("dashboard.nextDueLabel")}</p>
-    ${dueSoon.length > 0 ? `
-      <div class="dash-scroll">
-        ${dueSoon.map(u => {
-          const nextDateStr = fmtDate(u.projectedDate);
-          const isOverdue = u.status === "over";
-          let line;
-          if(u.hasKmInterval){
-            const nextKmStr = Math.round(u.nextDueKm).toLocaleString();
-            line = isOverdue ? t("dashboard.dueAtLineOverdue")(nextKmStr, nextDateStr) : t("dashboard.dueAtLine")(nextKmStr, nextDateStr);
-          } else {
-            line = isOverdue ? t("dashboard.dueOnLineOverdue")(nextDateStr) : t("dashboard.dueOnLine")(nextDateStr);
-          }
-          return `
-            <div class="dash-row dash-row-clickable" data-action="goto-item" data-key="${u.key}">
-              <div class="dash-row-top">
-                <span class="dash-item-name">${u.name}</span>
-                <span class="status-pill status-${u.status}">${t("statusMeta." + u.status)}</span>
+    <div class="dash-section-box">
+      ${dueSoon.length > 0 ? `
+        <div class="dash-scroll">
+          ${dueSoon.map(u => {
+            const nextDateStr = fmtDate(u.projectedDate);
+            const isOverdue = u.status === "over";
+            let line;
+            if(u.hasKmInterval){
+              const nextKmStr = Math.round(u.nextDueKm).toLocaleString();
+              line = isOverdue ? t("dashboard.dueAtLineOverdue")(nextKmStr, nextDateStr) : t("dashboard.dueAtLine")(nextKmStr, nextDateStr);
+            } else {
+              line = isOverdue ? t("dashboard.dueOnLineOverdue")(nextDateStr) : t("dashboard.dueOnLine")(nextDateStr);
+            }
+            return `
+              <div class="dash-row dash-row-clickable" data-action="goto-item" data-key="${u.key}">
+                <div class="dash-row-top">
+                  <span class="dash-item-name">${u.name}</span>
+                  <span class="status-pill status-${u.status}">${t("statusMeta." + u.status)}</span>
+                </div>
+                <div class="dash-item-line">${line}</div>
               </div>
-              <div class="dash-item-line">${line}</div>
-            </div>
-          `;
-        }).join("")}
-      </div>
-    ` : `<p class="dash-empty">${t("dashboard.allGood")}</p>`}
+            `;
+          }).join("")}
+        </div>
+      ` : `<p class="dash-empty">${t("dashboard.allGood")}</p>`}
+    </div>
   `;
 
   // Previous Service Done — a snapshot of whatever was most recently marked done, not a running
@@ -796,16 +811,18 @@ function dashboardHTML(){
     .sort((a, b) => (b.item.lastDate || "").localeCompare(a.item.lastDate || ""));
   const previousHTML = `
     <p class="dash-label">${t("dashboard.previousLabel")}</p>
-    ${previousItems.length > 0 ? `
-      <div class="dash-scroll">
-        ${previousItems.map(u => `
-          <div class="dash-row dash-row-clickable" data-action="goto-item" data-key="${u.key}">
-            <div class="dash-row-top"><span class="dash-item-name">${u.name}</span></div>
-            <div class="dash-item-line">${t("dashboard.lastServiceLine")(Math.round(u.item.lastKm).toLocaleString(), fmtDate(parseISO(u.item.lastDate)))}</div>
-          </div>
-        `).join("")}
-      </div>
-    ` : `<p class="dash-empty">${t("dashboard.noPriorHistory")}</p>`}
+    <div class="dash-section-box">
+      ${previousItems.length > 0 ? `
+        <div class="dash-scroll">
+          ${previousItems.map(u => `
+            <div class="dash-row dash-row-clickable" data-action="goto-item" data-key="${u.key}">
+              <div class="dash-row-top"><span class="dash-item-name">${u.name}</span></div>
+              <div class="dash-item-line">${t("dashboard.lastServiceLine")(Math.round(u.item.lastKm).toLocaleString(), fmtDate(parseISO(u.item.lastDate)))}</div>
+            </div>
+          `).join("")}
+        </div>
+      ` : `<p class="dash-empty">${t("dashboard.noPriorHistory")}</p>`}
+    </div>
   `;
 
   return `
@@ -1722,6 +1739,11 @@ appEl.addEventListener("click", (e) => {
 
     case "toggle-optional-services":
       vehicle.optionalServicesEnabled = !vehicle.optionalServicesEnabled;
+      saveState(); render();
+      break;
+
+    case "toggle-tire-swap":
+      vehicle.tireSwapEnabled = !vehicle.tireSwapEnabled;
       saveState(); render();
       break;
 

@@ -198,6 +198,10 @@
   .dash-col{min-width:0;}
   .dash-label{font-family: var(--font-display); font-weight:600; font-size:12px; text-transform:uppercase; letter-spacing:0.5px; color: var(--text-dim2); margin:18px 0 10px;}
   .dash-label:first-of-type{margin-top:0;}
+  .dash-section-box{
+    background: var(--panel); border: 1px solid var(--hairline); border-radius: var(--radius);
+    padding: 14px; min-height: 64px; display:flex; flex-direction:column; justify-content:center;
+  }
   .dash-scroll{max-height:360px; overflow-y:auto; padding-right:2px; display:flex; flex-direction:column; gap:8px;}
   .dash-row{padding:12px 14px; border:1px solid var(--hairline); border-radius: var(--radius); background: var(--panel-raised); min-width:0;}
   .dash-row-clickable{cursor:pointer; transition: background .12s ease, border-color .12s ease;}

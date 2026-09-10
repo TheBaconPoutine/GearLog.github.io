@@ -106,6 +106,7 @@ const I18N = {
       currentDate: "Current Date",
       autoDateHint: "kept current automatically",
       recalc: "Recalculate",
+      calculate: "Calculate",
       resetAll: "Reset This Vehicle",
       resetConfirm: "This clears all data for this vehicle. Continue?",
       staleBanner: "You haven't updated this vehicle's mileage or date in over a month — update them above for more accurate due dates.",
@@ -274,6 +275,7 @@ const I18N = {
       avgKmLabel: "Avg. KM / Month",
       mileageThisYearLabel: "KM Driven This Year",
       alertsTitle: "Alerts",
+      noCurrentAlerts: "No current alerts.",
       seasonalWinterToSummer: "It's swap season — most people switch from winter to summer tires between the beginning of April and end of May.",
       seasonalSummerToWinter: "It's swap season — most people switch from summer to winter tires between mid-October and mid-December.",
       seasonalSwapTitle: "Seasonal Tire Swap",
@@ -305,6 +307,9 @@ const I18N = {
       optionalToggleHintOn: "Brake service and cabin air filter are included below.",
       optionalToggleHintOff: "Turn on to add brake service and cabin air filter to your tracked list.",
       optionalAddedToast: "Optional services added to your list.",
+      tireSwapToggleLabel: "Enable Tire Swap Alert",
+      tireSwapToggleHintOn: "You'll get a dashboard alert each swap season (April-May and mid-October to mid-December) until you mark it done.",
+      tireSwapToggleHintOff: "Turn on to get a dashboard alert each swap season, reminding you to switch between summer and winter tires.",
       undercoatingToggleLabel: "Enable Undercoating Reminder",
       undercoatingToggleHintOn: "You'll get a dashboard alert starting August 15th each year until you confirm it's done.",
       undercoatingToggleHintOff: "Turn on to get a yearly reminder alert starting August 15th, until you confirm it's been done.",
@@ -620,6 +625,7 @@ const I18N = {
       currentDate: "Date actuelle",
       autoDateHint: "maintenue à jour automatiquement",
       recalc: "Recalculer",
+      calculate: "Calculer",
       resetAll: "Réinitialiser ce véhicule",
       resetConfirm: "Ceci efface toutes les données de ce véhicule. Continuer?",
       staleBanner: "Vous n'avez pas mis à jour le kilométrage ou la date de ce véhicule depuis plus d'un mois — mettez-les à jour ci-dessus pour des échéances plus précises.",
@@ -788,6 +794,7 @@ const I18N = {
       avgKmLabel: "Moy. KM / mois",
       mileageThisYearLabel: "KM parcourus cette année",
       alertsTitle: "Alertes",
+      noCurrentAlerts: "Aucune alerte pour le moment.",
       seasonalWinterToSummer: "C'est la saison du changement — la plupart des gens passent des pneus d'hiver aux pneus d'été entre le début avril et la fin mai.",
       seasonalSummerToWinter: "C'est la saison du changement — la plupart des gens passent des pneus d'été aux pneus d'hiver entre la mi-octobre et la mi-décembre.",
       seasonalSwapTitle: "Changement de pneus saisonnier",
@@ -819,6 +826,9 @@ const I18N = {
       optionalToggleHintOn: "L'entretien des freins et le filtre à air d'habitacle sont inclus ci-dessous.",
       optionalToggleHintOff: "Activez pour ajouter l'entretien des freins et le filtre à air d'habitacle à votre liste suivie.",
       optionalAddedToast: "Services facultatifs ajoutés à votre liste.",
+      tireSwapToggleLabel: "Activer l'alerte de changement de pneus",
+      tireSwapToggleHintOn: "Vous recevrez une alerte sur le tableau de bord à chaque saison de changement (avril-mai et de la mi-octobre à la mi-décembre), jusqu'à ce que vous le marquiez comme fait.",
+      tireSwapToggleHintOff: "Activez pour recevoir une alerte sur le tableau de bord à chaque saison de changement, vous rappelant de passer des pneus d'été aux pneus d'hiver et vice-versa.",
       undercoatingToggleLabel: "Activer le rappel d'antirouille",
       undercoatingToggleHintOn: "Vous recevrez une alerte sur le tableau de bord à partir du 15 août chaque année, jusqu'à ce que vous confirmiez que c'est fait.",
       undercoatingToggleHintOff: "Activez pour recevoir une alerte de rappel annuelle à partir du 15 août, jusqu'à ce que vous confirmiez que c'est fait.",
@@ -1043,7 +1053,7 @@ const TOUR_STEPS = [
   { id: "statusDashboard",    page: "index.html",     tab: "status",      target: ".dash-card" },
   { id: "itemFindExample",    page: "index.html",     tab: "status",      target: '.edit[data-key="engine_oil"]', openItems: true },
   { id: "itemExpanded",       page: "index.html",     tab: "status",      target: '.edit[data-key="engine_oil"]', openItems: true, openTarget: true },
-  { id: "itemActions",        page: "index.html",     tab: "status",      target: '[data-action="done-today"][data-key="engine_oil"]', openItems: true },
+  { id: "itemActions",        page: "index.html",     tab: "status",      target: '[data-action="done-today"][data-key="engine_oil"]', openItems: true, openTarget: true },
   { id: "inspectionsOverview",page: "index.html",     tab: "inspections", target: "#inspections-main-card" },
   { id: "historyOverview",    page: "index.html",     tab: "history",     target: "#history-main-card" },
   { id: "resourcesOverview",  page: "resources.html", tab: null,          target: "#res-tires", openTarget: true },
@@ -1179,7 +1189,7 @@ function applyTourHighlight(){
   const target = document.querySelector(step.target);
   if(target){
     target.classList.add("tour-spotlight");
-    target.scrollIntoView({behavior: "smooth", block: "start"});
+    target.scrollIntoView({behavior: "smooth", block: "center"});
   }
 }
 
@@ -1214,6 +1224,7 @@ function defaultVehicle(name){
     setupConfirmed: { basics: false, info: false, conditions: false },
     optionalServicesEnabled: false,
     tireSwapCompletedFor: null,
+    tireSwapEnabled: true,
     undercoatingEnabled: false,
     undercoatingConfirmedFor: null,
     previousServiceSnapshot: null,
@@ -1532,6 +1543,7 @@ Object.values(state.vehicles).forEach(v => {
   }
   if(v.optionalServicesEnabled == null) v.optionalServicesEnabled = false;
   if(v.tireSwapCompletedFor === undefined) v.tireSwapCompletedFor = null;
+  if(v.tireSwapEnabled === undefined) v.tireSwapEnabled = true;
   if(v.undercoatingEnabled === undefined){
     // Undercoating used to be a regular tracked item bundled with "optional services".
     // If someone already had it in their list, carry that forward as enabled, and drop

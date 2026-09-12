@@ -291,6 +291,7 @@ const I18N = {
       undercoatingAlertTitle: "Undercoating",
       undercoatingAlertBody: "It's that time of year — most shops recommend a fresh undercoating application to protect against road salt and winter corrosion.",
       confirmUndercoatingBtn: "Confirm Done",
+      undercoatingLearnMoreBtn: "Learn More",
       undercoatingConfirmedToast: "Undercoating confirmed for this year.",
     },
     vehicleInfo: {
@@ -838,6 +839,7 @@ const I18N = {
       undercoatingAlertTitle: "Antirouille",
       undercoatingAlertBody: "C'est cette période de l'année — la plupart des ateliers recommandent une nouvelle application d'antirouille pour protéger contre le sel de route et la corrosion hivernale.",
       confirmUndercoatingBtn: "Confirmer comme fait",
+      undercoatingLearnMoreBtn: "En savoir plus",
       undercoatingConfirmedToast: "Antirouille confirmée pour cette année.",
     },
     vehicleInfo: {
@@ -1258,8 +1260,8 @@ function trackQcEasterEgg(kind){
   const now = Date.now();
   if(kind === "logo") qcEasterEggLogoClicks.push(now);
   if(kind === "lang") qcEasterEggLangClicks.push(now);
-  qcEasterEggLogoClicks = qcEasterEggLogoClicks.filter(ts => now - ts <= 10000);
-  qcEasterEggLangClicks = qcEasterEggLangClicks.filter(ts => now - ts <= 10000);
+  qcEasterEggLogoClicks = qcEasterEggLogoClicks.filter(ts => now - ts <= 20000);
+  qcEasterEggLangClicks = qcEasterEggLangClicks.filter(ts => now - ts <= 20000);
   if(qcEasterEggLogoClicks.length >= 5 && qcEasterEggLangClicks.length >= 3){
     qcEasterEggLogoClicks = [];
     qcEasterEggLangClicks = [];
@@ -1487,6 +1489,16 @@ function queueRemoteSave(){
   remoteSaveTimer = setTimeout(pushRemoteState, 1200); // debounce so rapid edits don't spam the network
 }
 
+if(typeof window !== "undefined"){
+  window.addEventListener("pagehide", () => {
+    if(remoteSaveTimer){
+      clearTimeout(remoteSaveTimer);
+      remoteSaveTimer = null;
+      pushRemoteState();
+    }
+  });
+}
+
 async function pushRemoteState(){
   if(!sbClient || !currentUser) return;
   syncStatus = "saving";
@@ -1567,7 +1579,15 @@ async function handleAuthenticatedSession(){
   const localHasData = hasMeaningfulLocalData();
   if(remoteHasData){
     // Remote already has real data — it becomes the source of truth for this account.
+    // Language and the Quebec Easter egg unlock are treated as this device's own
+    // preference, not synced account data — otherwise a stale cloud copy (the push is
+    // debounced, so a quick language change followed by navigating to another page can
+    // easily race ahead of it) would silently revert a language you just picked.
+    const localLanguage = state.language;
+    const localQcUnlocked = state.qcUnlocked;
     state = remote;
+    if(localLanguage) state.language = localLanguage;
+    if(localQcUnlocked) state.qcUnlocked = true;
     localStorage.setItem(STORE_KEY, JSON.stringify(state));
   } else if(localHasData){
     // Remote is empty or missing (first login, or an earlier blank sync) but this device

@@ -56,26 +56,26 @@
     }
   }
   body.qc-theme{
-    --bg: #EEF3FB;
-    --panel: #FFFFFF;
-    --panel-raised: #E2ECFA;
-    --hairline: #C6D9F0;
-    --text: #14213D;
-    --text-dim: #3E5372;
-    --text-dim2: #52678A;
-    --amber: #003DA5;
-    --amber-dim: #7FA3DE;
-    --orange: #B5321F;
-    --blue: #003DA5;
-    --green: #2E7D46;
-    --red: #B5321F;
-    --red-dim: #E9C2BC;
-    --turquoise: #1E7A8A;
-    --green-text: #2A6B3E;
-    --orange-text: #8C2A18;
-    --red-text: #8C2A18;
-    --turquoise-text: #17606E;
-    --blue-text: #003DA5;
+    --bg: #E6ECF5;
+    --panel: #F5F8FC;
+    --panel-raised: #DCE6F3;
+    --hairline: #C2D2E8;
+    --text: #33445E;
+    --text-dim: #5A6B85;
+    --text-dim2: #6D7D96;
+    --amber: #3D6BAA;
+    --amber-dim: #A9C0E0;
+    --orange: #B15A46;
+    --blue: #3D6BAA;
+    --green: #4C8360;
+    --red: #B15A46;
+    --red-dim: #E8CFC8;
+    --turquoise: #3E8590;
+    --green-text: #3D6E4E;
+    --orange-text: #8F4A38;
+    --red-text: #8F4A38;
+    --turquoise-text: #326E77;
+    --blue-text: #3D6BAA;
   }
   *{box-sizing:border-box;}
   html,body{margin:0;padding:0; width:100%; overflow-x:hidden;}
@@ -112,8 +112,8 @@
   .lang-btn.theme-fr:hover{border-color:#EF4135;}
   .lang-btn.theme-uk{border-color:#3B4E82; background: linear-gradient(90deg, rgba(0,36,125,0.20), rgba(207,20,43,0.16)); color: var(--text);}
   .lang-btn.theme-uk:hover{border-color:#CF142B;}
-  .lang-btn.theme-qc{border-color:#003DA5; background: linear-gradient(90deg, rgba(0,61,165,0.20), rgba(255,255,255,0.10)); color: var(--text);}
-  .lang-btn.theme-qc:hover{border-color:#0050D6;}
+  .lang-btn.theme-qc{border-color:#3D6BAA; background: linear-gradient(90deg, rgba(61,107,170,0.18), rgba(255,255,255,0.10)); color: var(--text);}
+  .lang-btn.theme-qc:hover{border-color:#2E5586;}
   .qc-flag-icon{width:13px; height:13px; vertical-align:-2px; margin-right:2px; border-radius:2px;}
 
   .nav-bar{ margin-bottom:22px; position:relative; }
@@ -302,7 +302,7 @@
   select{font-family: var(--font-body); font-size:13.5px;}
   input:disabled{opacity:0.5; cursor:not-allowed;}
   summary::marker{display:none; content:"";}
-  summary{list-style:none;}
+  summary{list-style:none; -webkit-appearance:none; appearance:none;}
 
   input[type=checkbox]{
     appearance: none; -webkit-appearance: none; width:18px; height:18px; flex-shrink:0;

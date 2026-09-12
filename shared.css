@@ -199,8 +199,8 @@
   .card{background: var(--panel); border: 1px solid var(--hairline); border-radius: var(--radius); padding: 20px 22px; margin-bottom: 20px;}
   details.items-collapse summary{ cursor:pointer; list-style:none; display:flex; align-items:center; justify-content:space-between; }
   details.items-collapse summary::-webkit-details-marker{ display:none; }
-  details.items-collapse summary::after{ content:"▾"; color: var(--amber); font-size:14px; transition: transform .15s ease; transform: rotate(90deg); }
-  details.items-collapse[open] summary::after{ transform: rotate(0deg); }
+  details.items-collapse > summary::after{ content:"▾"; color: var(--amber); font-size:14px; transition: transform .15s ease; transform: rotate(90deg); }
+  details.items-collapse[open] > summary::after{ transform: rotate(0deg); }
 
   .dash-card{ }
   .dash-status-block{
@@ -298,6 +298,8 @@
     background: var(--panel-raised); border: 1px solid var(--hairline); color: var(--text);
     font-family: var(--font-mono); font-size: 14px; padding: 9px 10px; border-radius: 6px; outline: none; width:100%;
   }
+  input[type=date]{padding-right:14px;}
+  input[type=date]::-webkit-calendar-picker-indicator{margin-left:6px;}
   select:focus, input:focus, textarea:focus{border-color: var(--amber);}
   select{font-family: var(--font-body); font-size:13.5px;}
   input:disabled{opacity:0.5; cursor:not-allowed;}

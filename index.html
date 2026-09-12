@@ -104,6 +104,7 @@ let historyFilter = "all"; // "all" | "service" | "repair"
 let dataWarningDismissedThisSession = sessionStorage.getItem("gearlog_data_warning_dismissed") === "1"; // persists for this browser tab session — survives navigating between pages, resets when the tab/window is closed, or when you sign out
 let pendingCondition = {}; // vehicleId -> "severe" | "normal", transient selection awaiting confirmation
 let listBuildLoading = false; // purely cosmetic brief loading state shown while creating/updating the service list
+let recalcLoading = false; // purely cosmetic brief loading state shown when recalculating mileage
 let logoClickTimes = []; // timestamps of recent logo clicks, for the diagnostic-mode trigger
 let diagnosticModeActive = false;
 
@@ -259,7 +260,7 @@ function trackerSubNavHTML(){
 function trackerTabContentHTML(){
   switch(state.trackerTab){
     case "status":
-      return backupCardHTML() + bannerHTML() + statusCardHTML() + staleBannerHTML() + dashboardHTML() + itemsSectionHTML();
+      return bannerHTML() + statusCardHTML() + staleBannerHTML() + dashboardHTML() + itemsSectionHTML() + backupCardHTML();
     case "inspections":
       return inspectionsTabHTML();
     case "history":
@@ -755,6 +756,7 @@ function dashboardHTML(){
   `;
 
   const statsHTML = `
+    <p class="dash-label" style="margin-top:0;">${t("dashboard.mileageStatusTitle")}</p>
     <div class="dash-stats">
       <div class="dash-stat">
         ${avgKm ? `<div class="dash-stat-value">${Math.round(avgKm).toLocaleString()}</div>` : `<div class="dash-stat-value dash-stat-pending">—</div>`}
@@ -765,6 +767,7 @@ function dashboardHTML(){
         <div class="dash-stat-label">${t("dashboard.mileageThisYearLabel")}</div>
       </div>
     </div>
+    ${(!avgKm || !mileageThisYear) ? `<p class="dash-empty" style="margin-top:8px;">${t("dashboard.insufficientMileageData")}</p>` : ""}
   `;
 
   // Next Services Due — anything within 8,000 km or 6 months (≈180 days), soonest first. Kept to
@@ -1353,11 +1356,11 @@ function downloadHistoryCSV(vehicle){
 /* =====================================================================
    EVENT WIRING (delegated on #app)
 ===================================================================== */
-function loadingScreenHTML(){
+function loadingScreenHTML(message){
   return `
     <section class="card" style="text-align:center; padding:70px 24px;">
       <div class="spinner"></div>
-      <p style="margin-top:18px; color:var(--text-dim2); font-size:13.5px;">${t("setup.buildingListLoading")}</p>
+      <p style="margin-top:18px; color:var(--text-dim2); font-size:13.5px;">${message || t("setup.buildingListLoading")}</p>
     </section>
   `;
 }
@@ -1365,6 +1368,7 @@ function loadingScreenHTML(){
 function render(){
   try{
     document.documentElement.lang = state.language;
+    document.body.classList.toggle("qc-theme", state.language === "qc");
     if(appLoadingScreenActive){ appEl.innerHTML = appLoadingScreenHTML(); return; }
     if(Object.keys(av().items).length === 0 && state.trackerTab !== "setup" && !listBuildLoading){
       state.trackerTab = "setup";
@@ -1372,7 +1376,7 @@ function render(){
     let html = headerHTML() + navHTML();
     html += vehicleTabsHTML() + trackerSubNavHTML();
     html += diagnosticPanelHTML();
-    html += listBuildLoading ? loadingScreenHTML() : trackerTabContentHTML();
+    html += recalcLoading ? loadingScreenHTML(t("status.recalculatingLoading")) : (listBuildLoading ? loadingScreenHTML() : trackerTabContentHTML());
     html += footerHTML() + changelogModalHTML() + dataWarningModalHTML() + onboardingModalHTML() + confirmModalHTML() + toastHTML() + tourOverlayHTML();
     appEl.innerHTML = html;
     setTimeout(applyTourHighlight, 30);
@@ -1405,7 +1409,7 @@ appEl.addEventListener("click", (e) => {
       window.__gearlogShowTourOffer = false;
       render();
     } else if(overlayAction === "dismiss-changelog"){
-      state.lastSeenChangelogVersion = t("changelog")[0].version;
+      state.lastSeenChangelogVersion = getLatestChangelogVersion();
       saveState(); render();
     } else if(overlayAction === "cancel-confirm"){
       pendingConfirm = null;
@@ -1510,6 +1514,7 @@ appEl.addEventListener("click", (e) => {
         render();
         showToast(diagnosticModeActive ? t("diagnostic.enabledToast") : t("diagnostic.disabledToast"));
       }
+      trackQcEasterEgg("logo");
       break;
     }
 
@@ -1531,7 +1536,7 @@ appEl.addEventListener("click", (e) => {
       break;
 
     case "dismiss-changelog":
-      state.lastSeenChangelogVersion = t("changelog")[0].version;
+      state.lastSeenChangelogVersion = getLatestChangelogVersion();
       saveState(); render();
       break;
 
@@ -1608,8 +1613,13 @@ appEl.addEventListener("click", (e) => {
     }
 
     case "toggle-language":
-      state.language = state.language === "en" ? "fr" : "en";
+      if(state.qcUnlocked){
+        state.language = state.language === "en" ? "fr" : (state.language === "fr" ? "qc" : "en");
+      } else {
+        state.language = state.language === "en" ? "fr" : "en";
+      }
       saveState(); render();
+      trackQcEasterEgg("lang");
       break;
 
     case "tracker-tab":
@@ -1783,7 +1793,14 @@ appEl.addEventListener("click", (e) => {
     }
 
     case "recalc":
-      saveState(); render();
+      recalcLoading = true;
+      render();
+      setTimeout(() => {
+        recalcLoading = false;
+        saveState(); render();
+        showToast(t("status.calculatedToast"));
+        maybeAdvanceTourFor("recalc");
+      }, 600);
       break;
 
     case "reset-vehicle":

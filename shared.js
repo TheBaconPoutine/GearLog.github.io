@@ -107,6 +107,8 @@ const I18N = {
       autoDateHint: "kept current automatically",
       recalc: "Recalculate",
       calculate: "Calculate",
+      calculatedToast: "Mileage calculated — service items updated.",
+      recalculatingLoading: "Updating your service items…",
       resetAll: "Reset This Vehicle",
       resetConfirm: "This clears all data for this vehicle. Continue?",
       staleBanner: "You haven't updated this vehicle's mileage or date in over a month — update them above for more accurate due dates.",
@@ -225,15 +227,17 @@ const I18N = {
       setupBuildListTitle: "Build Your List",
       setupBuildListBody: "This is the big one — tap it and GearLog builds your full maintenance list from everything above. You can always come back and update it later if anything changes.",
       statusCurrentTitle: "Current Status",
-      statusCurrentBody: "This is where you log your vehicle's current mileage. Keeping it updated is what powers every due-date calculation in the app — the date stays current automatically.",
+      statusCurrentBody: "This is where you log your vehicle's current mileage. Keeping it updated is what powers every due-date calculation in the app — the date stays current automatically. Tap Next to calculate and move on.",
       statusDashboardTitle: "Your Dashboard",
       statusDashboardBody: "At a glance: your overall status, any active alerts like tire swaps or undercoating, your driving stats, and what's due next versus what you've done recently.",
       itemFindExampleTitle: "Meet Engine Oil",
       itemFindExampleBody: "Every item in your list works the same way, so let's walk through one closely — Engine Oil, since almost every vehicle has it. It's currently collapsed, just like the rest of your list. Tap Next and we'll open it up.",
       itemExpandedTitle: "Inside an Item",
       itemExpandedBody: "This readout shows exactly where Engine Oil stands — how far it is from due by both kilometers and date, whichever comes first. The tabs below let you review or edit when it was last done and adjust its interval if your driving habits differ from the default.",
-      itemActionsTitle: "Marking It Done",
-      itemActionsBody: "\"Mark Done Today\" logs today's mileage and date as the last service, resets the countdown, and offers to create a calendar reminder for the next one. \"Remove Item\" takes it off your list entirely if it doesn't apply to your vehicle.",
+      itemMarkDoneTitle: "Marking It Done",
+      itemMarkDoneBody: "\"Mark Done Today\" logs today's mileage and date as the last service, resets the countdown, and offers to create a calendar reminder for the next one.",
+      itemRemoveTitle: "Removing an Item",
+      itemRemoveBody: "If a service doesn't apply to your vehicle, \"Remove Item\" takes it off your list entirely. Don't worry — we won't actually remove Engine Oil, this is just a look.",
       inspectionsOverviewTitle: "Inspections",
       inspectionsOverviewBody: "A DIY inspection form — log tread depth, brake pad thickness, and notes, then check off what you did. Every saved inspection becomes its own printable report.",
       historyOverviewTitle: "Service History",
@@ -272,8 +276,10 @@ const I18N = {
       dueAtLineOverdue: (km, date) => `Was due at ${km} km or ${date}`,
       dueOnLine: (date) => `Due on ${date}`,
       dueOnLineOverdue: (date) => `Was due on ${date}`,
+      mileageStatusTitle: "Mileage Status",
       avgKmLabel: "Avg. KM / Month",
       mileageThisYearLabel: "KM Driven This Year",
+      insufficientMileageData: "Insufficient data to display average and total mileage.",
       alertsTitle: "Alerts",
       noCurrentAlerts: "No current alerts.",
       seasonalWinterToSummer: "It's swap season — most people switch from winter to summer tires between the beginning of April and end of May.",
@@ -398,6 +404,28 @@ const I18N = {
         "Vehicle Info tab reorganized: Vehicle Setup now explains it affects the Status & Services page; Vehicle Information now explains it's for your own records only and has no effect on calculations.",
         "\u201CNo Prior Service History\u201D is now a selectable toggle \u2014 it only applies (with a confirmation popup) when you create or update the maintenance list, instead of acting immediately.",
         "The Resources page is now fully built into the app itself \u2014 no external embed \u2014 with tire brand rankings, trusted shops, aftermarket parts, and motor oil brands, all bilingual.",
+      ]},
+      {version: 3, items: [
+        "Added a new Inspections tab \u2014 log tread depth, brake pad thickness, notes, and which services you performed, then save it as its own printable PDF report. Every saved inspection also shows up under History with a one-tap PDF link, plus an \u201CExport All\u201D that combines every report into one printable file.",
+        "Dashboard rebuilt: added a dedicated Alerts section (seasonal tire swap and undercoating reminders can both be active at once, and the section always shows even when there's nothing to flag), a Mileage Status section with an auto-calculated monthly average and year-to-date total, and clearer section titles and dividers throughout \u2014 \u201CNext Services Due\u201D and \u201CPrevious Service Done\u201D now always appear even with nothing to show yet.",
+        "Undercoating and tire swap reminders are now separate opt-in toggles in Vehicle Settings, each with their own dashboard alert (blue for winter swap, green for summer swap, orange for undercoating) instead of being bundled into a generic optional-services list.",
+        "Marking a tire swap or undercoating done now logs it to Service History, and prompts you to create a calendar reminder for the next one \u2014 automatically figuring out whether that's summer or winter based on today's date.",
+        "Reminders section reworked: now shown during initial vehicle setup (not just after), includes a dedicated Tire Swap Reminder alongside Monthly Mileage, and the \u201CAll Services\u201D bulk reminder was removed in favor of per-item reminders.",
+        "\u201CPrevious Service Done\u201D now behaves as a proper snapshot: marking something done at a new mileage/date clears out older entries, but multiple services done together at the same mileage/date all stay grouped.",
+        "Added a full guided walkthrough for first-time users (and repeatable any time from the About page) \u2014 it tours vehicle setup, the dashboard, a live example service item, Inspections, History, the Resources tire quiz, and ends at Account, with the same buttons you'd click normally also advancing the tour.",
+        "Vehicle year field now validates as a real year (1900 through next year) instead of accepting any text.",
+        "Added a hidden diagnostic mode (tap the logo 10 times) for simulating a different date and mileage to test how due-dates and averages respond, without waiting real days for it.",
+        "Themed checkboxes throughout the app to match GearLog's own styling instead of plain browser defaults, and tire-swap \u201Cmark as completed\u201D is now a proper button instead of a checkbox.",
+        "Tire type guide reorganized: the tire quiz section is now visually distinct from Tire Stores, Run-Flat moved into a clearly-labeled General section, and every specific tire type now jumps straight to its ranking category when tapped.",
+        "Data Usage section updated to explain the new mileage-tracking log and what it's used for.",
+        "Fixed a bug where confirming an undercoating reminder as done could make the entire dashboard disappear.",
+        "Collapsible sections on the Resources page now reset to closed every time you leave and come back, instead of remembering what was left open.",
+        "Fixed a mobile layout issue where reminder rows and similar list items could stretch to the screen's edge instead of wrapping cleanly on narrow screens.",
+        "The first-time guided walkthrough offer now also appears once for existing users, not just brand new ones \u2014 decline it and it's gone for good unless you restart it from the About page.",
+        "Fixed a bug in the changelog notice itself where dismissing it could cause it to immediately reappear.",
+        "Added a \u201CMechanic's Tips\u201D section under Other Resources \u2014 car washing, tire pressure, brake servicing, an emergency kit, a tire plug kit and compressor, and carrying spare oil.",
+        "Added a \u201CUseful DIYer Tools\u201D section under Other Resources, organized by what each tool is actually best for \u2014 tire swaps, oil changes, or more advanced work \u2014 along with a real breakdown of the cost savings over time.",
+        "Calculating or recalculating your mileage now shows a brief loading screen, so it's clear something actually updated.",
       ]},
       {version: 1, items: [
         "Fixed mobile layout issues (scrollable history table, responsive forms).",
@@ -626,6 +654,8 @@ const I18N = {
       autoDateHint: "maintenue à jour automatiquement",
       recalc: "Recalculer",
       calculate: "Calculer",
+      calculatedToast: "Kilométrage calculé — les entretiens ont été mis à jour.",
+      recalculatingLoading: "Mise à jour de vos entretiens…",
       resetAll: "Réinitialiser ce véhicule",
       resetConfirm: "Ceci efface toutes les données de ce véhicule. Continuer?",
       staleBanner: "Vous n'avez pas mis à jour le kilométrage ou la date de ce véhicule depuis plus d'un mois — mettez-les à jour ci-dessus pour des échéances plus précises.",
@@ -744,15 +774,17 @@ const I18N = {
       setupBuildListTitle: "Construisez votre liste",
       setupBuildListBody: "C'est le gros bouton — appuyez dessus et GearLog construit votre liste d'entretien complète à partir de tout ce qui précède. Vous pouvez toujours revenir et la mettre à jour plus tard si quelque chose change.",
       statusCurrentTitle: "État actuel",
-      statusCurrentBody: "C'est ici que vous inscrivez le kilométrage actuel de votre véhicule. Le garder à jour est ce qui alimente chaque calcul d'échéance dans l'application — la date reste à jour automatiquement.",
+      statusCurrentBody: "C'est ici que vous inscrivez le kilométrage actuel de votre véhicule. Le garder à jour est ce qui alimente chaque calcul d'échéance dans l'application — la date reste à jour automatiquement. Touchez Suivant pour calculer et continuer.",
       statusDashboardTitle: "Votre tableau de bord",
       statusDashboardBody: "En un coup d'œil : votre état général, toute alerte active comme les changements de pneus ou l'antirouille, vos statistiques de conduite, et ce qui est à venir par rapport à ce que vous avez fait récemment.",
       itemFindExampleTitle: "Découvrons l'huile moteur",
       itemFindExampleBody: "Chaque entretien de votre liste fonctionne de la même façon, alors examinons-en un de près — l'huile moteur, puisque presque tous les véhicules en ont. Il est actuellement replié, comme le reste de votre liste. Touchez Suivant et nous allons le déplier.",
       itemExpandedTitle: "À l'intérieur d'un entretien",
       itemExpandedBody: "Ce relevé montre exactement où en est l'huile moteur — à quelle distance elle est de son échéance, en kilomètres ou en date, selon ce qui arrive en premier. Les onglets ci-dessous vous permettent de consulter ou modifier la dernière fois qu'il a été fait et d'ajuster son intervalle si vos habitudes de conduite diffèrent de la valeur par défaut.",
-      itemActionsTitle: "Le marquer comme fait",
-      itemActionsBody: "« Fait aujourd'hui » enregistre le kilométrage et la date d'aujourd'hui comme dernier entretien, réinitialise le compte à rebours, et propose de créer un rappel de calendrier pour le prochain. « Retirer l'entretien » le retire complètement de votre liste s'il ne s'applique pas à votre véhicule.",
+      itemMarkDoneTitle: "Le marquer comme fait",
+      itemMarkDoneBody: "« Fait aujourd'hui » enregistre le kilométrage et la date d'aujourd'hui comme dernier entretien, réinitialise le compte à rebours, et propose de créer un rappel de calendrier pour le prochain.",
+      itemRemoveTitle: "Retirer un entretien",
+      itemRemoveBody: "Si un entretien ne s'applique pas à votre véhicule, « Retirer l'entretien » le retire complètement de votre liste. Ne vous inquiétez pas — nous n'allons pas réellement retirer l'huile moteur, c'est juste pour regarder.",
       inspectionsOverviewTitle: "Inspections",
       inspectionsOverviewBody: "Un formulaire d'inspection à faire soi-même — inscrivez la profondeur de bande de roulement, l'épaisseur des plaquettes de frein et des notes, puis cochez ce que vous avez fait. Chaque inspection enregistrée devient son propre rapport imprimable.",
       historyOverviewTitle: "Historique d'entretien",
@@ -791,8 +823,10 @@ const I18N = {
       dueAtLineOverdue: (km, date) => `Était dû à ${km} km ou le ${date}`,
       dueOnLine: (date) => `Dû le ${date}`,
       dueOnLineOverdue: (date) => `Était dû le ${date}`,
+      mileageStatusTitle: "État du kilométrage",
       avgKmLabel: "Moy. KM / mois",
       mileageThisYearLabel: "KM parcourus cette année",
+      insufficientMileageData: "Données insuffisantes pour afficher la moyenne et le kilométrage total.",
       alertsTitle: "Alertes",
       noCurrentAlerts: "Aucune alerte pour le moment.",
       seasonalWinterToSummer: "C'est la saison du changement — la plupart des gens passent des pneus d'hiver aux pneus d'été entre le début avril et la fin mai.",
@@ -918,6 +952,28 @@ const I18N = {
         "« Aucun historique d'entretien connu » est maintenant une case à sélectionner — elle ne s'applique (avec une fenêtre de confirmation) que lors de la création ou mise à jour de la liste d'entretien, au lieu d'agir immédiatement.",
         "La page Ressources est maintenant entièrement intégrée à l'application — plus d'intégration externe — avec classements de marques de pneus, ateliers de confiance, pièces de rechange et marques d'huile moteur, le tout bilingue.",
       ]},
+      {version: 3, items: [
+        "Ajout d'un nouvel onglet Inspections — notez la profondeur de bande de roulement, l'épaisseur des plaquettes de frein, des notes et les entretiens effectués, puis enregistrez le tout comme votre propre rapport imprimable en PDF. Chaque inspection enregistrée apparaît aussi dans l'Historique avec un lien PDF en un clic, plus un « Tout exporter » qui combine tous les rapports en un seul fichier imprimable.",
+        "Tableau de bord reconstruit : ajout d'une section Alertes dédiée (le changement de pneus saisonnier et le rappel d'antirouille peuvent être actifs en même temps, et la section s'affiche toujours même s'il n'y a rien à signaler), une section État du kilométrage avec une moyenne mensuelle calculée automatiquement et un total pour l'année en cours, ainsi que des titres de section et des séparateurs plus clairs partout — « Prochains entretiens dus » et « Entretiens précédents effectués » s'affichent maintenant toujours, même sans rien à montrer.",
+        "Les rappels d'antirouille et de changement de pneus sont maintenant des interrupteurs facultatifs distincts dans les Paramètres du véhicule, chacun avec sa propre alerte sur le tableau de bord (bleu pour le changement d'hiver, vert pour l'été, orange pour l'antirouille) au lieu d'être regroupés dans une liste générique de services facultatifs.",
+        "Marquer un changement de pneus ou une antirouille comme fait l'enregistre maintenant dans l'historique d'entretien, et propose de créer un rappel de calendrier pour le prochain — en déterminant automatiquement s'il s'agit de l'été ou de l'hiver selon la date d'aujourd'hui.",
+        "Section Rappels revue : maintenant affichée dès la configuration initiale du véhicule (pas seulement après), inclut un rappel de changement de pneus dédié en plus du kilométrage mensuel, et le rappel groupé « Tous les entretiens » a été retiré au profit de rappels individuels.",
+        "« Entretiens précédents effectués » fonctionne maintenant comme un véritable instantané : marquer quelque chose comme fait à un nouveau kilométrage/date efface les entrées précédentes, mais plusieurs entretiens faits ensemble au même kilométrage/date restent groupés.",
+        "Ajout d'une visite guidée complète pour les nouveaux utilisateurs (et répétable en tout temps depuis la page À propos) — elle fait le tour de la configuration du véhicule, du tableau de bord, d'un exemple d'entretien réel, des Inspections, de l'Historique, du questionnaire de pneus des Ressources, et se termine au Compte, les mêmes boutons que vous cliqueriez normalement faisant aussi avancer la visite.",
+        "Le champ Année du véhicule valide maintenant une vraie année (1900 jusqu'à l'an prochain) au lieu d'accepter n'importe quel texte.",
+        "Ajout d'un mode diagnostic caché (touchez le logo 10 fois) pour simuler une date et un kilométrage différents afin de tester comment les échéances et les moyennes réagissent, sans attendre de vrais jours.",
+        "Cases à cocher stylisées partout dans l'application pour correspondre au thème de GearLog au lieu des cases par défaut du navigateur, et « marquer comme complété » pour le changement de pneus est maintenant un vrai bouton plutôt qu'une case à cocher.",
+        "Guide des types de pneus réorganisé : la section du questionnaire est maintenant visuellement distincte des Ateliers de pneus, Run-Flat a été déplacé dans une section Général clairement identifiée, et chaque type de pneu spécifique mène maintenant directement à sa catégorie de classement lorsqu'on le touche.",
+        "Section Utilisation des données mise à jour pour expliquer le nouvel historique de suivi du kilométrage et son utilité.",
+        "Correction d'un bogue où confirmer un rappel d'antirouille comme fait pouvait faire disparaître tout le tableau de bord.",
+        "Les sections repliables de la page Ressources se réinitialisent maintenant à fermées chaque fois que vous quittez la page et y revenez, au lieu de se souvenir de ce qui était ouvert.",
+        "Correction d'un problème d'affichage mobile où les rangées de rappels et éléments similaires pouvaient s'étirer jusqu'au bord de l'écran au lieu de s'ajuster proprement sur les petits écrans.",
+        "L'offre de visite guidée pour les nouveaux utilisateurs s'affiche maintenant aussi une fois pour les utilisateurs existants, pas seulement pour les nouveaux — la refuser la fait disparaître pour de bon, à moins de la redémarrer depuis la page À propos.",
+        "Correction d'un bogue dans l'avis de journal des changements lui-même où le fermer pouvait le faire réapparaître immédiatement.",
+        "Ajout d'une section « Astuces du mécanicien » sous Autres ressources — lavage de la voiture, pression des pneus, entretien des freins, trousse d'urgence, trousse de réparation de pneu et compresseur, et le fait de garder de l'huile en réserve.",
+        "Ajout d'une section « Outils utiles pour le bricoleur » sous Autres ressources, organisée selon ce à quoi chaque outil sert vraiment — changements de pneus, vidanges d'huile, ou travaux plus avancés — avec un véritable aperçu des économies réalisées au fil du temps.",
+        "Calculer ou recalculer votre kilométrage affiche maintenant un bref écran de chargement, pour bien montrer que quelque chose s'est réellement mis à jour.",
+      ]},
       {version: 1, items: [
         "Correction de problèmes d'affichage mobile (tableau d'historique déroulant, formulaires adaptatifs).",
         "Ajout d'un niveau « Dû » entre Bientôt dû et En retard, avec une marge de tolérance avant d'être considéré en retard.",
@@ -1037,6 +1093,75 @@ const I18N = {
       goToAccountBtn: "Aller au compte",
     },
   },
+  qc: {
+    brandTagline: "sais c'qui s'en vient avant qu'ça te pogne par surprise",
+    nav: {tracker: "Suivi du char", resources: "Ressources", share: "Partage pis téléchargement", about: "À propos", account: "Compte"},
+    trackerTabs: {setup: "Paramètres du char", status: "État pis entretien", inspections: "Inspections", history: "Historique"},
+    dashboard: {
+      title: "Le dash",
+      statusLinePrefix: "État du char :",
+      alertsTitle: "Alertes",
+      noCurrentAlerts: "Pantoute d'alertes pour l'instant.",
+      mileageStatusTitle: "État du millage",
+      avgKmLabel: "Moy. KM / mois",
+      mileageThisYearLabel: "KM faits c't'année",
+      insufficientMileageData: "Pas encore assez de données pour calculer ça, mais ça s'en vient.",
+      previousLabel: "Ce qui a été fait",
+      nextDueLabel: "Ce qui s'en vient",
+      allGood: "C'est correct — rien à faire pour l'instant!",
+      noPriorHistory: "Rien encore — une fois que t'auras marqué de quoi fait, ça va apparaître icitte.",
+      overallGood: "Correct",
+      overallSoon: (count) => `${count} de quoi qui s'en vient`,
+      overallDue: (count) => `${count} de quoi dû asteure`,
+      overallOverdue: (count) => `Câlisse, ${count} de quoi en retard`,
+      lastServiceLine: (km, date) => `Fait à ${km} km le ${date}`,
+      dueAtLine: (km, date) => `Dû à ${km} km ou le ${date}`,
+      dueAtLineOverdue: (km, date) => `Était dû à ${km} km ou le ${date}`,
+      dueOnLine: (date) => `Dû le ${date}`,
+      dueOnLineOverdue: (date) => `Était dû le ${date}`,
+      seasonalSwapTitle: "Changement de pneus, là",
+      markSwapDone: "C'est fait!",
+      swapMarkedDoneToast: "C'est fait, marde que ça fait du bien! Changement de pneus marqué pour c'te saison-icitte.",
+      undercoatingAlertTitle: "Antirouille, sacrement",
+      confirmUndercoatingBtn: "C'est fait!",
+      undercoatingConfirmedToast: "Antirouille confirmée pour c't'année.",
+    },
+    status: {
+      title: "État actuel",
+      currentMileage: "Millage actuel (KM)",
+      currentDate: "Date d'à c't'heure",
+      calculate: "Calculer",
+      recalc: "Recalculer",
+      calculatedToast: "Millage calculé — les entretiens sont ben à jour asteure!",
+      recalculatingLoading: "On met à jour tes entretiens…",
+      resetAll: "Recommencer à zéro c'char-là",
+      resetConfirm: "Tabarnak, ça va effacer toutes les données de c'char-là. Es-tu ben sûr?",
+    },
+    item: {
+      markDoneToday: "C'est fait, là",
+      removeItem: "Ôter c't'entretien-là, crisse",
+      needMileageAlert: "Sacrement, rentre ton millage actuel en haut avant, faque \"fait aujourd'hui\" a une valeur en KM à enregistrer.",
+      markedDoneToast: (name) => `${name}, c'est fait!`,
+      updatedToast: (name) => `${name}, c'est à jour!`,
+    },
+    reminders: {
+      title: "Rappels",
+      createBtn: "Crée-moi un rappel",
+      createdOneToast: (name) => `Rappel créé pour ${name}.`,
+    },
+    onboarding: {
+      title: "Bienvenue su' GearLog!",
+      startTourBtn: "Embarque pour la visite!",
+      dismiss: "Non merci",
+    },
+    tour: {
+      nextBtn: "Suivant",
+      backBtn: "Retour",
+      skipBtn: "Passer",
+      finishBtn: "Fini, ostie!",
+    },
+    footer: "GearLog garde tout localement dans ce navigateur-icitte. Rien n'est envoyé nulle part.",
+  },
 };
 
 // Ordered steps for the guided walkthrough. Each step's page/tab tell every page's render()
@@ -1049,17 +1174,18 @@ const TOUR_STEPS = [
   { id: "setupConditions",    page: "index.html",     tab: "setup",       target: "#setup-conditions-card", primaryAction: "confirm-conditions-step" },
   { id: "setupReminders",     page: "index.html",     tab: "setup",       target: "#setup-reminders-card" },
   { id: "setupBuildList",     page: "index.html",     tab: "setup",       target: "#setup-buildlist-card", primaryAction: "build-list" },
-  { id: "statusCurrent",      page: "index.html",     tab: "status",      target: "#status-current-card" },
+  { id: "statusCurrent",      page: "index.html",     tab: "status",      target: "#status-current-card", primaryAction: "recalc" },
   { id: "statusDashboard",    page: "index.html",     tab: "status",      target: ".dash-card" },
   { id: "itemFindExample",    page: "index.html",     tab: "status",      target: '.edit[data-key="engine_oil"]', openItems: true },
   { id: "itemExpanded",       page: "index.html",     tab: "status",      target: '.edit[data-key="engine_oil"]', openItems: true, openTarget: true },
-  { id: "itemActions",        page: "index.html",     tab: "status",      target: '[data-action="done-today"][data-key="engine_oil"]', openItems: true, openTarget: true },
+  { id: "itemMarkDone",       page: "index.html",     tab: "status",      target: '[data-action="done-today"][data-key="engine_oil"]', openItems: true, openTarget: true },
+  { id: "itemRemove",         page: "index.html",     tab: "status",      target: '[data-action="remove-item"][data-key="engine_oil"]', openItems: true, openTarget: true },
   { id: "inspectionsOverview",page: "index.html",     tab: "inspections", target: "#inspections-main-card" },
   { id: "historyOverview",    page: "index.html",     tab: "history",     target: "#history-main-card" },
   { id: "resourcesOverview",  page: "resources.html", tab: null,          target: "#res-tires", openTarget: true },
   { id: "resourcesQuiz",      page: "resources.html", tab: null,          target: "#acc-guide", openTarget: true },
-  { id: "otherAbout",         page: "about.html",     tab: null,          target: null },
   { id: "otherShare",         page: "share.html",     tab: null,          target: null },
+  { id: "otherAbout",         page: "about.html",     tab: null,          target: null },
   { id: "finalAccount",       page: "account.html",   tab: null,          target: null },
 ];
 
@@ -1124,6 +1250,44 @@ function tourSkip(){
   state.tourActive = false;
   saveState();
   if(typeof render === "function") render();
+}
+
+let qcEasterEggLogoClicks = [];
+let qcEasterEggLangClicks = [];
+function trackQcEasterEgg(kind){
+  const now = Date.now();
+  if(kind === "logo") qcEasterEggLogoClicks.push(now);
+  if(kind === "lang") qcEasterEggLangClicks.push(now);
+  qcEasterEggLogoClicks = qcEasterEggLogoClicks.filter(ts => now - ts <= 10000);
+  qcEasterEggLangClicks = qcEasterEggLangClicks.filter(ts => now - ts <= 10000);
+  if(qcEasterEggLogoClicks.length >= 5 && qcEasterEggLangClicks.length >= 3){
+    qcEasterEggLogoClicks = [];
+    qcEasterEggLangClicks = [];
+    const firstTime = !state.qcUnlocked;
+    state.qcUnlocked = true;
+    state.language = "qc";
+    saveState();
+    if(typeof render === "function") render();
+    if(typeof showToast === "function"){
+      showToast(firstTime ? "Ben tabarnak, t'as trouvé le mode québécois! 🍁" : "Mode québécois activé, câlisse!");
+    }
+  }
+}
+
+const QC_FLAG_SVG = `<svg class="qc-flag-icon" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+  <rect width="20" height="20" fill="#003DA5"/>
+  <rect x="8.5" width="3" height="20" fill="#fff"/>
+  <rect y="8.5" width="20" height="3" fill="#fff"/>
+  <path d="M4.5 3.3l1 2 1-2 -0.6 2.2 2.1-1 -1 2 2.2-0.6 -2 1 2 1 -2.2-0.6 1 2 -2.1-1 0.6 2.2 -1-2 -1 2 -0.6-2.2 -2.1 1 1-2 -2.2 0.6 2-1 -2-1 2.2 0.6 -1-2.2 2.1 1 -0.6-2.2z" fill="#fff" transform="translate(0.5,0.5) scale(0.5)"/>
+  <path d="M4.5 3.3l1 2 1-2 -0.6 2.2 2.1-1 -1 2 2.2-0.6 -2 1 2 1 -2.2-0.6 1 2 -2.1-1 0.6 2.2 -1-2 -1 2 -0.6-2.2 -2.1 1 1-2 -2.2 0.6 2-1 -2-1 2.2 0.6 -1-2.2 2.1 1 -0.6-2.2z" fill="#fff" transform="translate(0.5,10.5) scale(0.5)"/>
+  <path d="M4.5 3.3l1 2 1-2 -0.6 2.2 2.1-1 -1 2 2.2-0.6 -2 1 2 1 -2.2-0.6 1 2 -2.1-1 0.6 2.2 -1-2 -1 2 -0.6-2.2 -2.1 1 1-2 -2.2 0.6 2-1 -2-1 2.2 0.6 -1-2.2 2.1 1 -0.6-2.2z" fill="#fff" transform="translate(10.5,0.5) scale(0.5)"/>
+  <path d="M4.5 3.3l1 2 1-2 -0.6 2.2 2.1-1 -1 2 2.2-0.6 -2 1 2 1 -2.2-0.6 1 2 -2.1-1 0.6 2.2 -1-2 -1 2 -0.6-2.2 -2.1 1 1-2 -2.2 0.6 2-1 -2-1 2.2 0.6 -1-2.2 2.1 1 -0.6-2.2z" fill="#fff" transform="translate(10.5,10.5) scale(0.5)"/>
+</svg>`;
+
+function getLangButtonLabel(){
+  if(state.language === "fr" && state.qcUnlocked) return `${QC_FLAG_SVG} Québécois`;
+  if(state.language === "qc") return t("langButton");
+  return t("langButton");
 }
 
 function tourToggleMinimize(){
@@ -1198,6 +1362,13 @@ function t(path){
   const parts = path.split(".");
   let node = dict;
   for(const p of parts){ node = node && node[p]; }
+  if(node === undefined && state.language === "qc"){
+    // Quebec mode is a smaller, hand-picked set of strings — fall back to
+    // standard French first for anything not specifically written for it.
+    let frFb = I18N.fr;
+    for(const p of parts){ frFb = frFb && frFb[p]; }
+    if(frFb !== undefined) return frFb;
+  }
   if(node === undefined){
     // fall back to English
     let fb = I18N.en;
@@ -1247,6 +1418,7 @@ function defaultState(){
     hasSeenOnboardingPopup: false,
     tourActive: false,
     tourStepIndex: 0,
+    qcUnlocked: false,
   };
 }
 
@@ -1519,15 +1691,10 @@ if(!state.currentPage) state.currentPage = "tracker";
 if(!state.trackerTab) state.trackerTab = "setup";
 if(state.lastSeenChangelogVersion == null) state.lastSeenChangelogVersion = 0;
 if(state.lastOpenedAt === undefined) state.lastOpenedAt = null;
-if(state.hasSeenOnboardingPopup === undefined){
-  // Existing users who already have a vehicle set up aren't "new" — don't show them
-  // the first-time onboarding tip just because they updated to this version.
-  const alreadyHasData = Object.values(state.vehicles || {}).some(v => Object.keys(v.items || {}).length > 0);
-  state.hasSeenOnboardingPopup = alreadyHasData;
-}
 if(state.hasSeenOnboardingPopup === undefined) state.hasSeenOnboardingPopup = false;
 if(state.tourActive === undefined) state.tourActive = false;
 if(state.tourStepIndex === undefined) state.tourStepIndex = 0;
+if(state.qcUnlocked === undefined) state.qcUnlocked = false;
 Object.values(state.vehicles).forEach(v => {
   if(!Array.isArray(v.history)) v.history = [];
   if(!v.items) v.items = {};
@@ -1652,12 +1819,9 @@ function appLoadingScreenHTML(){
 function hideAppLoadingScreen(){
   appLoadingScreenActive = false;
   if(CURRENT_PAGE === "tracker" && !state.hasSeenOnboardingPopup){
-    const alreadyHasData = Object.values(state.vehicles || {}).some(v => Object.keys(v.items || {}).length > 0);
-    if(!alreadyHasData){
-      state.hasSeenOnboardingPopup = true;
-      saveState();
-      if(typeof window !== "undefined") window.__gearlogShowTourOffer = true;
-    }
+    state.hasSeenOnboardingPopup = true;
+    saveState();
+    if(typeof window !== "undefined") window.__gearlogShowTourOffer = true;
   }
   if(typeof render === "function") render();
 }
@@ -1672,17 +1836,20 @@ if(appLoadingScreenActive){
 }
 
 
+function getLatestChangelogVersion(){
+  return t("changelog").reduce((max, e) => Math.max(max, e.version), 0);
+}
+
 function changelogModalHTML(){
   const entries = t("changelog");
-  const latest = entries[0].version;
-  if(state.lastSeenChangelogVersion >= latest) return "";
-  const unseen = entries.filter(v => v.version > state.lastSeenChangelogVersion);
-  const entriesHTML = unseen.map(v => `
+  const latestEntry = entries.reduce((best, e) => (!best || e.version > best.version) ? e : best, null);
+  if(!latestEntry || state.lastSeenChangelogVersion >= latestEntry.version) return "";
+  const entriesHTML = `
     <div style="margin-bottom:12px;">
-      <div style="font-family:var(--font-mono); font-size:11px; color:var(--text-dim2); margin-bottom:4px;">v${v.version}</div>
-      <ul style="margin:0; padding-left:18px;">${v.items.map(i => `<li style="margin-bottom:3px;">${i}</li>`).join("")}</ul>
+      <div style="font-family:var(--font-mono); font-size:11px; color:var(--text-dim2); margin-bottom:4px;">v${latestEntry.version}</div>
+      <ul style="margin:0; padding-left:18px;">${latestEntry.items.map(i => `<li style="margin-bottom:3px;">${i}</li>`).join("")}</ul>
     </div>
-  `).join("");
+  `;
   return `
     <div class="modal-overlay" data-dismiss-action="dismiss-changelog">
       <div class="modal-box">
@@ -1715,7 +1882,7 @@ function headerHTML(){
       <div class="header-right">
         ${greeting}
         <div class="odo-clock">${vehicle.name} · <b>${mileage}</b> km &nbsp;·&nbsp; ${fmtDate(parseISO(vehicle.currentDate) || new Date())}</div>
-        <button class="lang-btn ${state.language === "en" ? "theme-fr" : "theme-uk"}" type="button" data-action="toggle-language">${t("langButton")}</button>
+        <button class="lang-btn ${state.language === "en" ? "theme-fr" : (state.language === "qc" ? "theme-qc" : "theme-uk")}" type="button" data-action="toggle-language">${getLangButtonLabel()}</button>
       </div>
     </header>
   `;

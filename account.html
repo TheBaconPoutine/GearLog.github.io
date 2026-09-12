@@ -172,6 +172,7 @@ function accountPageHTML(){
 function render(){
   try{
     document.documentElement.lang = state.language;
+    document.body.classList.toggle("qc-theme", state.language === "qc");
     let html = headerHTML() + navHTML();
     html += accountPageHTML();
     html += footerHTML() + changelogModalHTML() + confirmModalHTML() + toastHTML() + tourOverlayHTML();
@@ -193,7 +194,7 @@ appEl.addEventListener("click", (e) => {
   if(e.target.classList && e.target.classList.contains("modal-overlay")){
     const overlayAction = e.target.getAttribute("data-dismiss-action");
     if(overlayAction === "dismiss-changelog"){
-      state.lastSeenChangelogVersion = t("changelog")[0].version;
+      state.lastSeenChangelogVersion = getLatestChangelogVersion();
       saveState(); render();
     }
     return;
@@ -225,7 +226,7 @@ appEl.addEventListener("click", (e) => {
       break;
 
     case "dismiss-changelog":
-      state.lastSeenChangelogVersion = t("changelog")[0].version;
+      state.lastSeenChangelogVersion = getLatestChangelogVersion();
       saveState(); render();
       break;
 

@@ -24,7 +24,7 @@ function aboutPageHTML(){
   const aiParas = t("about.aiBody").map(p => `<p style="font-size:13.5px; color:var(--text-dim); line-height:1.6; margin:0 0 14px;">${p}</p>`).join("");
   const dataParas = t("about.dataBody").map(p => `<p style="font-size:13.5px; color:var(--text-dim); line-height:1.6; margin:0 0 14px;">${p}</p>`).join("");
 
-  const entries = t("changelog");
+  const entries = t("changelog").slice().sort((a, b) => b.version - a.version);
   const entriesHTML = entries.map(v => `
     <div style="margin-bottom:20px;">
       <div style="font-family:var(--font-display); font-weight:600; color:var(--amber); font-size:13px; text-transform:uppercase; letter-spacing:0.6px; margin-bottom:6px;">v${v.version}</div>
@@ -61,6 +61,7 @@ function aboutPageHTML(){
 function render(){
   try{
     document.documentElement.lang = state.language;
+    document.body.classList.toggle("qc-theme", state.language === "qc");
     let html = headerHTML() + navHTML();
     html += aboutPageHTML();
     html += footerHTML() + changelogModalHTML() + confirmModalHTML() + toastHTML() + tourOverlayHTML();
@@ -82,7 +83,7 @@ appEl.addEventListener("click", (e) => {
   if(e.target.classList && e.target.classList.contains("modal-overlay")){
     const overlayAction = e.target.getAttribute("data-dismiss-action");
     if(overlayAction === "dismiss-changelog"){
-      state.lastSeenChangelogVersion = t("changelog")[0].version;
+      state.lastSeenChangelogVersion = getLatestChangelogVersion();
       saveState(); render();
     }
     return;
@@ -118,7 +119,7 @@ appEl.addEventListener("click", (e) => {
       break;
 
     case "dismiss-changelog":
-      state.lastSeenChangelogVersion = t("changelog")[0].version;
+      state.lastSeenChangelogVersion = getLatestChangelogVersion();
       saveState(); render();
       break;
 

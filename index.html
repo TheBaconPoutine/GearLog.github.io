@@ -515,7 +515,7 @@ function statusCardHTML(){
           <input type="number" data-field="currentMileage" min="0" value="${v.currentMileage ?? ""}">
         </label>
         <label class="field">${t("status.currentDate")}
-          <input type="date" data-field="currentDate" value="${v.currentDate || todayISO()}" readonly disabled style="opacity:0.65; cursor:default;">
+          <div class="static-date-display">${fmtDate(parseISO(v.currentDate) || new Date())}</div>
           <span class="hint">${t("status.autoDateHint")}</span>
         </label>
       </div>

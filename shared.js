@@ -522,6 +522,7 @@ const I18N = {
       checkEmailTitle: "Check Your Email",
       checkEmailBody: (email) => `We sent a confirmation link to ${email}. Click it, then come back here and log in.`,
       fillAllFields: "Please fill in all fields.",
+      syncFailedToast: "Couldn't reach your saved data — check your connection and try again. Nothing was changed.",
       passwordMismatch: "Passwords don't match.",
       nameSavedToast: "Name updated.",
       emailChangeSentToast: "Confirmation link sent to your new email address — click it to finish the change.",
@@ -1070,6 +1071,7 @@ const I18N = {
       checkEmailTitle: "Vérifiez votre courriel",
       checkEmailBody: (email) => `Nous avons envoyé un lien de confirmation à ${email}. Cliquez dessus, puis revenez ici pour vous connecter.`,
       fillAllFields: "Veuillez remplir tous les champs.",
+      syncFailedToast: "Impossible de joindre vos données enregistrées — vérifiez votre connexion et réessayez. Rien n'a été modifié.",
       passwordMismatch: "Les mots de passe ne correspondent pas.",
       nameSavedToast: "Nom mis à jour.",
       emailChangeSentToast: "Lien de confirmation envoyé à votre nouvelle adresse courriel — cliquez dessus pour terminer le changement.",
@@ -1515,18 +1517,18 @@ async function pushRemoteState(){
 }
 
 async function pullRemoteState(){
-  if(!sbClient || !currentUser) return null;
+  if(!sbClient || !currentUser) return { ok: false, data: null };
   try{
     const { data, error } = await sbClient
       .from("gearlog_data")
       .select("data")
       .eq("user_id", currentUser.id)
       .maybeSingle();
-    if(error){ console.error("GearLog cloud load error:", error); return null; }
-    return data ? data.data : null;
+    if(error){ console.error("GearLog cloud load error:", error); return { ok: false, data: null }; }
+    return { ok: true, data: data ? data.data : null };
   }catch(err){
     console.error("GearLog cloud load error:", err);
-    return null;
+    return { ok: false, data: null };
   }
 }
 
@@ -1573,8 +1575,19 @@ function hasMeaningfulLocalData(){
 }
 
 async function handleAuthenticatedSession(){
-  const remote = await pullRemoteState();
+  const pullResult = await pullRemoteState();
   await loadProfile();
+  if(!pullResult.ok){
+    // Couldn't confirm what's actually in the cloud (network error, timeout, etc).
+    // Do NOT push local data in this state — if the cloud copy is real but we just
+    // failed to read it, pushing would overwrite it with a possibly-stale local copy.
+    // Surface this clearly instead of silently leaving the person on old data with no
+    // explanation, which is exactly what makes a sync failure look like a data-loss bug.
+    if(typeof showToast === "function") showToast(t("account.syncFailedToast"), "error");
+    if(typeof render === "function") render();
+    return;
+  }
+  const remote = pullResult.data;
   const remoteHasData = stateHasMeaningfulData(remote);
   const localHasData = hasMeaningfulLocalData();
   if(remoteHasData){
@@ -1590,7 +1603,7 @@ async function handleAuthenticatedSession(){
     if(localQcUnlocked) state.qcUnlocked = true;
     localStorage.setItem(STORE_KEY, JSON.stringify(state));
   } else if(localHasData){
-    // Remote is empty or missing (first login, or an earlier blank sync) but this device
+    // Remote is confirmed empty (first login, or an earlier blank sync) but this device
     // has real local progress — upload it rather than letting an empty remote win.
     await pushRemoteState();
   }

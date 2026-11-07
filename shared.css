@@ -967,3 +967,28 @@
   .tour-caption-title{font-family: var(--font-display); font-weight:700; font-size:16px; color: var(--orange-text, var(--orange)); margin:0 0 8px;}
   .tour-caption-body{font-size:13px; color: var(--text-dim); line-height:1.55; margin:0 0 14px;}
   .tour-caption-actions{display:flex; align-items:center; justify-content:space-between; gap:8px;}
+
+  /* ---------- Vehicle sharing ---------- */
+  .shared-banner{
+    display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap;
+    border:1px solid var(--hairline); border-left:4px solid var(--green);
+    background: var(--panel); border-radius: var(--radius);
+    padding: 11px 16px; margin: 0 0 16px; font-size:13px; line-height:1.5; color: var(--text-dim);
+  }
+  .shared-banner b{color: var(--text);}
+  .shared-banner.view{border-left-color: var(--amber); background: rgba(242,169,59,0.08); color: var(--text);}
+  .shared-banner.view .shared-banner-title{font-family: var(--font-display); font-weight:600; text-transform:uppercase; letter-spacing:0.6px; color: var(--amber); display:block; margin-bottom:2px; font-size:12.5px;}
+  .shared-banner.pending{border-left-color: var(--blue);}
+  .shared-banner .btn{padding:6px 12px; font-size:12px;}
+  [data-view-blocked]{opacity:0.45; cursor:not-allowed;}
+  .share-member-row{
+    display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap;
+    padding: 10px 0; border-bottom:1px solid var(--hairline); font-size:13px;
+  }
+  .share-member-row:last-child{border-bottom:none;}
+  .share-member-name{font-weight:600; color: var(--text); word-break:break-word;}
+  .share-member-sub{font-size:11.5px; color: var(--text-dim2);}
+  .share-role-pill{font-family: var(--font-mono); font-size:10.5px; text-transform:uppercase; letter-spacing:0.5px; padding:3px 9px; border-radius:20px; background: rgba(92,140,174,0.15); color: var(--blue); white-space:nowrap;}
+  .share-role-pill.owner{background: rgba(111,174,122,0.15); color: var(--green);}
+  .share-role-pill.pending{background: rgba(242,169,59,0.15); color: var(--amber);}
+  .share-error{color: var(--red-text, #D4574B); font-size:12.5px; margin:8px 0 0;}

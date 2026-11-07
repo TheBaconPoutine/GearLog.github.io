@@ -117,6 +117,22 @@ function addRecommendedOptionalServices(vehicle){
   });
 }
 
+
+/* Canonical display order for service items. Object key order isn't reliable after a
+   round-trip through cloud sync (Postgres jsonb re-sorts keys by length, then alphabetically,
+   which pushed shorter keys like "trans_oil" ahead of "engine_oil" on synced devices).
+   Always render in catalog order, then optional add-ons, then custom items. */
+function orderedItemKeys(vehicle){
+  const present = Object.keys(vehicle.items || {});
+  const canonical = buildItemIds(vehicle.drivetrain, vehicle.transmission)
+    .concat(OPTIONAL_ADDON_IDS, RECOMMENDED_OPTIONAL_IDS);
+  const seen = new Set();
+  const out = [];
+  canonical.forEach(k => { if(vehicle.items[k] && !seen.has(k)){ out.push(k); seen.add(k); } });
+  present.forEach(k => { if(!seen.has(k)){ out.push(k); seen.add(k); } });
+  return out;
+}
+
 function ensureItemsForCurrentPreset(vehicle){
   const ids = buildItemIds(vehicle.drivetrain, vehicle.transmission);
   const idSet = new Set(ids);
@@ -272,13 +288,13 @@ function trackerTabContentHTML(){
       const hasItems = Object.keys(v.items).length > 0;
       if(hasItems){
         // Already set up — show every section at once for free editing, no gating.
-        return setupCardHTML() + vehicleInfoCardHTML() + drivingConditionCardHTML() + remindersCardHTML() + buildListCardHTML();
+        return setupCardHTML() + vehicleInfoCardHTML() + drivingConditionCardHTML() + remindersCardHTML() + buildListCardHTML() + shareVehicleCardHTML();
       }
       let html = setupCardHTML();
       if(sc.basics) html += vehicleInfoCardHTML();
       if(sc.info) html += drivingConditionCardHTML();
       if(sc.conditions) html += remindersCardHTML() + buildListCardHTML();
-      return html;
+      return html + shareVehicleCardHTML();
     }
   }
 }
@@ -288,6 +304,141 @@ function bannerHTML(){
   return `<div class="banner">${isNormal ? t("banner.htmlNormal") : t("banner.html")}</div>`;
 }
 
+/* =====================================================================
+   VEHICLE SHARING — UI
+===================================================================== */
+// Actions that change the active vehicle's data. Blocked while in view mode.
+const VIEW_BLOCKED_ACTIONS = new Set([
+  "apply-diagnostic-date", "clear-diagnostic-date", "diag-simulate-away", "diag-reset-tireswap",
+  "build-list", "recalc", "done-today", "update-last-service", "remove-item", "add-custom-item", "add-addon",
+  "add-history", "delete-history", "save-inspection", "delete-inspection", "save-info-step", "save-basics-step",
+  "confirm-conditions-step", "select-condition", "toggle-assume-no-history", "toggle-optional-services",
+  "toggle-tire-swap", "toggle-undercoating", "mark-tire-swap-done", "confirm-undercoating-done",
+  "reset-vehicle", "rename-vehicle"
+]);
+
+let shareUi = { sid: null, loading: false, members: [], invites: [], email: "", error: null, busy: false };
+
+function shareName(m){ return (m.username && m.username.trim()) || m.email || ""; }
+
+function sharedBannerHTML(){
+  const v = av();
+  if(!isSharedVehicle(v)) return "";
+  const L = sharedLock;
+  const ours = L.sharedId === v.shared.id;
+  if(ours && L.idleReleased){
+    return `<div class="shared-banner view" id="sharedStatusBanner"><div><span class="shared-banner-title">👁 ${t("sharing.banner.viewTitle")}</span>${t("sharing.banner.idle")}</div></div>`;
+  }
+  if(!ours || L.status === "connecting" || L.syncing){
+    return `<div class="shared-banner pending" id="sharedStatusBanner"><div>👥 ${t("sharing.banner.connecting")}</div></div>`;
+  }
+  if(L.status === "offline"){
+    return `<div class="shared-banner view" id="sharedStatusBanner"><div><span class="shared-banner-title">👁 ${t("sharing.banner.viewTitle")}</span>${t("sharing.banner.offline")}</div><button class="btn secondary" type="button" data-action="shared-retry">${t("sharing.banner.retry")}</button></div>`;
+  }
+  if(L.isEditor){
+    const msg = L.waiting > 0 ? t("sharing.banner.editingWaiting")(L.waiting) : t("sharing.banner.editing");
+    return `<div class="shared-banner" id="sharedStatusBanner"><div>👥 ${escapeHtml(msg)}</div></div>`;
+  }
+  const body = L.editorName ? t("sharing.banner.viewBody")(escapeHtml(L.editorName), L.position) : t("sharing.banner.viewBodyUnknown");
+  return `<div class="shared-banner view" id="sharedStatusBanner"><div><span class="shared-banner-title">👁 ${t("sharing.banner.viewTitle")}</span>${body}</div></div>`;
+}
+
+/* Disable inputs and dim edit buttons while the active vehicle is view-only. */
+function applyViewOnlyDOM(){
+  const v = av();
+  if(!isSharedVehicle(v) || !isViewOnly(v)) return;
+  appEl.querySelectorAll("input, select, textarea").forEach(el => {
+    if(el.hasAttribute("data-view-ok") || /^historySort/.test(el.id || "")) return;
+    el.disabled = true;
+  });
+  appEl.querySelectorAll("[data-action]").forEach(el => {
+    if(VIEW_BLOCKED_ACTIONS.has(el.getAttribute("data-action"))) el.setAttribute("data-view-blocked", "1");
+  });
+}
+
+function ensureShareDetailsLoaded(){
+  const v = av();
+  if(!currentUser || !isSharedVehicle(v) || state.trackerTab !== "setup") return;
+  if(shareUi.sid === v.shared.id || shareUi.loading) return;
+  shareUi.loading = true; shareUi.sid = v.shared.id;
+  loadShareDetails(v.shared.id).then(r => {
+    shareUi.loading = false;
+    if(r.error){ shareUi.sid = null; shareUi.error = sharingErrorMessage(r.error); }
+    else { shareUi.members = r.members; shareUi.invites = r.invites; }
+    render();
+  });
+}
+
+function shareVehicleCardHTML(){
+  if(!currentUser) return "";
+  const v = av();
+  let body;
+  if(!isSharedVehicle(v)){
+    body = `
+      <p class="card-sub" style="margin:-6px 0 16px;">${t("sharing.cardIntro")}</p>
+      <label class="field">${t("sharing.emailLabel")}
+        <input type="email" id="shareEmailInput" data-view-ok="1" autocomplete="off" value="${escapeHtml(shareUi.email)}" placeholder="${t("sharing.emailPlaceholder")}" ${shareUi.busy ? "disabled" : ""}>
+      </label>
+      ${shareUi.error ? `<p class="share-error">${escapeHtml(shareUi.error)}</p>` : ""}
+      <div class="actions-row">
+        <button class="btn c-blue" type="button" data-action="share-vehicle-start" ${shareUi.busy ? "disabled" : ""}>${shareUi.busy ? t("sharing.working") : t("sharing.shareBtn")}</button>
+      </div>`;
+  } else {
+    const isOwner = v.shared.role === "owner";
+    const loaded = shareUi.sid === v.shared.id && !shareUi.loading;
+    const rows = !loaded ? `<p class="card-sub">${t("sharing.loadingMembers")}</p>` : (
+      shareUi.members.map(m => {
+        const mine = currentUser && m.user_id === currentUser.id;
+        const label = escapeHtml(shareName(m)) + (mine ? ` <span class="share-member-sub">(${t("sharing.you")})</span>` : "");
+        const sub = m.username && m.email ? `<div class="share-member-sub">${escapeHtml(m.email)}</div>` : "";
+        const removeBtn = (isOwner && m.role === "editor")
+          ? `<button class="btn secondary c-red" type="button" data-action="remove-member" data-key="${m.user_id}" data-label="${escapeHtml(shareName(m))}">${t("sharing.removeBtn")}</button>` : "";
+        return `<div class="share-member-row"><div><div class="share-member-name">${label}</div>${sub}</div><div style="display:flex; align-items:center; gap:8px;"><span class="share-role-pill ${m.role === "owner" ? "owner" : ""}">${m.role === "owner" ? t("sharing.owner") : t("sharing.editor")}</span>${removeBtn}</div></div>`;
+      }).join("") +
+      shareUi.invites.map(i =>
+        `<div class="share-member-row"><div><div class="share-member-name">${escapeHtml(i.invited_email)}</div></div><div style="display:flex; align-items:center; gap:8px;"><span class="share-role-pill pending">${t("sharing.pending")}</span>${isOwner ? `<button class="btn secondary" type="button" data-action="cancel-invite" data-key="${i.id}">${t("sharing.cancelInviteBtn")}</button>` : ""}</div></div>`
+      ).join("")
+    );
+    const inviteBlock = isOwner ? `
+      <div style="margin-top:18px;">
+        <label class="field">${t("sharing.emailLabel")}
+          <input type="email" id="shareEmailInput" data-view-ok="1" autocomplete="off" value="${escapeHtml(shareUi.email)}" placeholder="${t("sharing.emailPlaceholder")}" ${shareUi.busy ? "disabled" : ""}>
+        </label>
+        <div class="actions-row"><button class="btn c-blue" type="button" data-action="invite-member" ${shareUi.busy ? "disabled" : ""}>${shareUi.busy ? t("sharing.working") : t("sharing.inviteBtn")}</button></div>
+      </div>` : "";
+    const endBtn = isOwner
+      ? `<button class="btn secondary c-red" type="button" data-action="unshare-vehicle">${t("sharing.unshareBtn")}</button>`
+      : `<button class="btn secondary c-red" type="button" data-action="leave-shared-vehicle">${t("sharing.leaveBtn")}</button>`;
+    body = `
+      <p class="card-sub" style="margin:-6px 0 12px;">${t("sharing.sharedIntro")}</p>
+      <p style="font-family:var(--font-display); font-weight:600; font-size:13px; color:var(--amber); text-transform:uppercase; letter-spacing:0.5px; margin:0 0 4px;">${t("sharing.membersTitle")}</p>
+      ${rows}
+      ${shareUi.error ? `<p class="share-error">${escapeHtml(shareUi.error)}</p>` : ""}
+      ${inviteBlock}
+      <div style="margin-top:22px; padding-top:16px; border-top:1px solid var(--hairline);">${endBtn}</div>`;
+  }
+  return `<section class="card" id="share-vehicle-card"><h2>${t("sharing.cardTitle")}</h2>${body}</section>`;
+}
+
+function resetShareUi(){ shareUi = { sid: null, loading: false, members: [], invites: [], email: "", error: null, busy: false }; }
+
+async function runShareAction(fn, okToast){
+  shareUi.busy = true; shareUi.error = null; render();
+  const r = await fn();
+  shareUi.busy = false;
+  if(r && r.error){ shareUi.error = sharingErrorMessage(r.error); render(); return r; }
+  if(okToast){ showToast(okToast); } else { render(); }
+  return r;
+}
+
+async function reloadShareDetails(){
+  const v = av();
+  if(!isSharedVehicle(v)) return;
+  const r = await loadShareDetails(v.shared.id);
+  if(!r.error){ shareUi.sid = v.shared.id; shareUi.members = r.members; shareUi.invites = r.invites; }
+  render();
+}
+
 function vehicleTabsHTML(){
   const ids = Object.keys(state.vehicles);
   const chips = ids.map(id => {
@@ -295,9 +446,9 @@ function vehicleTabsHTML(){
     const isActive = id === state.activeVehicleId;
     return `
       <div class="vehicle-chip ${isActive ? "active" : ""}" data-action="switch-vehicle" data-key="${id}">
-        <span data-action="switch-vehicle" data-key="${id}">${v.name}</span>
+        <span data-action="switch-vehicle" data-key="${id}">${v.name}${isSharedVehicle(v) ? " 👥" : ""}</span>
         ${isActive ? `<span class="del-x" data-action="rename-vehicle" data-key="${id}" title="Rename">✎</span>` : ""}
-        ${ids.length > 1 ? `<span class="del-x" data-action="delete-vehicle" data-key="${id}" title="Remove">✕</span>` : ""}
+        ${(ids.length > 1 || isSharedVehicle(v)) ? `<span class="del-x" data-action="delete-vehicle" data-key="${id}" title="Remove">✕</span>` : ""}
       </div>
     `;
   }).join("");
@@ -456,7 +607,7 @@ function buildListCardHTML(){
 
 function remindersCardHTML(){
   const v = av();
-  const itemRows = Object.keys(v.items).map(key => {
+  const itemRows = orderedItemKeys(v).map(key => {
     const item = v.items[key];
     const result = computeItem(v, item);
     if(!result) return "";
@@ -688,7 +839,7 @@ function getSeasonalSwapWindow(vehicle){
 
 function dashboardHTML(){
   const v = av();
-  const keys = Object.keys(v.items);
+  const keys = orderedItemKeys(v);
   const computed = keys.map(key => {
     const item = v.items[key];
     const result = computeItem(v, item);
@@ -851,7 +1002,7 @@ function dashboardHTML(){
 
 function itemsSectionHTML(){
   const v = av();
-  const keys = Object.keys(v.items);
+  const keys = orderedItemKeys(v);
 
   let itemsHTML;
   if(keys.length === 0){
@@ -992,7 +1143,7 @@ function itemCardHTML(vehicle, key){
 
 function inspectionsTabHTML(){
   const v = av();
-  const serviceRows = Object.keys(v.items).map(key => {
+  const serviceRows = orderedItemKeys(v).map(key => {
     const item = v.items[key];
     return `<label class="insp-check"><input type="checkbox" data-insp-service="${key}"> ${itemDisplayName(key, item)}</label>`;
   }).join("");
@@ -1252,7 +1403,11 @@ function performImport(file){
     try{
       const parsed = JSON.parse(reader.result);
       if(!parsed.vehicles || Object.keys(parsed.vehicles).length === 0) throw new Error("bad format");
+      const keepSharedVehicles = {};
+      Object.keys(state.vehicles || {}).forEach(id => { if(isSharedVehicle(state.vehicles[id])) keepSharedVehicles[id] = state.vehicles[id]; });
+      Object.values(parsed.vehicles).forEach(v => { delete v.shared; });   // imported copies become ordinary personal vehicles
       state = parsed;
+      Object.assign(state.vehicles, keepSharedVehicles);
       if(!state.activeVehicleId || !state.vehicles[state.activeVehicleId]){
         state.activeVehicleId = Object.keys(state.vehicles)[0];
       }
@@ -1368,6 +1523,8 @@ function loadingScreenHTML(message){
 
 function render(){
   try{
+    const shareEmailEl = document.getElementById("shareEmailInput");
+    if(shareEmailEl) shareUi.email = shareEmailEl.value;
     document.documentElement.lang = state.language;
     document.body.classList.toggle("qc-theme", state.language === "qc");
     if(appLoadingScreenActive){ appEl.innerHTML = appLoadingScreenHTML(); return; }
@@ -1375,11 +1532,14 @@ function render(){
       state.trackerTab = "setup";
     }
     let html = headerHTML() + navHTML();
-    html += vehicleTabsHTML() + trackerSubNavHTML();
+    html += vehicleTabsHTML() + sharedBannerHTML() + trackerSubNavHTML();
     html += diagnosticPanelHTML();
     html += recalcLoading ? loadingScreenHTML(t("status.recalculatingLoading")) : (listBuildLoading ? loadingScreenHTML() : trackerTabContentHTML());
     html += footerHTML() + changelogModalHTML() + dataWarningModalHTML() + onboardingModalHTML() + confirmModalHTML() + toastHTML() + tourOverlayHTML();
     appEl.innerHTML = html;
+    applyViewOnlyDOM();
+    syncSharedPresence();
+    ensureShareDetailsLoaded();
     setTimeout(applyTourHighlight, 30);
     return;
   }catch(err){
@@ -1425,7 +1585,50 @@ appEl.addEventListener("click", (e) => {
   const key = el.getAttribute("data-key");
   const vehicle = av();
 
+  if(VIEW_BLOCKED_ACTIONS.has(action) && isSharedVehicle(vehicle) && isViewOnly(vehicle)){
+    showToast(t("sharing.viewOnlyToast"), "error");
+    return;
+  }
+
   switch(action){
+    case "shared-retry":
+      rejoinSharedPresence();
+      break;
+
+    case "share-vehicle-start": {
+      const emailEl = document.getElementById("shareEmailInput");
+      const email = (emailEl ? emailEl.value : shareUi.email).trim().toLowerCase();
+      shareUi.email = email;
+      if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)){ shareUi.error = t("sharing.errors.invalid_email"); render(); break; }
+      shareUi.error = null;
+      requestConfirm(t("sharing.confirmShare")(email), "share-vehicle", state.activeVehicleId, { email });
+      break;
+    }
+    case "invite-member": {
+      const emailEl = document.getElementById("shareEmailInput");
+      const email = (emailEl ? emailEl.value : shareUi.email).trim().toLowerCase();
+      shareUi.email = email;
+      if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)){ shareUi.error = t("sharing.errors.invalid_email"); render(); break; }
+      runShareAction(() => inviteToSharedVehicle(state.activeVehicleId, email), null).then(async r => {
+        if(r && r.ok){ shareUi.email = ""; await reloadShareDetails(); showToast(t("sharing.invitedToast")(email)); }
+      });
+      break;
+    }
+    case "cancel-invite":
+      runShareAction(() => cancelSharedInvitation(key), null).then(async r => {
+        if(r && r.ok){ await reloadShareDetails(); showToast(t("sharing.inviteCancelledToast")); }
+      });
+      break;
+    case "remove-member":
+      requestConfirm(t("sharing.removeConfirm")(el.getAttribute("data-label") || ""), "remove-member", key);
+      break;
+    case "unshare-vehicle":
+      requestConfirm(t("sharing.unshareConfirm")(vehicle.name), "unshare-vehicle", state.activeVehicleId);
+      break;
+    case "leave-shared-vehicle":
+      requestConfirm(t("sharing.leaveConfirm")(vehicle.name), "leave-shared-vehicle", state.activeVehicleId);
+      break;
+
     case "apply-diagnostic-date": {
       const dateEl = document.getElementById("diagSimDate");
       const mileageEl = document.getElementById("diagSimMileage");
@@ -1579,7 +1782,31 @@ appEl.addEventListener("click", (e) => {
       const deferredExtra = pendingConfirm.extra;
       pendingConfirm = null;
 
-      if(deferredAction === "delete-vehicle"){
+      if(deferredAction === "share-vehicle"){
+        runShareAction(() => shareVehicleNow(deferredKey, deferredExtra.email), null).then(r => {
+          if(r && r.ok){
+            resetShareUi();
+            if(r.inviteError){ shareUi.error = sharingErrorMessage(r.inviteError); showToast(t("sharing.shareSavedInviteFailed"), "error"); }
+            else showToast(t("sharing.sharedToast")(deferredExtra.email));
+          }
+        });
+      } else if(deferredAction === "unshare-vehicle"){
+        runShareAction(() => unshareVehicleNow(deferredKey), null).then(r => {
+          if(r && r.ok){ resetShareUi(); showToast(t("sharing.unsharedToast")); }
+        });
+      } else if(deferredAction === "delete-shared-vehicle"){
+        runShareAction(() => deleteSharedVehicleNow(deferredKey), null).then(r => {
+          if(r && r.ok){ resetShareUi(); render(); }
+        });
+      } else if(deferredAction === "leave-shared-vehicle"){
+        runShareAction(() => leaveSharedVehicleNow(deferredKey), null).then(r => {
+          if(r && r.ok){ resetShareUi(); showToast(t("sharing.leftToast")); }
+        });
+      } else if(deferredAction === "remove-member"){
+        runShareAction(() => removeSharedMember(av().shared.id, deferredKey), null).then(async r => {
+          if(r && r.ok){ await reloadShareDetails(); showToast(t("sharing.removedToast")); }
+        });
+      } else if(deferredAction === "delete-vehicle"){
         delete state.vehicles[deferredKey];
         if(state.activeVehicleId === deferredKey){
           state.activeVehicleId = Object.keys(state.vehicles)[0];
@@ -1587,7 +1814,9 @@ appEl.addEventListener("click", (e) => {
         saveState(); render();
       } else if(deferredAction === "reset-vehicle"){
         const name = state.vehicles[deferredKey].name;
+        const keepShared = state.vehicles[deferredKey].shared;
         state.vehicles[deferredKey] = defaultVehicle(name);
+        if(keepShared) state.vehicles[deferredKey].shared = keepShared;
         saveState(); render();
       } else if(deferredAction === "remove-item"){
         delete vehicle.items[deferredKey];
@@ -1647,6 +1876,12 @@ appEl.addEventListener("click", (e) => {
       break;
     }
     case "delete-vehicle": {
+      const target = state.vehicles[key];
+      if(isSharedVehicle(target)){
+        if(target.shared.role === "owner") requestConfirm(t("sharing.deleteSharedConfirm")(target.name), "delete-shared-vehicle", key);
+        else requestConfirm(t("sharing.leaveConfirm")(target.name), "leave-shared-vehicle", key);
+        break;
+      }
       if(Object.keys(state.vehicles).length <= 1){
         showToast(t("vehicles.deleteLastBlocked"), "error");
         break;
@@ -2020,9 +2255,18 @@ appEl.addEventListener("click", (e) => {
       break;
   }
 });
+appEl.addEventListener("input", (e) => {
+  if(e.target && e.target.id === "shareEmailInput") shareUi.email = e.target.value;
+});
+
 appEl.addEventListener("change", (e) => {
   const el = e.target;
   const vehicle = av();
+
+  if(isSharedVehicle(vehicle) && isViewOnly(vehicle) && !el.hasAttribute("data-view-ok") && !/^historySort/.test(el.id || "") && el.id !== "importFileInput"){
+    showToast(t("sharing.viewOnlyToast"), "error");
+    return;
+  }
 
   if(el.id === "importFileInput"){
     const file = el.files[0];

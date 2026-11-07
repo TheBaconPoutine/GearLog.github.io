@@ -226,6 +226,10 @@ const I18N = {
       setupRemindersBody: "Even before your list exists, you can set up a Monthly Mileage Reminder — a calendar nudge to keep your mileage updated, which keeps every due-date accurate. Once your list is built, this section grows to include tire swaps, undercoating, and every individual service too.",
       setupBuildListTitle: "Build Your List",
       setupBuildListBody: "This is the big one — tap it and GearLog builds your full maintenance list from everything above. You can always come back and update it later if anything changes.",
+      setupShareTitle: "Share a Vehicle",
+      setupShareBody: "Signed in, this card lets you share a vehicle with another GearLog account — just enter their email. It's great for helping someone keep their maintenance organized without swapping backups or passwords. Each vehicle is shared on its own, and shared vehicles show 👥 after their name. Without an account, you'll see this once you sign up.",
+      sharedEditingTitle: "Sharing: One Editor at a Time",
+      sharedEditingBody: "On a shared vehicle, whoever opens it first can edit; everyone else sees a View mode banner and gets their turn automatically when the editor leaves or has been idle for 5 minutes. Changes show up live for viewers. Invitations you receive wait under Service invitations on the Account page.",
       statusCurrentTitle: "Current Status",
       statusCurrentBody: "This is where you log your vehicle's current mileage. Keeping it updated is what powers every due-date calculation in the app — the date stays current automatically. Tap Next to calculate and move on.",
       statusDashboardTitle: "Your Dashboard",
@@ -251,7 +255,7 @@ const I18N = {
       otherShareTitle: "Share & Install",
       otherShareBody: "The Share page has instructions for adding GearLog to your phone's home screen like a real app, plus a quick way to send it to someone else.",
       finalAccountTitle: "Last Stop: Your Account",
-      finalAccountBody: "That's the full tour! If you'd like your data to save automatically and follow you across devices, you can create an account right here — or stick with local-only storage if you'd rather. Either way, you're all set.",
+      finalAccountBody: "That's the full tour! If you'd like your data to save automatically and follow you across devices, you can create an account right here — or stick with local-only storage if you'd rather. Accounts also unlock vehicle sharing, and vehicles others share with you show up under Service invitations here. Either way, you're all set.",
     },
     confirmModal: {
       title: "Please confirm",
@@ -374,6 +378,13 @@ const I18N = {
     changelogTitle: "What's new",
     changelogDismiss: "Got it, dismiss",
     changelog: [
+      {version: 4, items: [
+        "Share a vehicle with another GearLog account. Under Vehicle Settings, tap \u201CShare this vehicle\u201D and enter their email \u2014 they can see and update that vehicle's service log, so you can help someone stay organized without exporting backups or sharing a login. Shared vehicles show \uD83D\uDC65 after their name.",
+        "One person edits at a time. Whoever opens a shared vehicle first can edit; everyone else sees a View mode banner and gets their turn automatically when the editor leaves or has been idle for 5 minutes. Changes appear live for viewers.",
+        "New \u201CService invitations\u201D section on the Account page \u2014 accept or decline vehicles others share with you. Owners can remove people or stop sharing at any time and keep the full history.",
+        "Fixed a bug on synced devices where Transmission service could appear above Engine Oil in Status & Services. Services now always show in their proper order.",
+        "The Data Usage section on the About page now explains how shared vehicles work and what other people can see, and the guided walkthrough includes the new sharing steps.",
+      ]},
       {version: 2, items: [
         "Replaced browser pop-up alerts (like \u201Cmissing fields\u201D on Vehicle Setup) with in-app notifications, so every message now looks and feels like part of GearLog instead of a native browser dialog.",
         "The desktop sidebar navigation now spans the full height of the screen flush against the top-left corner, instead of floating as a small box with gaps around it.",
@@ -498,13 +509,85 @@ const I18N = {
       ],
       dataTitle: "Data Usage",
       dataBody: [
-        "Your vehicle data exists for one reason: to save your own maintenance information so you can access it. It is not used for anything else, and it is not shared with anyone.",
+        "Your vehicle data exists for one reason: to save your own maintenance information so you can access it. It is not used for anything else, and the only way anyone else ever sees it is if you choose to share a vehicle (see below).",
         "GearLog also keeps a running log of the mileage you enter over time, tied to the dates you entered it. This is what powers the auto-calculated monthly average and year-to-date mileage shown on your dashboard — figures that used to require guessing a manual average now come directly from your own real entries, and get more accurate the more you use the app.",
-        "If you're not signed in, everything you enter stays in your browser's local storage on your own device — nothing is sent to a server.",
-        "If you're signed in, your data also syncs to a private database so you can access it across your devices. That data is locked to your account specifically — access controls on the database itself mean nobody but you can read or write it, not other users and not anyone browsing the site. It's never sold, analyzed, or shared with third parties.",
-        "Your email address is used only for signing in and password recovery — never for marketing, and never shared with anyone.",
+        "If you're not signed in, everything you enter stays in your browser's local storage on your own device — nothing is sent to a server. Sharing vehicles needs an account, so it isn't available while signed out.",
+        "If you're signed in, your data also syncs to a private database so you can access it across your devices. By default, that data is locked to your account specifically — access controls on the database itself mean nobody but you can read or write it, not other users and not anyone browsing the site. It's never sold, analyzed, or shared with third parties.",
+        "Sharing a vehicle is optional and always your choice, one vehicle at a time. When you share one with another GearLog account, that vehicle — its full service history, mileage log, inspections, and the VIN if you entered one — moves to a shared space that only you and the people you've invited can open. Your other vehicles stay private. Anyone with access can see everything in that vehicle, and one person at a time can edit it, so only share with people you trust.",
+        "You stay in control of a shared vehicle. The vehicle's settings list exactly who has access, and as the owner you can remove anyone or stop sharing at any time — stopping returns the vehicle to you alone with its full history. Removing someone ends their access right away; a copy already open on their device is cleared the next time GearLog syncs there. Someone you've shared with can also leave a vehicle on their own at any time.",
+        "Invitations go to the email address you type in and wait in that person's account until they accept or decline — GearLog doesn't send any email for this. Inviting an address doesn't reveal whether it has an account.",
+        "Your email address is used only for signing in, password recovery, and matching invitations — never for marketing. If you share a vehicle, the people you share it with can see your name and email address in that vehicle's access list, and you can see theirs. It isn't shared with anyone else.",
       ],
       changelogTitle: "Changelog",
+    },
+    sharing: {
+      cardTitle: "Share this vehicle",
+      cardIntro: "Give another GearLog account access to this vehicle's service log. Only one person can edit at a time — everyone else sees it in view mode until the editor leaves or goes idle.",
+      emailLabel: "Their account email",
+      emailPlaceholder: "name@example.com",
+      shareBtn: "Share vehicle",
+      inviteBtn: "Send invitation",
+      working: "Working…",
+      confirmShare: (email) => `Share this vehicle with ${email}? It moves to shared storage so both accounts can see and update it. You can stop sharing at any time and keep everything.`,
+      sharedIntro: "This vehicle is shared. Only one person can edit at a time; everyone else sees it in view mode until the editor leaves or has been idle for 5 minutes.",
+      membersTitle: "Who has access",
+      loadingMembers: "Loading…",
+      owner: "Owner",
+      editor: "Can edit",
+      you: "you",
+      pending: "Invitation pending",
+      removeBtn: "Remove",
+      cancelInviteBtn: "Cancel invite",
+      removeConfirm: (who) => `Remove ${who}'s access to this vehicle?`,
+      unshareBtn: "Stop sharing",
+      unshareConfirm: (n) => `Stop sharing "${n}"? Everyone else loses access. You keep the vehicle and its full history.`,
+      leaveBtn: "Leave this vehicle",
+      leaveConfirm: (n) => `Leave "${n}"? It disappears from your list, and you'll need a new invitation to get it back.`,
+      deleteSharedConfirm: (n) => `"${n}" is shared. Deleting it removes it and its history for everyone. Delete it?`,
+      sharedToast: (email) => `Shared — invitation sent to ${email}`,
+      invitedToast: (email) => `Invitation sent to ${email}`,
+      shareSavedInviteFailed: "The vehicle is now shared, but the invitation couldn't be sent. Try inviting them again.",
+      unsharedToast: "Stopped sharing. The vehicle is back to being yours alone.",
+      leftToast: "You left the vehicle.",
+      removedToast: "Access removed.",
+      inviteCancelledToast: "Invitation cancelled.",
+      viewOnlyToast: "View mode — someone else is editing this vehicle right now.",
+      conflictToast: "Someone else saved changes first — this vehicle was reloaded with the latest version.",
+      accessEndedToast: (n) => `You no longer have access to "${n}".`,
+      invitesToast: (n) => n === 1 ? "You have 1 vehicle invitation — see Account." : `You have ${n} vehicle invitations — see Account.`,
+      banner: {
+        connecting: "Connecting to the shared vehicle… view only for now.",
+        editing: "Shared vehicle — you can edit.",
+        editingWaiting: (n) => n === 1 ? "Shared vehicle — you're editing. 1 person is waiting for their turn." : `Shared vehicle — you're editing. ${n} people are waiting for their turn.`,
+        viewTitle: "View mode",
+        viewBody: (name, pos) => `${name} is editing this vehicle. You'll get edit access when they leave${pos > 1 ? ` — you're #${pos} in line` : ""}.`,
+        viewBodyUnknown: "Someone is editing this vehicle. You'll get edit access when they leave.",
+        idle: "Paused after 5 minutes of inactivity. Tap anywhere to take your turn to edit again.",
+        offline: "Couldn't reach live editing — view only.",
+        retry: "Retry"
+      },
+      errors: {
+        not_owner: "Only the owner can do that.",
+        invalid_email: "That doesn't look like a valid email address.",
+        cannot_invite_self: "That's your own email address.",
+        already_member: "That person already has access.",
+        share_limit: "This vehicle has reached its limit of people and pending invitations.",
+        invitation_not_found: "That invitation is no longer available.",
+        cannot_leave: "The owner can't leave — stop sharing or delete the vehicle instead.",
+        not_authenticated: "Log in to share vehicles.",
+        network: "Couldn't reach the server — check your connection and try again.",
+        generic: "Something went wrong. Please try again."
+      },
+      account: {
+        title: "Service invitations",
+        intro: "Other GearLog users can share their vehicles with you. Accept an invitation to see and edit that vehicle's service log.",
+        none: "No pending invitations.",
+        from: (who) => `Shared by ${who}`,
+        accept: "Accept",
+        decline: "Decline",
+        acceptedToast: (n) => n ? `"${n}" was added to your vehicles.` : "Invitation accepted — the vehicle was added to your list.",
+        declinedToast: "Invitation declined."
+      }
     },
     account: {
       title: "Account",
@@ -775,6 +858,10 @@ const I18N = {
       setupRemindersBody: "Même avant que votre liste existe, vous pouvez configurer un rappel mensuel de kilométrage — un rappel de calendrier pour garder votre kilométrage à jour, ce qui garde chaque échéance précise. Une fois votre liste construite, cette section s'agrandit pour inclure les changements de pneus, l'antirouille et chaque entretien individuel aussi.",
       setupBuildListTitle: "Construisez votre liste",
       setupBuildListBody: "C'est le gros bouton — appuyez dessus et GearLog construit votre liste d'entretien complète à partir de tout ce qui précède. Vous pouvez toujours revenir et la mettre à jour plus tard si quelque chose change.",
+      setupShareTitle: "Partager un véhicule",
+      setupShareBody: "Une fois connecté, cette carte vous permet de partager un véhicule avec un autre compte GearLog — il suffit d'entrer son courriel. Idéal pour aider quelqu'un à garder son entretien organisé sans échanger de sauvegardes ni de mots de passe. Chaque véhicule se partage séparément, et les véhicules partagés affichent 👥 après leur nom. Sans compte, vous la verrez une fois inscrit.",
+      sharedEditingTitle: "Partage : un seul éditeur à la fois",
+      sharedEditingBody: "Sur un véhicule partagé, la première personne qui l'ouvre peut modifier; les autres voient une bannière Mode lecture et obtiennent leur tour automatiquement quand l'éditeur part ou reste inactif pendant 5 minutes. Les changements s'affichent en direct pour ceux qui consultent. Les invitations reçues attendent sous Invitations de service dans la page Compte.",
       statusCurrentTitle: "État actuel",
       statusCurrentBody: "C'est ici que vous inscrivez le kilométrage actuel de votre véhicule. Le garder à jour est ce qui alimente chaque calcul d'échéance dans l'application — la date reste à jour automatiquement. Touchez Suivant pour calculer et continuer.",
       statusDashboardTitle: "Votre tableau de bord",
@@ -800,7 +887,7 @@ const I18N = {
       otherShareTitle: "Partager et installer",
       otherShareBody: "La page Partager contient des instructions pour ajouter GearLog à l'écran d'accueil de votre téléphone comme une vraie application, plus un moyen rapide de l'envoyer à quelqu'un d'autre.",
       finalAccountTitle: "Dernier arrêt : votre compte",
-      finalAccountBody: "C'est la fin de la visite! Si vous voulez que vos données s'enregistrent automatiquement et vous suivent sur tous vos appareils, vous pouvez créer un compte ici même — ou continuer avec le stockage local seulement si vous préférez. Dans les deux cas, vous êtes prêt.",
+      finalAccountBody: "C'est la fin de la visite! Si vous voulez que vos données s'enregistrent automatiquement et vous suivent sur tous vos appareils, vous pouvez créer un compte ici même — ou continuer avec le stockage local seulement si vous préférez. Un compte permet aussi de partager des véhicules, et ceux que d'autres partagent avec vous apparaissent ici sous Invitations de service. Dans les deux cas, vous êtes prêt.",
     },
     confirmModal: {
       title: "Veuillez confirmer",
@@ -923,6 +1010,13 @@ const I18N = {
     changelogTitle: "Quoi de neuf",
     changelogDismiss: "Compris, fermer",
     changelog: [
+      {version: 4, items: [
+        "Partagez un véhicule avec un autre compte GearLog. Dans les paramètres du véhicule, touchez « Partager ce véhicule » et entrez son courriel — cette personne peut voir et mettre à jour le carnet d'entretien de ce véhicule, ce qui vous permet d'aider quelqu'un à s'organiser sans exporter de sauvegarde ni partager un mot de passe. Les véhicules partagés affichent \uD83D\uDC65 après leur nom.",
+        "Une seule personne modifie à la fois. La première personne qui ouvre un véhicule partagé peut le modifier; les autres voient une bannière Mode lecture et obtiennent leur tour automatiquement quand l'éditeur part ou reste inactif pendant 5 minutes. Les changements s'affichent en direct pour ceux qui consultent.",
+        "Nouvelle section « Invitations de service » dans la page Compte — acceptez ou refusez les véhicules que d'autres partagent avec vous. Les propriétaires peuvent retirer des personnes ou cesser le partage en tout temps et conservent tout l'historique.",
+        "Correction d'un bogue sur les appareils synchronisés où l'entretien de la transmission pouvait apparaître au-dessus de l'huile à moteur dans État et services. Les services s'affichent maintenant toujours dans le bon ordre.",
+        "La section Utilisation des données de la page À propos explique maintenant comment fonctionnent les véhicules partagés et ce que les autres personnes peuvent voir, et la visite guidée inclut les nouvelles étapes de partage.",
+      ]},
       {version: 2, items: [
         "Remplacement des alertes contextuelles du navigateur (comme « champs manquants » dans Configuration du véhicule) par des notifications intégrées à l'application, pour que chaque message ait maintenant l'apparence d'une partie de GearLog plutôt qu'une boîte de dialogue native du navigateur.",
         "La navigation latérale sur ordinateur occupe maintenant toute la hauteur de l'écran, collée au coin supérieur gauche, au lieu de flotter comme une petite boîte entourée d'espace.",
@@ -1047,13 +1141,85 @@ const I18N = {
       ],
       dataTitle: "Utilisation des données",
       dataBody: [
-        "Vos données de véhicule existent pour une seule raison : enregistrer vos propres renseignements d'entretien afin que vous puissiez y accéder. Elles ne sont utilisées à aucune autre fin, et ne sont partagées avec personne.",
+        "Vos données de véhicule existent pour une seule raison : enregistrer vos propres renseignements d'entretien afin que vous puissiez y accéder. Elles ne sont utilisées à aucune autre fin, et la seule façon pour quelqu'un d'autre de les voir est que vous choisissiez de partager un véhicule (voir plus bas).",
         "GearLog conserve aussi un historique du kilométrage que vous entrez au fil du temps, associé aux dates où vous l'avez entré. C'est ce qui alimente la moyenne mensuelle calculée automatiquement et le kilométrage parcouru cette année affichés sur votre tableau de bord — des chiffres qui exigeaient autrefois de deviner une moyenne manuelle proviennent maintenant directement de vos propres entrées réelles, et deviennent plus précis à mesure que vous utilisez l'application.",
-        "Si vous n'êtes pas connecté, tout ce que vous entrez reste dans le stockage local de votre navigateur, sur votre propre appareil — rien n'est envoyé à un serveur.",
-        "Si vous êtes connecté, vos données se synchronisent aussi avec une base de données privée afin que vous puissiez y accéder depuis tous vos appareils. Ces données sont verrouillées à votre compte spécifiquement — des contrôles d'accès sur la base de données elle-même font en sorte que personne d'autre que vous ne peut les lire ou les modifier, ni les autres utilisateurs, ni quiconque parcourant le site. Elles ne sont jamais vendues, analysées ou partagées avec des tiers.",
-        "Votre adresse courriel n'est utilisée que pour la connexion et la récupération de mot de passe — jamais pour du marketing, et jamais partagée avec qui que ce soit.",
+        "Si vous n'êtes pas connecté, tout ce que vous entrez reste dans le stockage local de votre navigateur, sur votre propre appareil — rien n'est envoyé à un serveur. Le partage de véhicules nécessite un compte; il n'est donc pas offert lorsque vous êtes déconnecté.",
+        "Si vous êtes connecté, vos données se synchronisent aussi avec une base de données privée afin que vous puissiez y accéder depuis tous vos appareils. Par défaut, ces données sont verrouillées à votre compte spécifiquement — des contrôles d'accès sur la base de données elle-même font en sorte que personne d'autre que vous ne peut les lire ou les modifier, ni les autres utilisateurs, ni quiconque parcourant le site. Elles ne sont jamais vendues, analysées ou partagées avec des tiers.",
+        "Le partage d'un véhicule est facultatif et toujours votre choix, un véhicule à la fois. Lorsque vous en partagez un avec un autre compte GearLog, ce véhicule — tout son historique d'entretien, son registre de kilométrage, ses inspections et le NIV si vous l'avez entré — est déplacé dans un espace partagé que seuls vous et les personnes que vous avez invitées peuvent ouvrir. Vos autres véhicules restent privés. Toute personne ayant accès peut tout voir dans ce véhicule, et une seule personne à la fois peut le modifier; ne partagez donc qu'avec des gens de confiance.",
+        "Vous gardez le contrôle d'un véhicule partagé. Les paramètres du véhicule indiquent exactement qui a accès, et en tant que propriétaire, vous pouvez retirer n'importe qui ou cesser le partage en tout temps — cesser le partage ramène le véhicule à vous seul, avec tout son historique. Retirer quelqu'un met fin à son accès immédiatement; une copie déjà ouverte sur son appareil est effacée la prochaine fois que GearLog s'y synchronise. Une personne avec qui vous avez partagé peut aussi quitter un véhicule de son propre chef en tout temps.",
+        "Les invitations sont envoyées à l'adresse courriel que vous saisissez et attendent dans le compte de cette personne jusqu'à ce qu'elle les accepte ou les refuse — GearLog n'envoie aucun courriel pour cela. Inviter une adresse ne révèle pas si elle est associée à un compte.",
+        "Votre adresse courriel n'est utilisée que pour la connexion, la récupération de mot de passe et la correspondance des invitations — jamais pour du marketing. Si vous partagez un véhicule, les personnes avec qui vous le partagez peuvent voir votre nom et votre adresse courriel dans la liste d'accès de ce véhicule, et vous pouvez voir les leurs. Elle n'est partagée avec personne d'autre.",
       ],
       changelogTitle: "Historique des mises à jour",
+    },
+    sharing: {
+      cardTitle: "Partager ce véhicule",
+      cardIntro: "Donnez à un autre compte GearLog accès au carnet d'entretien de ce véhicule. Une seule personne peut modifier à la fois — les autres sont en mode lecture jusqu'à ce que l'éditeur parte ou devienne inactif.",
+      emailLabel: "Courriel de son compte",
+      emailPlaceholder: "nom@exemple.com",
+      shareBtn: "Partager le véhicule",
+      inviteBtn: "Envoyer l'invitation",
+      working: "En cours…",
+      confirmShare: (email) => `Partager ce véhicule avec ${email} ? Il sera déplacé dans un espace partagé pour que les deux comptes puissent le voir et le mettre à jour. Vous pouvez cesser le partage en tout temps et tout conserver.`,
+      sharedIntro: "Ce véhicule est partagé. Une seule personne peut modifier à la fois; les autres sont en mode lecture jusqu'à ce que l'éditeur parte ou soit inactif pendant 5 minutes.",
+      membersTitle: "Qui a accès",
+      loadingMembers: "Chargement…",
+      owner: "Propriétaire",
+      editor: "Peut modifier",
+      you: "vous",
+      pending: "Invitation en attente",
+      removeBtn: "Retirer",
+      cancelInviteBtn: "Annuler l'invitation",
+      removeConfirm: (who) => `Retirer l'accès de ${who} à ce véhicule ?`,
+      unshareBtn: "Cesser le partage",
+      unshareConfirm: (n) => `Cesser de partager « ${n} » ? Les autres perdent l'accès. Vous gardez le véhicule et tout son historique.`,
+      leaveBtn: "Quitter ce véhicule",
+      leaveConfirm: (n) => `Quitter « ${n} » ? Il disparaîtra de votre liste, et il faudra une nouvelle invitation pour le retrouver.`,
+      deleteSharedConfirm: (n) => `« ${n} » est partagé. Le supprimer l'enlève, avec son historique, pour tout le monde. Le supprimer ?`,
+      sharedToast: (email) => `Partagé — invitation envoyée à ${email}`,
+      invitedToast: (email) => `Invitation envoyée à ${email}`,
+      shareSavedInviteFailed: "Le véhicule est maintenant partagé, mais l'invitation n'a pas pu être envoyée. Essayez de l'inviter à nouveau.",
+      unsharedToast: "Partage arrêté. Le véhicule est de nouveau à vous seul.",
+      leftToast: "Vous avez quitté le véhicule.",
+      removedToast: "Accès retiré.",
+      inviteCancelledToast: "Invitation annulée.",
+      viewOnlyToast: "Mode lecture — quelqu'un d'autre modifie ce véhicule en ce moment.",
+      conflictToast: "Quelqu'un d'autre a enregistré en premier — ce véhicule a été rechargé avec la dernière version.",
+      accessEndedToast: (n) => `Vous n'avez plus accès à « ${n} ».`,
+      invitesToast: (n) => n === 1 ? "Vous avez 1 invitation de véhicule — voir Compte." : `Vous avez ${n} invitations de véhicule — voir Compte.`,
+      banner: {
+        connecting: "Connexion au véhicule partagé… lecture seule pour l'instant.",
+        editing: "Véhicule partagé — vous pouvez modifier.",
+        editingWaiting: (n) => n === 1 ? "Véhicule partagé — vous modifiez. 1 personne attend son tour." : `Véhicule partagé — vous modifiez. ${n} personnes attendent leur tour.`,
+        viewTitle: "Mode lecture",
+        viewBody: (name, pos) => `${name} modifie ce véhicule. Vous aurez accès à la modification quand cette personne partira${pos > 1 ? ` — vous êtes n° ${pos} dans la file` : ""}.`,
+        viewBodyUnknown: "Quelqu'un modifie ce véhicule. Vous aurez accès à la modification quand cette personne partira.",
+        idle: "En pause après 5 minutes d'inactivité. Touchez n'importe où pour reprendre votre tour de modification.",
+        offline: "Impossible de joindre la modification en direct — lecture seule.",
+        retry: "Réessayer"
+      },
+      errors: {
+        not_owner: "Seul le propriétaire peut faire cela.",
+        invalid_email: "Cette adresse courriel ne semble pas valide.",
+        cannot_invite_self: "C'est votre propre adresse courriel.",
+        already_member: "Cette personne a déjà accès.",
+        share_limit: "Ce véhicule a atteint sa limite de personnes et d'invitations en attente.",
+        invitation_not_found: "Cette invitation n'est plus disponible.",
+        cannot_leave: "Le propriétaire ne peut pas quitter — cessez le partage ou supprimez le véhicule.",
+        not_authenticated: "Connectez-vous pour partager des véhicules.",
+        network: "Impossible de joindre le serveur — vérifiez votre connexion et réessayez.",
+        generic: "Un problème est survenu. Veuillez réessayer."
+      },
+      account: {
+        title: "Invitations de service",
+        intro: "D'autres utilisateurs de GearLog peuvent partager leurs véhicules avec vous. Acceptez une invitation pour voir et modifier le carnet d'entretien de ce véhicule.",
+        none: "Aucune invitation en attente.",
+        from: (who) => `Partagé par ${who}`,
+        accept: "Accepter",
+        decline: "Refuser",
+        acceptedToast: (n) => n ? `« ${n} » a été ajouté à vos véhicules.` : "Invitation acceptée — le véhicule a été ajouté à votre liste.",
+        declinedToast: "Invitation refusée."
+      }
     },
     account: {
       title: "Compte",
@@ -1178,6 +1344,8 @@ const TOUR_STEPS = [
   { id: "setupConditions",    page: "index.html",     tab: "setup",       target: "#setup-conditions-card", primaryAction: "confirm-conditions-step" },
   { id: "setupReminders",     page: "index.html",     tab: "setup",       target: "#setup-reminders-card" },
   { id: "setupBuildList",     page: "index.html",     tab: "setup",       target: "#setup-buildlist-card", primaryAction: "build-list" },
+  { id: "setupShare",         page: "index.html",     tab: "setup",       target: "#share-vehicle-card", requiresLogin: true },
+  { id: "sharedEditing",      page: "index.html",     tab: "setup",       target: null },
   { id: "statusCurrent",      page: "index.html",     tab: "status",      target: "#status-current-card", primaryAction: "recalc" },
   { id: "statusDashboard",    page: "index.html",     tab: "status",      target: ".dash-card" },
   { id: "itemFindExample",    page: "index.html",     tab: "status",      target: '.edit[data-key="engine_oil"]', openItems: true },
@@ -1319,7 +1487,7 @@ function tourOverlayHTML(){
   const stepNum = state.tourStepIndex + 1;
   const total = TOUR_STEPS.length;
   return `
-    ${step.target ? '<div class="tour-backdrop"></div>' : ""}
+    ${(step.target && (!step.requiresLogin || currentUser)) ? '<div class="tour-backdrop"></div>' : ""}
     <div class="tour-caption ${tourCaptionMinimized ? "tour-caption-minimized" : ""}">
       <div class="tour-caption-topline">
         <span class="tour-caption-step">${t("tour.stepCounter")(stepNum, total)}</span>
@@ -1344,6 +1512,7 @@ function applyTourHighlight(){
   document.querySelectorAll(".tour-spotlight").forEach(el => el.classList.remove("tour-spotlight"));
   const step = getCurrentTourStep();
   if(!step || !step.target) return;
+  if(step.requiresLogin && !currentUser) return;
   if(!tourStepMatchesCurrentPage(step)) return;
   if(step.openItems){
     const itemsSection = document.querySelector("details.items-collapse");
@@ -1505,15 +1674,24 @@ async function pushRemoteState(){
   if(!sbClient || !currentUser) return;
   syncStatus = "saving";
   try{
+    // Shared vehicles live in their own table, never inside the personal blob.
+    const cloudState = JSON.parse(JSON.stringify(state));
+    Object.keys(cloudState.vehicles || {}).forEach(id => {
+      if(cloudState.vehicles[id] && cloudState.vehicles[id].shared) delete cloudState.vehicles[id];
+    });
+    if(!cloudState.vehicles[cloudState.activeVehicleId]){
+      cloudState.activeVehicleId = Object.keys(cloudState.vehicles)[0] || null;
+    }
     const { error } = await sbClient
       .from("gearlog_data")
-      .upsert({ user_id: currentUser.id, data: state, updated_at: new Date().toISOString() }, { onConflict: "user_id" });
+      .upsert({ user_id: currentUser.id, data: cloudState, updated_at: new Date().toISOString() }, { onConflict: "user_id" });
     syncStatus = error ? "error" : "saved";
     if(error) console.error("GearLog cloud save error:", error);
   }catch(err){
     syncStatus = "error";
     console.error("GearLog cloud save error:", err);
   }
+  await enqueueSharedPush();
 }
 
 async function pullRemoteState(){
@@ -1607,7 +1785,17 @@ async function handleAuthenticatedSession(){
     // has real local progress — upload it rather than letting an empty remote win.
     await pushRemoteState();
   }
+  // Vehicles other people have shared with this account (and ones this account shared).
+  await hydrateSharedVehicles();
+  ensureValidVehicles();
   if(typeof render === "function") render();
+  // Tell them once per session if invitations are waiting.
+  loadMyInvitations().then(r => {
+    if(r && r.ok && r.list.length && !sessionStorage.getItem("gearlog_invites_toast") && typeof showToast === "function"){
+      sessionStorage.setItem("gearlog_invites_toast", "1");
+      showToast(t("sharing.invitesToast")(r.list.length));
+    } else if(typeof render === "function"){ render(); }
+  });
 }
 
 async function initAuth(){
@@ -1617,6 +1805,8 @@ async function initAuth(){
     if(session && session.user){
       currentUser = session.user;
       await handleAuthenticatedSession();
+    } else {
+      purgeSharedVehicles();
     }
   }catch(err){
     console.error("GearLog auth init error:", err);
@@ -1642,6 +1832,8 @@ if(sbClient){
       handleAuthenticatedSession();
     } else if(!currentUser){
       currentProfile = null;
+      pendingInvitations = []; pendingInvitationsLoaded = false;
+      purgeSharedVehicles();
       if(typeof render === "function") render();
     }
   });
@@ -1728,7 +1920,7 @@ if(state.hasSeenOnboardingPopup === undefined) state.hasSeenOnboardingPopup = fa
 if(state.tourActive === undefined) state.tourActive = false;
 if(state.tourStepIndex === undefined) state.tourStepIndex = 0;
 if(state.qcUnlocked === undefined) state.qcUnlocked = false;
-Object.values(state.vehicles).forEach(v => {
+function normalizeVehicle(v){
   if(!Array.isArray(v.history)) v.history = [];
   if(!v.items) v.items = {};
   if(v.year == null) v.year = "";
@@ -1767,9 +1959,582 @@ Object.values(state.vehicles).forEach(v => {
       v.optionalServicesEnabled = true;
     }
   });
-});
+  return v;
+}
+Object.values(state.vehicles).forEach(normalizeVehicle);
 
 function av(){ return state.vehicles[state.activeVehicleId]; }
+
+/* =====================================================================
+   VEHICLE SHARING
+   A shared vehicle's data lives in the shared_vehicles table (one row,
+   many members) instead of inside one person's personal blob. Locally it
+   sits in state.vehicles under the key "s_<uuid>" with a `shared` meta
+   object, so all existing rendering code works unchanged.
+
+   Only one person edits at a time. Everyone viewing the vehicle announces
+   themselves on a Supabase Realtime presence channel; the earliest arrival
+   edits, the rest are in view mode and are promoted in order when the
+   editor leaves or goes idle. Saves are also version-checked, so even if
+   the queue ever glitched, a stale save is rejected instead of overwriting.
+===================================================================== */
+const SHARE_IDLE_MS = 5 * 60 * 1000;          // no interaction for this long -> release the edit slot
+const SHARE_HIDDEN_REJOIN_MS = 30 * 1000;     // tab hidden this long -> rejoin the queue fresh on return
+const SHARE_SESSION_ID = Math.random().toString(36).slice(2, 10);
+let shareJoinCounter = 0;
+
+function isSharedVehicle(v){ return !!(v && v.shared && v.shared.id); }
+function sharedLocalId(sharedId){ return "s_" + sharedId; }
+
+function stableStringify(x){
+  if(x === null || typeof x !== "object") return JSON.stringify(x);
+  if(Array.isArray(x)) return "[" + x.map(stableStringify).join(",") + "]";
+  return "{" + Object.keys(x).sort().filter(k => x[k] !== undefined)
+    .map(k => JSON.stringify(k) + ":" + stableStringify(x[k])).join(",") + "}";
+}
+function vehicleSnapshot(v){ const c = Object.assign({}, v); delete c.shared; return stableStringify(c); }
+function vehicleDataForServer(v){ const c = JSON.parse(JSON.stringify(v)); delete c.shared; return c; }
+function persistLocal(){ try{ localStorage.setItem(STORE_KEY, JSON.stringify(state)); }catch(e){} }
+
+/* Guarantee there is always at least one vehicle and a valid active one. */
+function ensureValidVehicles(){
+  if(!state.vehicles) state.vehicles = {};
+  if(Object.keys(state.vehicles).length === 0) state.vehicles.v1 = defaultVehicle("Vehicle 1");
+  if(!state.activeVehicleId || !state.vehicles[state.activeVehicleId]){
+    state.activeVehicleId = Object.keys(state.vehicles)[0];
+  }
+}
+
+/* ---------- Edit lock (presence queue) ---------- */
+const sharedLock = {
+  sharedId: null, localId: null, channel: null, myKey: null, joinedAt: 0,
+  status: "idle",          // idle | connecting | ready | offline
+  syncing: false,          // true while fetching the latest copy before editing is allowed
+  tracking: false,         // currently announced in presence
+  idleReleased: false,     // gave up the slot after SHARE_IDLE_MS of inactivity
+  isEditor: false, editorKey: null, editorName: null, position: -1, waiting: 0
+};
+let sharedLastPushed = {};     // sharedId -> snapshot of the last server-confirmed data
+let sharedPushChain = Promise.resolve();
+let sharedConnectTimer = null;
+let sharedPromoting = false;
+let lastActivityAt = Date.now();
+let hiddenAt = null;
+
+function canEditVehicle(v){
+  if(!isSharedVehicle(v)) return true;
+  return sharedLock.sharedId === v.shared.id && sharedLock.status === "ready"
+    && !sharedLock.syncing && sharedLock.isEditor && !sharedLock.idleReleased;
+}
+function isViewOnly(v){ return !canEditVehicle(v); }
+function sharedHasUnpushed(v){
+  return isSharedVehicle(v) && vehicleSnapshot(v) !== sharedLastPushed[v.shared.id];
+}
+
+/* Pure helper (also used by tests): who is the editor, given who's present. */
+function computeLockFromEntries(entries, myKey){
+  const editor = entries[0] || null;
+  return {
+    editorKey: editor ? editor.key : null,
+    editorName: editor ? editor.name : null,
+    isEditor: !!editor && editor.key === myKey,
+    position: entries.findIndex(e => e.key === myKey),
+    waiting: Math.max(0, entries.length - 1)
+  };
+}
+function sharedPresenceEntries(){
+  const out = [];
+  if(!sharedLock.channel) return out;
+  const ps = sharedLock.channel.presenceState() || {};
+  Object.keys(ps).forEach(k => (ps[k] || []).forEach(m => {
+    out.push({ key: m.key || k, name: m.name, userId: m.user_id, joinedAt: Number(m.joined_at) || 0 });
+  }));
+  out.sort((a, b) => (a.joinedAt - b.joinedAt) || (a.key < b.key ? -1 : a.key > b.key ? 1 : 0));
+  const seen = new Set();
+  return out.filter(e => seen.has(e.key) ? false : (seen.add(e.key), true));
+}
+
+function sharedDisplayName(){
+  if(currentProfile && currentProfile.username) return currentProfile.username;
+  if(currentUser && currentUser.email) return currentUser.email.split("@")[0];
+  return "Someone";
+}
+function renderShared(){ if(typeof render === "function") render(); }
+
+function syncSharedPresence(){
+  if(!sbClient || !currentUser){ stopSharedPresence(); return; }
+  const v = (typeof av === "function") ? av() : null;
+  if(!isSharedVehicle(v)){ stopSharedPresence(); return; }
+  if(sharedLock.sharedId === v.shared.id && sharedLock.channel) return;
+  joinSharedPresence(v);
+}
+
+function joinSharedPresence(v){
+  stopSharedPresence();
+  const sid = v.shared.id;
+  sharedLock.sharedId = sid;
+  sharedLock.localId = sharedLocalId(sid);
+  sharedLock.myKey = currentUser.id + ":" + SHARE_SESSION_ID + ":" + (++shareJoinCounter);
+  sharedLock.status = "connecting";
+  sharedLock.idleReleased = false;
+  sharedLock.isEditor = false;
+  sharedLock.syncing = true;
+  lastActivityAt = Date.now();
+
+  const ch = sbClient.channel("gearlog-vehicle-" + sid, { config: { presence: { key: sharedLock.myKey } } });
+  sharedLock.channel = ch;
+  ch.on("presence", { event: "sync" }, () => { if(sharedLock.channel === ch) recomputeSharedLock(); });
+  ch.on("postgres_changes", { event: "*", schema: "public", table: "shared_vehicles", filter: "id=eq." + sid },
+    (payload) => { if(sharedLock.channel === ch) onSharedRowEvent(payload); });
+  ch.subscribe(async (status) => {
+    if(sharedLock.channel !== ch) return;
+    if(status === "SUBSCRIBED"){
+      clearTimeout(sharedConnectTimer);
+      sharedLock.status = "ready";
+      await trackSharedSelf();
+      try{ await refreshSharedVehicle(sharedLock.localId); }catch(e){}
+      if(sharedLock.channel !== ch) return;
+      sharedLock.syncing = false;
+      await recomputeSharedLock();
+      if(sharedLock.channel === ch) renderShared();     // leave the "connecting" banner
+    } else if(status === "CHANNEL_ERROR" || status === "TIMED_OUT" || status === "CLOSED"){
+      if(sharedLock.status !== "idle"){
+        sharedLock.status = "offline"; sharedLock.isEditor = false; sharedLock.syncing = false;
+        renderShared();
+      }
+    }
+  });
+  clearTimeout(sharedConnectTimer);
+  sharedConnectTimer = setTimeout(() => {
+    if(sharedLock.channel === ch && sharedLock.status === "connecting"){
+      sharedLock.status = "offline"; sharedLock.syncing = false; renderShared();
+    }
+  }, 10000);
+}
+
+async function trackSharedSelf(){
+  const ch = sharedLock.channel;
+  if(!ch) return;
+  sharedLock.joinedAt = Date.now();
+  sharedLock.tracking = true;
+  try{
+    await ch.track({ key: sharedLock.myKey, user_id: currentUser.id, name: sharedDisplayName(), joined_at: sharedLock.joinedAt });
+  }catch(e){ console.error("GearLog presence track error:", e); }
+}
+
+function stopSharedPresence(){
+  clearTimeout(sharedConnectTimer);
+  const ch = sharedLock.channel;
+  sharedLock.channel = null; sharedLock.sharedId = null; sharedLock.localId = null;
+  sharedLock.status = "idle"; sharedLock.syncing = false; sharedLock.tracking = false;
+  sharedLock.idleReleased = false; sharedLock.isEditor = false;
+  sharedLock.editorKey = null; sharedLock.editorName = null; sharedLock.position = -1; sharedLock.waiting = 0;
+  if(ch){
+    try{ const p = ch.untrack(); if(p && p.catch) p.catch(() => {}); }catch(e){}
+    try{ sbClient.removeChannel(ch); }catch(e){}
+  }
+}
+
+async function recomputeSharedLock(){
+  const ch = sharedLock.channel;
+  if(!ch) return;
+  const r = computeLockFromEntries(sharedPresenceEntries(), sharedLock.myKey);
+  const editorChanged = r.editorKey !== sharedLock.editorKey;
+  const countsChanged = r.position !== sharedLock.position || r.waiting !== sharedLock.waiting;
+  sharedLock.editorKey = r.editorKey; sharedLock.editorName = r.editorName;
+  sharedLock.position = r.position; sharedLock.waiting = r.waiting;
+
+  // Becoming the editor: fetch the previous editor's last save before allowing edits.
+  if(r.isEditor && !sharedLock.isEditor){
+    if(sharedPromoting) return;
+    sharedPromoting = true;
+    sharedLock.syncing = true;
+    try{ await refreshSharedVehicle(sharedLock.localId); }catch(e){}
+    sharedPromoting = false;
+    if(sharedLock.channel !== ch) return;
+    sharedLock.syncing = false;
+    const r2 = computeLockFromEntries(sharedPresenceEntries(), sharedLock.myKey);
+    sharedLock.isEditor = r2.isEditor;
+    sharedLock.editorKey = r2.editorKey; sharedLock.editorName = r2.editorName;
+    sharedLock.position = r2.position; sharedLock.waiting = r2.waiting;
+    renderShared();
+    const v = state.vehicles[sharedLock.localId];
+    if(sharedLock.isEditor && sharedHasUnpushed(v)) queueRemoteSave();
+    return;
+  }
+
+  // Lost the slot unexpectedly (e.g. clock skew): drop any unsaved local edits and show the latest.
+  if(!r.isEditor && sharedLock.isEditor){
+    sharedLock.isEditor = false;
+    try{ await refreshSharedVehicle(sharedLock.localId, { force: true }); }catch(e){}
+    renderShared();
+    return;
+  }
+
+  // Viewer holding unsaved local edits from an earlier session: discard in favour of the server copy.
+  if(!r.isEditor){
+    const v = state.vehicles[sharedLock.localId];
+    if(sharedHasUnpushed(v)){
+      try{ await refreshSharedVehicle(sharedLock.localId, { force: true }); }catch(e){}
+      renderShared();
+      return;
+    }
+  }
+
+  if(editorChanged) renderShared();
+  else if(countsChanged) updateSharedBannerDOM();
+}
+
+function updateSharedBannerDOM(){
+  const el = (typeof document !== "undefined") ? document.getElementById("sharedStatusBanner") : null;
+  if(el && typeof sharedBannerHTML === "function") el.outerHTML = sharedBannerHTML();
+}
+
+/* ---------- Idle / visibility ---------- */
+function flushRemoteSaveNow(){
+  if(remoteSaveTimer){
+    clearTimeout(remoteSaveTimer); remoteSaveTimer = null;
+    return pushRemoteState();
+  }
+  return Promise.resolve();
+}
+
+async function releaseSharedForIdle(){
+  const ch = sharedLock.channel;
+  if(!ch || sharedLock.idleReleased) return;
+  try{ await flushRemoteSaveNow(); }catch(e){}
+  if(sharedLock.channel !== ch) return;
+  sharedLock.idleReleased = true;
+  sharedLock.tracking = false;
+  sharedLock.isEditor = false;
+  try{ await ch.untrack(); }catch(e){}
+  renderShared();
+}
+
+async function resumeSharedPresence(){
+  if(!sharedLock.channel || !sharedLock.idleReleased) return;
+  sharedLock.idleReleased = false;
+  await trackSharedSelf();            // fresh arrival time -> back of the queue
+  renderShared();
+}
+
+function rejoinSharedPresence(){
+  const v = (typeof av === "function") ? av() : null;
+  if(!isSharedVehicle(v) || !currentUser) return;
+  joinSharedPresence(v);
+  renderShared();
+}
+
+if(typeof document !== "undefined"){
+  const markActive = () => {
+    lastActivityAt = Date.now();
+    if(sharedLock.idleReleased) resumeSharedPresence();
+  };
+  ["pointerdown", "keydown", "touchstart", "scroll", "input"].forEach(ev =>
+    document.addEventListener(ev, markActive, { passive: true, capture: true }));
+  setInterval(() => {
+    if(sharedLock.channel && !sharedLock.idleReleased && Date.now() - lastActivityAt >= SHARE_IDLE_MS) releaseSharedForIdle();
+  }, 15000);
+  document.addEventListener("visibilitychange", () => {
+    if(document.hidden){ hiddenAt = Date.now(); return; }
+    const hiddenFor = hiddenAt ? Date.now() - hiddenAt : 0;
+    hiddenAt = null;
+    if(!sharedLock.channel) return;
+    if(Date.now() - lastActivityAt >= SHARE_IDLE_MS) releaseSharedForIdle();
+    else if(hiddenFor >= SHARE_HIDDEN_REJOIN_MS) rejoinSharedPresence();
+  });
+  window.addEventListener("pagehide", () => { if(sharedLock.channel) stopSharedPresence(); });
+}
+
+/* ---------- Server <-> local ---------- */
+function applyServerSharedRow(lid, row){
+  const old = state.vehicles[lid];
+  const veh = normalizeVehicle(JSON.parse(JSON.stringify(row.data)));
+  veh.shared = {
+    id: row.id,
+    ownerId: row.owner_id != null ? row.owner_id : (old && old.shared ? old.shared.ownerId : null),
+    role: old && old.shared ? old.shared.role : "editor",
+    version: row.version
+  };
+  state.vehicles[lid] = veh;
+  sharedLastPushed[row.id] = vehicleSnapshot(veh);
+  persistLocal();
+}
+
+async function refreshSharedVehicle(lid, opts){
+  const v = state.vehicles[lid];
+  if(!v || !isSharedVehicle(v) || !sbClient) return;
+  const { data, error } = await sbClient.from("shared_vehicles")
+    .select("id, owner_id, data, version").eq("id", v.shared.id).maybeSingle();
+  if(error) return;
+  if(!data){ handleSharedVehicleGone(lid); return; }
+  if((opts && opts.force) || data.version > v.shared.version){
+    applyServerSharedRow(lid, data);
+  } else {
+    // Same version: keep the local copy (it may hold edits not saved yet); record the server baseline.
+    const base = normalizeVehicle(JSON.parse(JSON.stringify(data.data)));
+    sharedLastPushed[data.id] = vehicleSnapshot(base);
+  }
+}
+
+function onSharedRowEvent(payload){
+  const sid = sharedLock.sharedId;
+  if(!sid) return;
+  const lid = sharedLocalId(sid);
+  if(payload.eventType === "DELETE"){ handleSharedVehicleGone(lid); return; }
+  const row = payload.new;
+  const v = state.vehicles[lid];
+  if(!row || !v || !v.shared || row.version <= v.shared.version) return;   // our own echo, or stale
+  if(row.data){
+    applyServerSharedRow(lid, row);
+    if(sharedLock.isEditor && typeof showToast === "function") showToast(t("sharing.conflictToast"), "error");
+    else renderShared();
+  } else {
+    refreshSharedVehicle(lid, { force: true }).then(renderShared);
+  }
+}
+
+function handleSharedVehicleGone(lid){
+  const v = state.vehicles[lid];
+  if(!v) return;
+  const name = v.name;
+  if(v.shared && sharedLock.sharedId === v.shared.id) stopSharedPresence();
+  delete state.vehicles[lid];
+  ensureValidVehicles();
+  saveState();
+  if(typeof showToast === "function") showToast(t("sharing.accessEndedToast")(name), "error");
+  else renderShared();
+}
+
+function purgeSharedVehicles(){
+  stopSharedPresence();
+  let changed = false;
+  Object.keys(state.vehicles || {}).forEach(id => {
+    if(isSharedVehicle(state.vehicles[id])){ delete state.vehicles[id]; changed = true; }
+  });
+  if(changed){ ensureValidVehicles(); persistLocal(); }
+}
+
+/* Load every shared vehicle this account belongs to into local state. */
+async function hydrateSharedVehicles(){
+  if(!sbClient || !currentUser) return false;
+  let rows;
+  try{
+    const { data, error } = await sbClient.from("vehicle_members")
+      .select("role, shared_vehicles(id, owner_id, data, version)").eq("user_id", currentUser.id);
+    if(error){ console.error("GearLog shared vehicles load error:", error); return false; }
+    rows = data || [];
+  }catch(err){ console.error("GearLog shared vehicles load error:", err); return false; }
+
+  const seen = new Set();
+  rows.forEach(row => {
+    const sv = row.shared_vehicles;
+    if(!sv) return;
+    seen.add(sv.id);
+    const lid = sharedLocalId(sv.id);
+    const existing = state.vehicles[lid];
+    const serverVeh = normalizeVehicle(JSON.parse(JSON.stringify(sv.data)));
+    sharedLastPushed[sv.id] = vehicleSnapshot(serverVeh);
+    if(existing && existing.shared && existing.shared.version === sv.version){
+      existing.shared.role = row.role;          // keep local copy; it may hold edits not saved yet
+      return;
+    }
+    serverVeh.shared = { id: sv.id, ownerId: sv.owner_id, role: row.role, version: sv.version };
+    state.vehicles[lid] = serverVeh;
+  });
+  const removed = [];
+  Object.keys(state.vehicles).forEach(id => {
+    const v = state.vehicles[id];
+    if(isSharedVehicle(v) && !seen.has(v.shared.id)){ removed.push(v.name); delete state.vehicles[id]; }
+  });
+  ensureValidVehicles();
+  persistLocal();
+  if(removed.length && typeof showToast === "function"){
+    setTimeout(() => showToast(t("sharing.accessEndedToast")(removed[0]), "error"), 400);
+  }
+  return true;
+}
+
+/* ---------- Saving ---------- */
+function enqueueSharedPush(){
+  sharedPushChain = sharedPushChain.then(pushSharedVehicles).catch(() => {});
+  return sharedPushChain;
+}
+async function pushSharedVehicles(){
+  const ids = Object.keys(state.vehicles || {}).filter(id => isSharedVehicle(state.vehicles[id]) && canEditVehicle(state.vehicles[id]));
+  for(const id of ids) await pushSharedVehicle(id);
+}
+async function pushSharedVehicle(lid){
+  const v = state.vehicles[lid];
+  if(!v || !isSharedVehicle(v) || !canEditVehicle(v) || !sbClient) return;
+  const snap = vehicleSnapshot(v);
+  if(snap === sharedLastPushed[v.shared.id]) return;
+  const sh = v.shared;
+  try{
+    const { data, error } = await sbClient.from("shared_vehicles")
+      .update({ data: vehicleDataForServer(v), version: sh.version + 1, updated_at: new Date().toISOString() })
+      .eq("id", sh.id).eq("version", sh.version).select("version");
+    if(error){ syncStatus = "error"; console.error("GearLog shared save error:", error); return; }
+    if(!data || data.length === 0){
+      // Someone saved first, or access was removed: show the server's copy instead.
+      await refreshSharedVehicle(lid, { force: true });
+      if(state.vehicles[lid] && typeof showToast === "function") showToast(t("sharing.conflictToast"), "error");
+      return;
+    }
+    sh.version = data[0].version;
+    sharedLastPushed[sh.id] = snap;
+    syncStatus = "saved";
+    persistLocal();
+  }catch(err){ syncStatus = "error"; console.error("GearLog shared save error:", err); }
+}
+
+/* ---------- Share management (called from the Vehicle Settings card) ---------- */
+async function sharingRpc(fn, args){
+  if(!sbClient || !currentUser) return { error: { message: "not_authenticated" } };
+  try{
+    const { data, error } = await sbClient.rpc(fn, args || {});
+    return { data, error };
+  }catch(err){ return { error: { message: String((err && err.message) || err) } }; }
+}
+function sharingErrorMessage(err){
+  const m = String((err && err.message) || "");
+  const codes = ["not_owner", "invalid_email", "cannot_invite_self", "already_member", "share_limit",
+    "invitation_not_found", "cannot_leave", "not_authenticated"];
+  for(const c of codes){ if(m.indexOf(c) !== -1) return t("sharing.errors." + c); }
+  if(/fetch|network|load failed/i.test(m)) return t("sharing.errors.network");
+  return t("sharing.errors.generic");
+}
+
+/* Move a personal vehicle into shared storage and invite someone. */
+async function shareVehicleNow(localId, email){
+  const v = state.vehicles[localId];
+  if(!v || isSharedVehicle(v)) return { error: { message: "generic" } };
+  const created = await sharingRpc("share_vehicle", { p_data: vehicleDataForServer(v) });
+  if(created.error) return { error: created.error };
+  const sid = created.data;
+  const lid = sharedLocalId(sid);
+
+  // Swap the key in place so the vehicle keeps its position in the tab list.
+  const rebuilt = {};
+  Object.keys(state.vehicles).forEach(id => {
+    if(id === localId){
+      const nv = JSON.parse(JSON.stringify(v));
+      nv.shared = { id: sid, ownerId: currentUser.id, role: "owner", version: 1 };
+      rebuilt[lid] = nv;
+    } else rebuilt[id] = state.vehicles[id];
+  });
+  state.vehicles = rebuilt;
+  if(state.activeVehicleId === localId) state.activeVehicleId = lid;
+  sharedLastPushed[sid] = vehicleSnapshot(state.vehicles[lid]);
+  saveState();
+
+  const invited = await sharingRpc("invite_to_vehicle", { p_vehicle_id: sid, p_email: email });
+  return { ok: true, sharedId: sid, localId: lid, inviteError: invited.error || null };
+}
+
+async function inviteToSharedVehicle(localId, email){
+  const v = state.vehicles[localId];
+  if(!isSharedVehicle(v)) return { error: { message: "generic" } };
+  const r = await sharingRpc("invite_to_vehicle", { p_vehicle_id: v.shared.id, p_email: email });
+  return r.error ? { error: r.error } : { ok: true };
+}
+
+async function loadShareDetails(sharedId){
+  const members = await sharingRpc("get_vehicle_members", { p_vehicle_id: sharedId });
+  let invites = [];
+  try{
+    const r = await sbClient.from("vehicle_invitations").select("id, invited_email, created_at")
+      .eq("vehicle_id", sharedId).order("created_at");
+    if(!r.error && r.data) invites = r.data;
+  }catch(e){}
+  if(members.error) return { error: members.error };
+  return { members: members.data || [], invites };
+}
+
+async function cancelSharedInvitation(invitationId){
+  const r = await sharingRpc("delete_invitation", { p_invitation_id: invitationId });
+  return r.error ? { error: r.error } : { ok: true };
+}
+async function removeSharedMember(sharedId, userId){
+  const r = await sharingRpc("remove_member", { p_vehicle_id: sharedId, p_user_id: userId });
+  return r.error ? { error: r.error } : { ok: true };
+}
+
+/* Owner stops sharing: the vehicle returns to their personal list with its full history. */
+async function unshareVehicleNow(localId){
+  const v = state.vehicles[localId];
+  if(!isSharedVehicle(v)) return { error: { message: "generic" } };
+  const sid = v.shared.id;
+  const r = await sharingRpc("unshare_vehicle", { p_vehicle_id: sid });
+  if(r.error) return { error: r.error };
+  if(sharedLock.sharedId === sid) stopSharedPresence();
+  const restored = normalizeVehicle(JSON.parse(JSON.stringify(r.data || vehicleDataForServer(v))));
+  delete restored.shared;
+  const newId = "v_" + Date.now().toString(36);
+  const rebuilt = {};
+  Object.keys(state.vehicles).forEach(id => { rebuilt[id === localId ? newId : id] = id === localId ? restored : state.vehicles[id]; });
+  state.vehicles = rebuilt;
+  if(state.activeVehicleId === localId) state.activeVehicleId = newId;
+  delete sharedLastPushed[sid];
+  saveState();
+  return { ok: true };
+}
+
+/* Owner deletes a shared vehicle outright (removed for everyone). */
+async function deleteSharedVehicleNow(localId){
+  const v = state.vehicles[localId];
+  if(!isSharedVehicle(v)) return { error: { message: "generic" } };
+  const sid = v.shared.id;
+  const r = await sharingRpc("unshare_vehicle", { p_vehicle_id: sid });
+  if(r.error) return { error: r.error };
+  if(sharedLock.sharedId === sid) stopSharedPresence();
+  delete state.vehicles[localId];
+  delete sharedLastPushed[sid];
+  ensureValidVehicles();
+  saveState();
+  return { ok: true };
+}
+
+/* Editor leaves a vehicle that was shared with them. */
+async function leaveSharedVehicleNow(localId){
+  const v = state.vehicles[localId];
+  if(!isSharedVehicle(v)) return { error: { message: "generic" } };
+  const sid = v.shared.id;
+  const r = await sharingRpc("leave_vehicle", { p_vehicle_id: sid });
+  if(r.error) return { error: r.error };
+  if(sharedLock.sharedId === sid) stopSharedPresence();
+  delete state.vehicles[localId];
+  delete sharedLastPushed[sid];
+  ensureValidVehicles();
+  saveState();
+  return { ok: true };
+}
+
+/* ---------- Invitations (Account page) ---------- */
+let pendingInvitations = [];      // last loaded list
+let pendingInvitationsLoaded = false;
+
+async function loadMyInvitations(){
+  const r = await sharingRpc("get_my_invitations");
+  if(r.error){ return { error: r.error }; }
+  pendingInvitations = r.data || [];
+  pendingInvitationsLoaded = true;
+  return { ok: true, list: pendingInvitations };
+}
+async function acceptInvitationNow(invitationId){
+  const inv = pendingInvitations.find(i => i.id === invitationId);
+  const r = await sharingRpc("accept_invitation", { p_invitation_id: invitationId });
+  if(r.error) return { error: r.error };
+  await hydrateSharedVehicles();
+  pendingInvitations = pendingInvitations.filter(i => i.id !== invitationId);
+  return { ok: true, name: inv ? (inv.vehicle_name || "") : "" };
+}
+async function declineInvitationNow(invitationId){
+  const r = await sharingRpc("delete_invitation", { p_invitation_id: invitationId });
+  if(r.error) return { error: r.error };
+  pendingInvitations = pendingInvitations.filter(i => i.id !== invitationId);
+  return { ok: true };
+}
 
 
 let pendingConfirm = null; // {message, action, key, extra} — drives a custom confirm modal instead of window.confirm()

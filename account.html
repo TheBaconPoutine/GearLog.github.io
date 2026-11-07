@@ -20,7 +20,7 @@
 <script>
 window.CURRENT_PAGE = "account";
 
-let acctUi = { loginError: null, signupError: null, signupSentTo: null, nameMsg: null, emailMsg: null, passwordMsg: null, busy: false, showForgotPassword: false, resetLinkSentTo: null, forgotError: null };
+let acctUi = { invitesBusy: null, invitesError: null, loginError: null, signupError: null, signupSentTo: null, nameMsg: null, emailMsg: null, passwordMsg: null, busy: false, showForgotPassword: false, resetLinkSentTo: null, forgotError: null };
 
 function fieldVal(id){
   const el = document.getElementById(id);
@@ -165,6 +165,44 @@ function accountPageHTML(){
       <div class="actions-row" style="margin-top:28px; border-top:1px solid var(--hairline); padding-top:18px;">
         <button class="btn secondary c-red" type="button" data-action="do-logout" ${acctUi.busy ? "disabled" : ""}>${t("account.logoutBtn")}</button>
       </div>
+    </section>
+    ${invitationsCardHTML()}
+  `;
+}
+
+function invitationsCardHTML(){
+  if(!currentUser) return "";
+  if(!pendingInvitationsLoaded && !acctUi.invitesLoading && !acctUi.invitesError){
+    acctUi.invitesLoading = true;
+    loadMyInvitations().then(r => {
+      acctUi.invitesLoading = false;
+      if(r.error) acctUi.invitesError = sharingErrorMessage(r.error);
+      render();
+    });
+  }
+  const esc = (x) => String(x == null ? "" : x).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+  const list = pendingInvitations.map(i => {
+    const who = esc(i.inviter_username || i.inviter_email || "");
+    const label = esc(i.vehicle_label || "");
+    const busy = acctUi.invitesBusy === i.id;
+    return `
+      <div class="share-member-row">
+        <div>
+          <div class="share-member-name">${esc(i.vehicle_name || label || "—")}</div>
+          <div class="share-member-sub">${label && i.vehicle_name ? label + " · " : ""}${t("sharing.account.from")(who)}</div>
+        </div>
+        <div style="display:flex; gap:8px;">
+          <button class="btn c-green" type="button" data-action="accept-invite" data-key="${i.id}" ${acctUi.invitesBusy ? "disabled" : ""}>${busy ? t("sharing.working") : t("sharing.account.accept")}</button>
+          <button class="btn secondary" type="button" data-action="decline-invite" data-key="${i.id}" ${acctUi.invitesBusy ? "disabled" : ""}>${t("sharing.account.decline")}</button>
+        </div>
+      </div>`;
+  }).join("");
+  return `
+    <section class="card" id="service-invitations-card">
+      <h2>${t("sharing.account.title")}</h2>
+      <p class="card-sub">${t("sharing.account.intro")}</p>
+      ${acctUi.invitesError ? `<p class="share-error">${esc(acctUi.invitesError)}</p>` : ""}
+      ${!pendingInvitationsLoaded && !acctUi.invitesError ? `<p class="card-sub">${t("sharing.loadingMembers")}</p>` : (list || `<p class="card-sub">${t("sharing.account.none")}</p>`)}
     </section>
   `;
 }
@@ -331,6 +369,30 @@ appEl.addEventListener("click", (e) => {
         render();
       }).catch((err) => {
         acctUi.busy = false; acctUi.emailMsg = (err && err.message) || String(err); render();
+      });
+      break;
+    }
+
+    case "accept-invite": {
+      const id = el.getAttribute("data-key");
+      acctUi.invitesBusy = id; acctUi.invitesError = null; render();
+      acceptInvitationNow(id).then(r => {
+        acctUi.invitesBusy = null;
+        if(r.error){ acctUi.invitesError = sharingErrorMessage(r.error); render(); return; }
+        render();
+        showToast(t("sharing.account.acceptedToast")(r.name));
+      });
+      break;
+    }
+
+    case "decline-invite": {
+      const id = el.getAttribute("data-key");
+      acctUi.invitesBusy = id; acctUi.invitesError = null; render();
+      declineInvitationNow(id).then(r => {
+        acctUi.invitesBusy = null;
+        if(r.error){ acctUi.invitesError = sharingErrorMessage(r.error); render(); return; }
+        render();
+        showToast(t("sharing.account.declinedToast"));
       });
       break;
     }

@@ -977,13 +977,18 @@ function dashboardHTML(){
     </div>
   `;
 
-  // Previous Service Done — a snapshot of whatever was most recently marked done, not a running
-  // history (History tab covers that). Falls back to showing everything with recorded history
-  // for vehicles that predate this snapshot tracking.
+  // Previous Service Done — everything actually completed within the last RECENT_SERVICE_KM of
+  // driving (not just the last batch entered), newest first. If nothing falls in that window,
+  // fall back to the most recently entered batch so the panel is never misleadingly empty.
+  const RECENT_SERVICE_KM = 8000;
   const withHistory = computed.filter(c => c.item.lastKm != null && c.item.lastDate);
-  const snapshotKeys = v.previousServiceSnapshot;
-  const previousItems = (Array.isArray(snapshotKeys) ? withHistory.filter(c => snapshotKeys.includes(c.key)) : withHistory)
-    .sort((a, b) => (b.item.lastDate || "").localeCompare(a.item.lastDate || ""));
+  const curKm = Number(v.currentMileage) || 0;
+  let previousItems = withHistory.filter(c => curKm - Number(c.item.lastKm) <= RECENT_SERVICE_KM);
+  if(previousItems.length === 0){
+    const snapshotKeys = v.previousServiceSnapshot;
+    previousItems = Array.isArray(snapshotKeys) ? withHistory.filter(c => snapshotKeys.includes(c.key)) : withHistory;
+  }
+  previousItems = previousItems.slice().sort((a, b) => (b.item.lastDate || "").localeCompare(a.item.lastDate || "") || (Number(b.item.lastKm) - Number(a.item.lastKm)));
   const previousHTML = `
     <p class="dash-label">${t("dashboard.previousLabel")}</p>
     <div class="dash-section-box">
@@ -1545,10 +1550,62 @@ function loadingScreenHTML(message){
   `;
 }
 
+// In-app "Rename vehicle" dialog (replaces the browser's window.prompt)
+let renameUi = null;   // { key, value, justOpened }
+
+function renameModalHTML(){
+  if(!renameUi || !state.vehicles[renameUi.key]) return "";
+  return `
+    <div class="modal-overlay" data-dismiss-action="cancel-rename">
+      <div class="modal-box" role="dialog" aria-modal="true" aria-labelledby="rename-title">
+        <form id="rename-form" data-submit="save-rename" autocomplete="off">
+          <div class="modal-box-header">
+            <h3 id="rename-title">${t("vehicles.renameTitle")}</h3>
+            <button class="modal-close-x" type="button" data-action="cancel-rename" aria-label="Close">✕</button>
+          </div>
+          <div class="modal-box-scroll">
+            <label class="field">${t("vehicles.renameLabel")}
+              <input type="text" id="rename-input" name="vehicle-name" maxlength="60" autocomplete="off" value="${String(renameUi.value == null ? "" : renameUi.value).replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;")}">
+            </label>
+          </div>
+          <div class="modal-box-footer" style="display:flex; gap:10px;">
+            <button class="btn secondary" type="button" data-action="cancel-rename">${t("vehicles.renameCancel")}</button>
+            <button class="btn c-blue" type="submit">${t("vehicles.renameSave")}</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  `;
+}
+
+function commitRename(){
+  if(!renameUi) return;
+  const input = document.getElementById("rename-input");
+  const name = ((input ? input.value : renameUi.value) || "").trim();
+  const v = state.vehicles[renameUi.key];
+  renameUi = null;
+  if(v && name){ v.name = name; saveState(); }
+  render();
+}
+
+function focusRenameInput(){
+  if(!renameUi) return;
+  const first = renameUi.justOpened;
+  renameUi.justOpened = false;
+  setTimeout(() => {
+    const el = document.getElementById("rename-input");
+    if(!el) return;
+    el.focus();
+    if(first) el.select(); else el.setSelectionRange(el.value.length, el.value.length);
+  }, 0);
+}
+
 function render(){
   try{
     const shareEmailEl = document.getElementById("shareEmailInput");
     if(shareEmailEl) shareUi.email = shareEmailEl.value;
+    const renameEl = document.getElementById("rename-input");
+    if(renameEl && renameUi) renameUi.value = renameEl.value;
     document.documentElement.lang = state.language;
     document.body.classList.toggle("qc-theme", state.language === "qc");
     if(appLoadingScreenActive){ appEl.innerHTML = appLoadingScreenHTML(); return; }
@@ -1559,9 +1616,10 @@ function render(){
     html += vehicleTabsHTML() + sharedBannerHTML() + trackerSubNavHTML();
     html += diagnosticPanelHTML();
     html += recalcLoading ? loadingScreenHTML(t("status.recalculatingLoading")) : (listBuildLoading ? loadingScreenHTML() : trackerTabContentHTML());
-    html += footerHTML() + changelogModalHTML() + dataWarningModalHTML() + onboardingModalHTML() + confirmModalHTML() + toastHTML() + tourOverlayHTML();
+    html += footerHTML() + changelogModalHTML() + dataWarningModalHTML() + onboardingModalHTML() + confirmModalHTML() + renameModalHTML() + toastHTML() + tourOverlayHTML();
     appEl.innerHTML = html;
     applyViewOnlyDOM();
+    focusRenameInput();
     syncSharedPresence();
     ensureShareDetailsLoaded();
     setTimeout(applyTourHighlight, 30);
@@ -1577,6 +1635,17 @@ function render(){
     `;
   }
 }
+
+// Enter in the rename dialog saves; Escape cancels it.
+appEl.addEventListener("submit", (e) => {
+  const form = e.target.closest && e.target.closest("form[data-submit]");
+  if(!form) return;
+  e.preventDefault();
+  if(form.getAttribute("data-submit") === "save-rename") commitRename();
+});
+document.addEventListener("keydown", (e) => {
+  if(e.key === "Escape" && renameUi){ renameUi = null; render(); }
+});
 
 appEl.addEventListener("toggle", (e) => {
   const key = e.target.getAttribute && e.target.getAttribute("data-key");
@@ -1598,6 +1667,9 @@ appEl.addEventListener("click", (e) => {
       saveState(); render();
     } else if(overlayAction === "cancel-confirm"){
       pendingConfirm = null;
+      render();
+    } else if(overlayAction === "cancel-rename"){
+      renameUi = null;
       render();
     }
     return;
@@ -1881,7 +1953,7 @@ appEl.addEventListener("click", (e) => {
       break;
 
     case "switch-vehicle":
-      state.activeVehicleId = key; saveState(); render();
+      state.activeVehicleId = key; state.trackerTab = "status"; saveState(); render();
       break;
     case "add-vehicle": {
       const n = Object.keys(state.vehicles).length + 1;
@@ -1892,13 +1964,17 @@ appEl.addEventListener("click", (e) => {
       break;
     }
     case "rename-vehicle": {
-      const newName = prompt(t("vehicles.renamePrompt"), state.vehicles[key].name);
-      if(newName && newName.trim()){
-        state.vehicles[key].name = newName.trim();
-        saveState(); render();
-      }
+      renameUi = { key, value: state.vehicles[key].name, justOpened: true };
+      render();
       break;
     }
+    case "cancel-rename":
+      renameUi = null;
+      render();
+      break;
+    case "save-rename":
+      commitRename();
+      break;
     case "delete-vehicle": {
       const target = state.vehicles[key];
       if(isSharedVehicle(target)){

@@ -20,11 +20,20 @@
 <script>
 window.CURRENT_PAGE = "account";
 
-let acctUi = { invitesBusy: null, invitesError: null, loginError: null, signupError: null, signupSentTo: null, nameMsg: null, emailMsg: null, passwordMsg: null, busy: false, showForgotPassword: false, resetLinkSentTo: null, forgotError: null };
+let acctUi = { invitesBusy: null, invitesError: null, loginError: null, signupError: null, signupSentTo: null, nameMsg: null, emailMsg: null, passwordMsg: null, busy: false, busyAction: null, loginEmail: "", signupEmail: "", showForgotPassword: false, resetLinkSentTo: null, forgotError: null };
 
 function fieldVal(id){
   const el = document.getElementById(id);
   return el ? el.value.trim() : "";
+}
+
+function attrEsc(v){
+  return String(v == null ? "" : v).replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+
+// Only the button that was actually pressed switches to "Working…"; the rest just stay disabled.
+function btnLabel(action, normal){
+  return (acctUi.busy && acctUi.busyAction === action) ? t("account.workingBtn") : normal;
 }
 
 function accountPageHTML(){
@@ -50,32 +59,36 @@ function accountPageHTML(){
         <h2>${t("account.resetPasswordTitle")}</h2>
         <p class="card-sub">${t("account.resetPasswordIntro")}</p>
         ${acctUi.forgotError ? `<p style="color:var(--red-text,#D4574B); font-size:12.5px; margin:-4px 0 10px;">${acctUi.forgotError}</p>` : ""}
-        <label class="field">${t("account.fields.email")}
-          <input type="email" id="forgot-email" ${acctUi.busy ? "disabled" : ""}>
-        </label>
-        <div class="actions-row" style="margin-top:16px;">
-          <button class="btn secondary" type="button" data-action="show-login" ${acctUi.busy ? "disabled" : ""}>${t("account.backToLoginBtn")}</button>
-          <button class="btn c-blue" type="button" data-action="do-forgot-password" ${acctUi.busy ? "disabled" : ""}>${acctUi.busy ? t("account.workingBtn") : t("account.sendResetLinkBtn")}</button>
-        </div>
+        <form id="forgot-form" data-submit="do-forgot-password" autocomplete="on">
+          <label class="field">${t("account.fields.email")}
+            <input type="email" id="forgot-email" name="email" autocomplete="username" inputmode="email" autocapitalize="none" autocorrect="off" spellcheck="false" ${acctUi.busy ? "disabled" : ""}>
+          </label>
+          <div class="actions-row" style="margin-top:16px;">
+            <button class="btn secondary" type="button" data-action="show-login" ${acctUi.busy ? "disabled" : ""}>${t("account.backToLoginBtn")}</button>
+            <button class="btn c-blue" type="submit" ${acctUi.busy ? "disabled" : ""}>${btnLabel("do-forgot-password", t("account.sendResetLinkBtn"))}</button>
+          </div>
+        </form>
       `;
     } else {
       loginCardBody = `
         <h2>${t("account.loginTitle")}</h2>
         ${acctUi.loginError ? `<p style="color:var(--red-text,#D4574B); font-size:12.5px; margin:-4px 0 10px;">${acctUi.loginError}</p>` : ""}
-        <div style="display:flex; flex-direction:column; gap:12px;">
-          <label class="field">${t("account.fields.email")}
-            <input type="email" id="login-email" ${acctUi.busy ? "disabled" : ""}>
-          </label>
-          <label class="field">${t("account.fields.password")}
-            <input type="password" id="login-password" ${acctUi.busy ? "disabled" : ""}>
-          </label>
-        </div>
-        <div class="actions-row" style="margin-top:12px; justify-content:flex-end;">
-          <button class="btn-link" type="button" data-action="show-forgot-password" ${acctUi.busy ? "disabled" : ""}>${t("account.forgotPasswordLink")}</button>
-        </div>
-        <div class="actions-row" style="margin-top:12px;">
-          <button class="btn c-blue" type="button" data-action="do-login" ${acctUi.busy ? "disabled" : ""}>${acctUi.busy ? t("account.workingBtn") : t("account.loginBtn")}</button>
-        </div>
+        <form id="login-form" data-submit="do-login" autocomplete="on">
+          <div style="display:flex; flex-direction:column; gap:12px;">
+            <label class="field">${t("account.fields.email")}
+              <input type="email" id="login-email" name="email" autocomplete="username" inputmode="email" autocapitalize="none" autocorrect="off" spellcheck="false" value="${attrEsc(acctUi.loginEmail)}" ${acctUi.busy ? "disabled" : ""}>
+            </label>
+            <label class="field">${t("account.fields.password")}
+              <input type="password" id="login-password" name="password" autocomplete="current-password" ${acctUi.busy ? "disabled" : ""}>
+            </label>
+          </div>
+          <div class="actions-row" style="margin-top:12px; justify-content:flex-end;">
+            <button class="btn-link" type="button" data-action="show-forgot-password" ${acctUi.busy ? "disabled" : ""}>${t("account.forgotPasswordLink")}</button>
+          </div>
+          <div class="actions-row" style="margin-top:12px;">
+            <button class="btn c-blue" type="submit" ${acctUi.busy ? "disabled" : ""}>${btnLabel("do-login", t("account.loginBtn"))}</button>
+          </div>
+        </form>
       `;
     }
 
@@ -91,20 +104,22 @@ function accountPageHTML(){
         <section class="card">
           <h2>${t("account.signupTitle")}</h2>
           ${acctUi.signupError ? `<p style="color:var(--red-text,#D4574B); font-size:12.5px; margin:-4px 0 10px;">${acctUi.signupError}</p>` : ""}
-          <div style="display:flex; flex-direction:column; gap:12px;">
-            <label class="field">${t("account.fields.email")}
-              <input type="email" id="signup-email" ${acctUi.busy ? "disabled" : ""}>
-            </label>
-            <label class="field">${t("account.fields.password")}
-              <input type="password" id="signup-password" ${acctUi.busy ? "disabled" : ""}>
-            </label>
-            <label class="field">${t("account.fields.confirmPassword")}
-              <input type="password" id="signup-confirm" ${acctUi.busy ? "disabled" : ""}>
-            </label>
-          </div>
-          <div class="actions-row" style="margin-top:16px;">
-            <button class="btn c-green" type="button" data-action="do-signup" ${acctUi.busy ? "disabled" : ""}>${acctUi.busy ? t("account.workingBtn") : t("account.signupBtn")}</button>
-          </div>
+          <form id="signup-form" data-submit="do-signup" autocomplete="on">
+            <div style="display:flex; flex-direction:column; gap:12px;">
+              <label class="field">${t("account.fields.email")}
+                <input type="email" id="signup-email" name="email" autocomplete="username" inputmode="email" autocapitalize="none" autocorrect="off" spellcheck="false" value="${attrEsc(acctUi.signupEmail)}" ${acctUi.busy ? "disabled" : ""}>
+              </label>
+              <label class="field">${t("account.fields.password")}
+                <input type="password" id="signup-password" name="new-password" autocomplete="new-password" ${acctUi.busy ? "disabled" : ""}>
+              </label>
+              <label class="field">${t("account.fields.confirmPassword")}
+                <input type="password" id="signup-confirm" name="confirm-new-password" autocomplete="new-password" ${acctUi.busy ? "disabled" : ""}>
+              </label>
+            </div>
+            <div class="actions-row" style="margin-top:16px;">
+              <button class="btn c-green" type="submit" ${acctUi.busy ? "disabled" : ""}>${btnLabel("do-signup", t("account.signupBtn"))}</button>
+            </div>
+          </form>
         </section>
       </div>
     `;
@@ -126,40 +141,47 @@ function accountPageHTML(){
       <div style="margin-top:18px;">
         <p style="font-family:var(--font-display); font-weight:600; font-size:13px; color:var(--amber); text-transform:uppercase; letter-spacing:0.5px; margin-bottom:10px;">${t("account.changeNameTitle")}</p>
         ${acctUi.nameMsg ? `<p style="font-size:12.5px; color:var(--text-dim); margin:-4px 0 10px;">${acctUi.nameMsg}</p>` : ""}
-        <label class="field">${t("account.fields.name")}
-          <input type="text" id="name-input" value="${displayName}" ${acctUi.busy ? "disabled" : ""}>
-        </label>
-        <div class="actions-row" style="margin-top:12px;">
-          <button class="btn secondary" type="button" data-action="do-update-name" ${acctUi.busy ? "disabled" : ""}>${acctUi.busy ? t("account.workingBtn") : t("account.saveBtn")}</button>
-        </div>
+        <form data-submit="do-update-name" autocomplete="on">
+          <label class="field">${t("account.fields.name")}
+            <input type="text" id="name-input" name="name" autocomplete="name" value="${attrEsc(displayName)}" ${acctUi.busy ? "disabled" : ""}>
+          </label>
+          <div class="actions-row" style="margin-top:12px;">
+            <button class="btn secondary" type="submit" ${acctUi.busy ? "disabled" : ""}>${btnLabel("do-update-name", t("account.saveBtn"))}</button>
+          </div>
+        </form>
       </div>
 
       <div style="margin-top:24px;">
         <p style="font-family:var(--font-display); font-weight:600; font-size:13px; color:var(--amber); text-transform:uppercase; letter-spacing:0.5px; margin-bottom:10px;">${t("account.changeEmailTitle")}</p>
         ${acctUi.emailMsg ? `<p style="font-size:12.5px; color:var(--text-dim); margin:-4px 0 10px;">${acctUi.emailMsg}</p>` : ""}
-        <label class="field">${t("account.fields.email")}
-          <input type="email" id="email-input" placeholder="${currentUser.email}" ${acctUi.busy ? "disabled" : ""}>
-        </label>
-        <div class="actions-row" style="margin-top:12px;">
-          <button class="btn secondary" type="button" data-action="do-update-email" ${acctUi.busy ? "disabled" : ""}>${acctUi.busy ? t("account.workingBtn") : t("account.saveBtn")}</button>
-        </div>
+        <form data-submit="do-update-email" autocomplete="off">
+          <label class="field">${t("account.fields.email")}
+            <input type="email" id="email-input" name="new-email" autocomplete="off" inputmode="email" autocapitalize="none" placeholder="${attrEsc(currentUser.email)}" ${acctUi.busy ? "disabled" : ""}>
+          </label>
+          <div class="actions-row" style="margin-top:12px;">
+            <button class="btn secondary" type="submit" ${acctUi.busy ? "disabled" : ""}>${btnLabel("do-update-email", t("account.saveBtn"))}</button>
+          </div>
+        </form>
       </div>
 
       <div style="margin-top:24px;">
         <p style="font-family:var(--font-display); font-weight:600; font-size:13px; color:var(--amber); text-transform:uppercase; letter-spacing:0.5px; margin-bottom:10px;">${t("account.changePasswordTitle")}</p>
         ${acctUi.passwordMsg ? `<p style="font-size:12.5px; color:var(--text-dim); margin:-4px 0 10px;">${acctUi.passwordMsg}</p>` : ""}
-        <label class="field" style="margin-bottom:12px;">${t("account.fields.currentPassword")}
-          <input type="password" id="current-password-input" ${acctUi.busy ? "disabled" : ""}>
-        </label>
-        <label class="field" style="margin-bottom:12px;">${t("account.fields.password")}
-          <input type="password" id="new-password-input" ${acctUi.busy ? "disabled" : ""}>
-        </label>
-        <label class="field">${t("account.fields.confirmPassword")}
-          <input type="password" id="new-password-confirm" ${acctUi.busy ? "disabled" : ""}>
-        </label>
-        <div class="actions-row" style="margin-top:12px;">
-          <button class="btn secondary" type="button" data-action="do-update-password" ${acctUi.busy ? "disabled" : ""}>${acctUi.busy ? t("account.workingBtn") : t("account.saveBtn")}</button>
-        </div>
+        <form data-submit="do-update-password" autocomplete="on">
+          <input type="email" name="username" autocomplete="username" value="${attrEsc(currentUser.email)}" readonly tabindex="-1" aria-hidden="true" style="position:absolute; left:-9999px; width:1px; height:1px; opacity:0;">
+          <label class="field" style="margin-bottom:12px;">${t("account.fields.currentPassword")}
+            <input type="password" id="current-password-input" name="current-password" autocomplete="current-password" ${acctUi.busy ? "disabled" : ""}>
+          </label>
+          <label class="field" style="margin-bottom:12px;">${t("account.fields.password")}
+            <input type="password" id="new-password-input" name="new-password" autocomplete="new-password" ${acctUi.busy ? "disabled" : ""}>
+          </label>
+          <label class="field">${t("account.fields.confirmPassword")}
+            <input type="password" id="new-password-confirm" name="confirm-new-password" autocomplete="new-password" ${acctUi.busy ? "disabled" : ""}>
+          </label>
+          <div class="actions-row" style="margin-top:12px;">
+            <button class="btn secondary" type="submit" ${acctUi.busy ? "disabled" : ""}>${btnLabel("do-update-password", t("account.saveBtn"))}</button>
+          </div>
+        </form>
       </div>
 
       <div class="actions-row" style="margin-top:28px; border-top:1px solid var(--hairline); padding-top:18px;">
@@ -240,8 +262,20 @@ appEl.addEventListener("click", (e) => {
 
   const el = e.target.closest("[data-action]");
   if(!el) return;
-  const action = el.getAttribute("data-action");
+  handleAction(el.getAttribute("data-action"), el);
+});
 
+// Real <form>s let password managers tell the login, sign-up and change-password fields apart,
+// and make Enter submit. We handle the submit ourselves (no page navigation).
+appEl.addEventListener("submit", (e) => {
+  const form = e.target.closest && e.target.closest("form[data-submit]");
+  if(!form) return;
+  e.preventDefault();
+  if(acctUi.busy) return;
+  handleAction(form.getAttribute("data-submit"), form);
+});
+
+function handleAction(action, el){
   switch(action){
     case "logo-click":
       window.location.href = "index.html";
@@ -290,15 +324,15 @@ appEl.addEventListener("click", (e) => {
     case "do-forgot-password": {
       const email = fieldVal("forgot-email");
       if(!email){ acctUi.forgotError = t("account.fillAllFields"); render(); break; }
-      acctUi.busy = true; acctUi.forgotError = null; render();
+      acctUi.busy = true; acctUi.busyAction = "do-forgot-password"; acctUi.forgotError = null; render();
       authRequestPasswordReset(email).then(({ error }) => {
-        acctUi.busy = false;
+        acctUi.busy = false; acctUi.busyAction = null;
         if(error){ acctUi.forgotError = error.message || String(error); render(); return; }
         acctUi.showForgotPassword = false;
         acctUi.resetLinkSentTo = email;
         render();
       }).catch((err) => {
-        acctUi.busy = false; acctUi.forgotError = (err && err.message) || String(err); render();
+        acctUi.busy = false; acctUi.busyAction = null; acctUi.forgotError = (err && err.message) || String(err); render();
       });
       break;
     }
@@ -306,14 +340,15 @@ appEl.addEventListener("click", (e) => {
     case "do-login": {
       const email = fieldVal("login-email");
       const password = fieldVal("login-password");
+      acctUi.loginEmail = email;
       if(!email || !password){ acctUi.loginError = t("account.fillAllFields"); render(); break; }
-      acctUi.busy = true; acctUi.loginError = null; render();
+      acctUi.busy = true; acctUi.busyAction = "do-login"; acctUi.loginError = null; render();
       authLogIn(email, password).then(({ error }) => {
-        acctUi.busy = false;
+        acctUi.busy = false; acctUi.busyAction = null;
         if(error){ acctUi.loginError = error.message || String(error); render(); return; }
         // onAuthStateChange picks up the new session and re-renders once data is synced.
       }).catch((err) => {
-        acctUi.busy = false; acctUi.loginError = (err && err.message) || String(err); render();
+        acctUi.busy = false; acctUi.busyAction = null; acctUi.loginError = (err && err.message) || String(err); render();
       });
       break;
     }
@@ -322,38 +357,39 @@ appEl.addEventListener("click", (e) => {
       const email = fieldVal("signup-email");
       const password = fieldVal("signup-password");
       const confirm = fieldVal("signup-confirm");
+      acctUi.signupEmail = email;
       if(!email || !password || !confirm){ acctUi.signupError = t("account.fillAllFields"); render(); break; }
       if(password !== confirm){ acctUi.signupError = t("account.passwordMismatch"); render(); break; }
-      acctUi.busy = true; acctUi.signupError = null; render();
+      acctUi.busy = true; acctUi.busyAction = "do-signup"; acctUi.signupError = null; render();
       authSignUp(email, password).then(({ error }) => {
-        acctUi.busy = false;
+        acctUi.busy = false; acctUi.busyAction = null;
         if(error){ acctUi.signupError = error.message || String(error); render(); return; }
         acctUi.signupSentTo = email;
         render();
       }).catch((err) => {
-        acctUi.busy = false; acctUi.signupError = (err && err.message) || String(err); render();
+        acctUi.busy = false; acctUi.busyAction = null; acctUi.signupError = (err && err.message) || String(err); render();
       });
       break;
     }
 
     case "do-logout":
       authLogOut().then(() => {
-        acctUi = { loginError: null, signupError: null, signupSentTo: null, nameMsg: null, emailMsg: null, passwordMsg: null, busy: false, showForgotPassword: false, resetLinkSentTo: null, forgotError: null };
+        acctUi = { loginError: null, signupError: null, signupSentTo: null, nameMsg: null, emailMsg: null, passwordMsg: null, busy: false, busyAction: null, loginEmail: "", signupEmail: "", showForgotPassword: false, resetLinkSentTo: null, forgotError: null };
         showToast(t("account.loggedOutToast"));
       });
       break;
 
     case "do-update-name": {
       const name = fieldVal("name-input");
-      acctUi.busy = true; render();
+      acctUi.busy = true; acctUi.busyAction = "do-update-name"; render();
       authUpdateName(name || null).then(({ error }) => {
-        acctUi.busy = false;
+        acctUi.busy = false; acctUi.busyAction = null;
         if(error){ acctUi.nameMsg = error.message || String(error); render(); return; }
         acctUi.nameMsg = null;
         render();
         showToast(t("account.nameSavedToast"));
       }).catch((err) => {
-        acctUi.busy = false; acctUi.nameMsg = (err && err.message) || String(err); render();
+        acctUi.busy = false; acctUi.busyAction = null; acctUi.nameMsg = (err && err.message) || String(err); render();
       });
       break;
     }
@@ -361,14 +397,14 @@ appEl.addEventListener("click", (e) => {
     case "do-update-email": {
       const email = fieldVal("email-input");
       if(!email){ acctUi.emailMsg = t("account.fillAllFields"); render(); break; }
-      acctUi.busy = true; render();
+      acctUi.busy = true; acctUi.busyAction = "do-update-email"; render();
       authUpdateEmail(email).then(({ error }) => {
-        acctUi.busy = false;
+        acctUi.busy = false; acctUi.busyAction = null;
         if(error){ acctUi.emailMsg = error.message || String(error); render(); return; }
         acctUi.emailMsg = t("account.emailChangeSentToast");
         render();
       }).catch((err) => {
-        acctUi.busy = false; acctUi.emailMsg = (err && err.message) || String(err); render();
+        acctUi.busy = false; acctUi.busyAction = null; acctUi.emailMsg = (err && err.message) || String(err); render();
       });
       break;
     }
@@ -403,20 +439,20 @@ appEl.addEventListener("click", (e) => {
       const confirm = fieldVal("new-password-confirm");
       if(!current || !next || !confirm){ acctUi.passwordMsg = t("account.fillAllFields"); render(); break; }
       if(next !== confirm){ acctUi.passwordMsg = t("account.passwordMismatch"); render(); break; }
-      acctUi.busy = true; render();
+      acctUi.busy = true; acctUi.busyAction = "do-update-password"; render();
       authUpdatePassword(current, next).then(({ error }) => {
-        acctUi.busy = false;
+        acctUi.busy = false; acctUi.busyAction = null;
         if(error){ acctUi.passwordMsg = error.message || String(error); render(); return; }
         acctUi.passwordMsg = null;
         render();
         showToast(t("account.passwordChangedToast"));
       }).catch((err) => {
-        acctUi.busy = false; acctUi.passwordMsg = (err && err.message) || String(err); render();
+        acctUi.busy = false; acctUi.busyAction = null; acctUi.passwordMsg = (err && err.message) || String(err); render();
       });
       break;
     }
   }
-});
+}
 
 render();
 </script>

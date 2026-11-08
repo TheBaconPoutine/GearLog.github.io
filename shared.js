@@ -12,6 +12,10 @@ const I18N = {
     vehicles: {
       addVehicle: "+ Add Vehicle",
       renamePrompt: "Rename this vehicle:",
+      renameTitle: "Rename vehicle",
+      renameLabel: "Vehicle name",
+      renameSave: "Save",
+      renameCancel: "Cancel",
       deleteConfirm: (name) => `Remove "${name}" and all of its data? This can't be undone.`,
       deleteLastBlocked: "You need at least one vehicle.",
       defaultName: (n) => `Vehicle ${n}`,
@@ -656,6 +660,10 @@ const I18N = {
     vehicles: {
       addVehicle: "+ Ajouter un véhicule",
       renamePrompt: "Renommer ce véhicule :",
+      renameTitle: "Renommer le véhicule",
+      renameLabel: "Nom du véhicule",
+      renameSave: "Enregistrer",
+      renameCancel: "Annuler",
       deleteConfirm: (name) => `Retirer « ${name} » et toutes ses données? Cette action est irréversible.`,
       deleteLastBlocked: "Il vous faut au moins un véhicule.",
       defaultName: (n) => `Véhicule ${n}`,
@@ -1804,6 +1812,7 @@ async function handleAuthenticatedSession(){
     { const today = todayISO(); Object.values(state.vehicles || {}).forEach(v => { v.currentDate = today; }); }
     if(localLanguage) state.language = localLanguage;
     if(localQcUnlocked) state.qcUnlocked = true;
+    if(!state.tourActive) state.trackerTab = "status";   // always open on Status & Services, not whatever tab was saved
     localStorage.setItem(STORE_KEY, JSON.stringify(state));
   } else if(localHasData){
     // Remote is confirmed empty (first login, or an earlier blank sync) but this device
@@ -1938,7 +1947,7 @@ if(!state.activeVehicleId || !state.vehicles[state.activeVehicleId]){
 }
 if(!state.language) state.language = "en";
 if(!state.currentPage) state.currentPage = "tracker";
-if(!state.trackerTab) state.trackerTab = "setup";
+state.trackerTab = "status";   // always open on Status & Services; render() falls back to Setup only if the vehicle has no list yet
 if(state.lastSeenChangelogVersion == null) state.lastSeenChangelogVersion = 0;
 if(state.lastOpenedAt === undefined) state.lastOpenedAt = null;
 if(state.hasSeenOnboardingPopup === undefined) state.hasSeenOnboardingPopup = false;
@@ -2771,3 +2780,4 @@ function confirmModalHTML(){
 function footerHTML(){
   return `<footer class="foot">${t("footer")}</footer>`;
 }
+

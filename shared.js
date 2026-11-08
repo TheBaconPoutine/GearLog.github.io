@@ -392,6 +392,15 @@ const I18N = {
     changelogTitle: "What's new",
     changelogDismiss: "Got it, dismiss",
     changelog: [
+      {version: 5, items: [
+        "Recommended services (like brake service or cabin air filter) now look different from required ones. They use their own colour and say \u201Crecommended at\u2026\u201D or \u201Crecommended in\u2026\u201D instead of \u201Cdue\u201D or \u201Coverdue\u201D, so a long list of suggestions no longer reads like a long list of problems.",
+        "\u201CPrevious Service Done\u201D now lists everything completed in the last 8,000 km, not just the last service you entered.",
+        "Fixed the app showing an old date after a shared vehicle or cloud sync \u2014 it now always uses today's date.",
+        "Log in and Sign up are now separate forms, so password managers fill the right fields (and offer to generate a new password when signing up). Only the button you press shows \u201CWorking\u2026\u201D, and your email stays filled in if a login fails.",
+        "Renaming a vehicle now uses an in-app dialog instead of the browser pop-up.",
+        "GearLog now always opens on Status & Services, including when you switch vehicles, instead of reopening on Vehicle Settings.",
+        "Resources: the Winter / Snow section now includes Tire Rack's 2026/27 head-to-head of the Blizzak IcePeak, VikingContact 8 and X-Ice Snow+, with measured results and verdicts.",
+      ]},
       {version: 4, items: [
         "Share a vehicle with another GearLog account. Under Vehicle Settings, tap \u201CShare this vehicle\u201D and enter their email \u2014 they can see and update that vehicle's service log, so you can help someone stay organized without exporting backups or sharing a login. Shared vehicles show \uD83D\uDC65 after their name.",
         "One person edits at a time. Whoever opens a shared vehicle first can edit; everyone else sees a View mode banner and gets their turn automatically when the editor leaves or has been idle for 5 minutes. Changes appear live for viewers.",
@@ -1040,6 +1049,15 @@ const I18N = {
     changelogTitle: "Quoi de neuf",
     changelogDismiss: "Compris, fermer",
     changelog: [
+      {version: 5, items: [
+        "Les services recommandés (comme l'entretien des freins ou le filtre d'habitacle) se distinguent maintenant des services requis. Ils ont leur propre couleur et affichent « recommandé à… » ou « recommandé dans… » au lieu de « dû » ou « en retard », pour qu'une longue liste de suggestions ne ressemble plus à une longue liste de problèmes.",
+        "« Entretien précédent effectué » affiche maintenant tout ce qui a été fait au cours des 8 000 derniers km, et pas seulement le dernier service saisi.",
+        "Correction de l'affichage d'une ancienne date après un véhicule partagé ou une synchronisation infonuagique — l'application utilise maintenant toujours la date du jour.",
+        "La connexion et l'inscription sont maintenant des formulaires distincts, pour que les gestionnaires de mots de passe remplissent les bons champs (et proposent de générer un nouveau mot de passe à l'inscription). Seul le bouton sur lequel vous appuyez affiche « En cours… », et votre courriel reste rempli si la connexion échoue.",
+        "Renommer un véhicule utilise maintenant une boîte de dialogue intégrée plutôt que la fenêtre contextuelle du navigateur.",
+        "GearLog s'ouvre maintenant toujours sur État et services, y compris quand vous changez de véhicule, au lieu de rouvrir sur les paramètres du véhicule.",
+        "Ressources : la section Hiver / Neige inclut maintenant le comparatif 2026/27 de Tire Rack entre le Blizzak IcePeak, le VikingContact 8 et le X-Ice Snow+, avec résultats mesurés et verdicts.",
+      ]},
       {version: 4, items: [
         "Partagez un véhicule avec un autre compte GearLog. Dans les paramètres du véhicule, touchez « Partager ce véhicule » et entrez son courriel — cette personne peut voir et mettre à jour le carnet d'entretien de ce véhicule, ce qui vous permet d'aider quelqu'un à s'organiser sans exporter de sauvegarde ni partager un mot de passe. Les véhicules partagés affichent \uD83D\uDC65 après leur nom.",
         "Une seule personne modifie à la fois. La première personne qui ouvre un véhicule partagé peut le modifier; les autres voient une bannière Mode lecture et obtiennent leur tour automatiquement quand l'éditeur part ou reste inactif pendant 5 minutes. Les changements s'affichent en direct pour ceux qui consultent.",

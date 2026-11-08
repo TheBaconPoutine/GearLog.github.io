@@ -280,6 +280,13 @@ const I18N = {
       dueAtLineOverdue: (km, date) => `Was due at ${km} km or ${date}`,
       dueOnLine: (date) => `Due on ${date}`,
       dueOnLineOverdue: (date) => `Was due on ${date}`,
+      recAtLine: (km, date) => `Recommended at ${km} km or ${date}`,
+      recAtLinePast: (km, date) => `Was recommended at ${km} km or ${date}`,
+      recSoonAtLine: (km, date) => `Recommended soon, at ${km} km or ${date}`,
+      recOnLine: (date) => `Recommended on ${date}`,
+      recOnLinePast: (date) => `Was recommended on ${date}`,
+      recSoonOnLine: (date) => `Recommended soon, on ${date}`,
+      recNote: (count) => `<b>${count} recommended service${count === 1 ? "" : "s"}</b> to consider \u2014 optional, and not counted in your status above.`,
       mileageStatusTitle: "Mileage Status",
       avgKmLabel: "Avg. KM / Month",
       mileageThisYearLabel: "KM Driven This Year",
@@ -345,6 +352,8 @@ const I18N = {
       hintIntervals: "How often this service should be done — not the last time it happened.",
       enterPrompt: "Enter last service KM & date below to calculate.",
       dueInDays: "Due In (Days)", dueInKm: "Due In (KM)", dueAtKm: "Due At (KM)", estDueDate: "Est. Due Date", viaKmPace: "via KM pace",
+      recInDays: "Recommended In (Days)", recInKm: "Recommended In (KM)", recAtKm: "Recommended At (KM)", estRecDate: "Est. Recommended Date",
+      recSoonInDays: "Recommended Soon In (Days)", recSoonInKm: "Recommended Soon In (KM)",
       markDoneToday: "Mark done today",
       addToCalendar: "Create Reminder",
       removeItem: "Remove item",
@@ -357,6 +366,7 @@ const I18N = {
       emptyState: 'No service list yet — choose your drivetrain and transmission above, then hit "Build Service List".',
     },
     statusMeta: {ok: "OK", soon: "Due Soon", due: "Due", over: "Overdue"},
+    statusMetaRec: {ok: "OK", soon: "Recommended Soon", due: "Recommended", over: "Recommended"},
     history: {
       title: "Service History",
       name: "Service / Repair", km: "KM", date: "Date", notes: "Notes (optional)", type: "Type",
@@ -484,6 +494,8 @@ const I18N = {
     },
     icsSummary: (name) => `${name} — Service Due`,
     icsDescription: "Estimated due date from GearLog based on your mileage and driving pace.",
+    icsSummaryRecommended: (name) => `${name} \u2014 Recommended Service`,
+    icsDescriptionRecommended: "Estimated date from GearLog based on your mileage and driving pace. This one is a recommendation, not a requirement.",
     help: {
       title: "Share & Download",
       installTitle: "How to Install the Web App on Mobile",
@@ -912,6 +924,13 @@ const I18N = {
       dueAtLineOverdue: (km, date) => `Était dû à ${km} km ou le ${date}`,
       dueOnLine: (date) => `Dû le ${date}`,
       dueOnLineOverdue: (date) => `Était dû le ${date}`,
+      recAtLine: (km, date) => `Recommandé à ${km} km ou le ${date}`,
+      recAtLinePast: (km, date) => `Était recommandé à ${km} km ou le ${date}`,
+      recSoonAtLine: (km, date) => `Bientôt recommandé, à ${km} km ou le ${date}`,
+      recOnLine: (date) => `Recommandé le ${date}`,
+      recOnLinePast: (date) => `Était recommandé le ${date}`,
+      recSoonOnLine: (date) => `Bientôt recommandé, le ${date}`,
+      recNote: (count) => `<b>${count} service${count === 1 ? "" : "s"} recommandé${count === 1 ? "" : "s"}</b> à considérer \u2014 facultatif, et non compté dans votre état ci-dessus.`,
       mileageStatusTitle: "État du kilométrage",
       avgKmLabel: "Moy. KM / mois",
       mileageThisYearLabel: "KM parcourus cette année",
@@ -977,6 +996,8 @@ const I18N = {
       hintIntervals: "À quelle fréquence ce service devrait être fait — pas la dernière fois qu'il a été fait.",
       enterPrompt: "Entrez le kilométrage et la date du dernier entretien ci-dessous pour calculer.",
       dueInDays: "Échéance (jours)", dueInKm: "Échéance (KM)", dueAtKm: "Échéance à (KM)", estDueDate: "Date d'échéance estimée", viaKmPace: "selon le rythme de KM",
+      recInDays: "Recommandé dans (jours)", recInKm: "Recommandé dans (KM)", recAtKm: "Recommandé à (KM)", estRecDate: "Date recommandée estimée",
+      recSoonInDays: "Bientôt recommandé dans (jours)", recSoonInKm: "Bientôt recommandé dans (KM)",
       markDoneToday: "Marquer comme fait aujourd'hui",
       addToCalendar: "Créer un rappel",
       removeItem: "Retirer cet élément",
@@ -989,6 +1010,7 @@ const I18N = {
       emptyState: "Aucune liste d'entretien pour l'instant — choisissez votre rouage d'entraînement et votre boîte de vitesses ci-dessus, puis cliquez sur « Créer la liste d'entretien ».",
     },
     statusMeta: {ok: "À jour", soon: "Bientôt dû", due: "Dû", over: "En retard"},
+    statusMetaRec: {ok: "À jour", soon: "Bientôt recommandé", due: "Recommandé", over: "Recommandé"},
     history: {
       title: "Historique d'entretien",
       name: "Service / réparation", km: "KM", date: "Date", notes: "Notes (facultatif)", type: "Type",
@@ -1116,6 +1138,8 @@ const I18N = {
     },
     icsSummary: (name) => `${name} — Entretien à faire`,
     icsDescription: "Date d'échéance estimée par GearLog selon votre kilométrage et votre rythme de conduite.",
+    icsSummaryRecommended: (name) => `${name} \u2014 Entretien recommandé`,
+    icsDescriptionRecommended: "Date estimée par GearLog selon votre kilométrage et votre rythme de conduite. Celui-ci est une recommandation, pas une obligation.",
     help: {
       title: "Partager et télécharger",
       installTitle: "Comment installer l'application web sur mobile",
@@ -1777,6 +1801,7 @@ async function handleAuthenticatedSession(){
     const localLanguage = state.language;
     const localQcUnlocked = state.qcUnlocked;
     state = remote;
+    { const today = todayISO(); Object.values(state.vehicles || {}).forEach(v => { v.currentDate = today; }); }
     if(localLanguage) state.language = localLanguage;
     if(localQcUnlocked) state.qcUnlocked = true;
     localStorage.setItem(STORE_KEY, JSON.stringify(state));
@@ -1992,7 +2017,7 @@ function stableStringify(x){
   return "{" + Object.keys(x).sort().filter(k => x[k] !== undefined)
     .map(k => JSON.stringify(k) + ":" + stableStringify(x[k])).join(",") + "}";
 }
-function vehicleSnapshot(v){ const c = Object.assign({}, v); delete c.shared; return stableStringify(c); }
+function vehicleSnapshot(v){ const c = Object.assign({}, v); delete c.shared; delete c.currentDate; return stableStringify(c); }   // the date is each viewer's own "today", not shared data
 function vehicleDataForServer(v){ const c = JSON.parse(JSON.stringify(v)); delete c.shared; return c; }
 function persistLocal(){ try{ localStorage.setItem(STORE_KEY, JSON.stringify(state)); }catch(e){} }
 
@@ -2250,6 +2275,7 @@ if(typeof document !== "undefined"){
 function applyServerSharedRow(lid, row){
   const old = state.vehicles[lid];
   const veh = normalizeVehicle(JSON.parse(JSON.stringify(row.data)));
+  veh.currentDate = todayISO();
   veh.shared = {
     id: row.id,
     ownerId: row.owner_id != null ? row.owner_id : (old && old.shared ? old.shared.ownerId : null),
@@ -2334,6 +2360,7 @@ async function hydrateSharedVehicles(){
     const lid = sharedLocalId(sv.id);
     const existing = state.vehicles[lid];
     const serverVeh = normalizeVehicle(JSON.parse(JSON.stringify(sv.data)));
+    serverVeh.currentDate = todayISO();
     sharedLastPushed[sv.id] = vehicleSnapshot(serverVeh);
     if(existing && existing.shared && existing.shared.version === sv.version){
       existing.shared.role = row.role;          // keep local copy; it may hold edits not saved yet
@@ -2470,6 +2497,7 @@ async function unshareVehicleNow(localId){
   if(sharedLock.sharedId === sid) stopSharedPresence();
   const restored = normalizeVehicle(JSON.parse(JSON.stringify(r.data || vehicleDataForServer(v))));
   delete restored.shared;
+  restored.currentDate = todayISO();
   const newId = "v_" + Date.now().toString(36);
   const rebuilt = {};
   Object.keys(state.vehicles).forEach(id => { rebuilt[id === localId ? newId : id] = id === localId ? restored : state.vehicles[id]; });
@@ -2743,4 +2771,3 @@ function confirmModalHTML(){
 function footerHTML(){
   return `<footer class="foot">${t("footer")}</footer>`;
 }
-

@@ -992,3 +992,29 @@
   .share-role-pill.owner{background: rgba(111,174,122,0.15); color: var(--green);}
   .share-role-pill.pending{background: rgba(242,169,59,0.15); color: var(--amber);}
   .share-error{color: var(--red-text, #D4574B); font-size:12.5px; margin:8px 0 0;}
+
+  /* ---------- Recommended (optional) services: their own colour, distinct from required ones ---------- */
+  :root{ --violet: #A58BD9; }
+  @media (prefers-color-scheme: light){ :root{ --violet: #6B4FB0; } }
+  .item.status-rec-soon{border-left-color: color-mix(in srgb, var(--violet) 55%, transparent);}
+  .item.status-rec-due{border-left-color: var(--violet);}
+  .status-pill.status-rec-soon{background: rgba(165,139,217,0.10); color: var(--violet); border:1px dashed color-mix(in srgb, var(--violet) 55%, transparent);}
+  .status-pill.status-rec-due{background: rgba(165,139,217,0.18); color: var(--violet);}
+  .odo-digits.tone-rec-soon .d{color: color-mix(in srgb, var(--violet) 70%, var(--text-dim));}
+  .odo-digits.tone-rec-due .d{color: var(--violet);}
+  .dash-rec-note{
+    margin-top:10px; padding:9px 12px; border-left:3px solid var(--violet); border-radius:6px;
+    background: rgba(165,139,217,0.10); font-size:12.5px; line-height:1.5; color: var(--text-dim);
+  }
+  .dash-rec-note b{color: var(--violet); font-weight:600;}
+
+  /* ---------- Winter tire head-to-head table ---------- */
+  .winter-test-wrap{width:100%; overflow-x:auto; -webkit-overflow-scrolling:touch; margin-bottom:12px;}
+  .winter-test{width:100%; min-width:440px; border-collapse:collapse; font-size:13px;}
+  .winter-test th, .winter-test td{padding:9px 10px; border-bottom:1px solid var(--hairline); text-align:right; white-space:nowrap;}
+  .winter-test thead th{font-family: var(--font-display); font-weight:500; font-size:11px; text-transform:uppercase; letter-spacing:0.5px; color: var(--text-dim2); text-align:right;}
+  .winter-test thead th:first-child, .winter-test tbody th{text-align:left;}
+  .winter-test tbody th{font-weight:500; color: var(--text); white-space:normal;}
+  .winter-test td{font-family: var(--font-mono); color: var(--text-dim);}
+  .winter-test td.best{color: var(--green); font-weight:600;}
+  .winter-test tr:last-child th, .winter-test tr:last-child td{border-bottom:none;}
